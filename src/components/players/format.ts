@@ -32,6 +32,22 @@ export function fmtOpponent(opponentAbbr: string, home: boolean, result: "W" | "
   return result ? `${base} · ${result}` : base;
 }
 
+/** Fetch JSON; on a non-2xx response, throw with the API's `{ error }` message when present. */
+export async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) {
+    let message = res.status === 404 ? "Not found." : `Request failed (${res.status}).`;
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (typeof body.error === "string" && body.error) message = body.error;
+    } catch {
+      // Non-JSON error body: keep the generic message.
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as T;
+}
+
 export function fullName(p: { firstName: string; lastName: string }): string {
   return `${p.firstName} ${p.lastName}`.trim();
 }

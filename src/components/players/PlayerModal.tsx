@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, SeasonRow } from "@/lib/types";
-import { seasonLabel } from "@/lib/types";
-import { fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fullName } from "./format";
+import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
+import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
 
 interface Props {
@@ -74,12 +74,7 @@ export default function PlayerModal({ playerId, onClose }: Props) {
     if (playerId === null) return;
     const ctrl = new AbortController();
     setLoad({ status: "loading", id: playerId });
-    fetch(`/api/players/${playerId}`, { signal: ctrl.signal })
-      .then(async (res) => {
-        if (res.status === 404) throw new Error("Player not found.");
-        if (!res.ok) throw new Error(`Request failed (${res.status}).`);
-        return (await res.json()) as PlayerDetailResponse;
-      })
+    fetchJson<PlayerDetailResponse>(`/api/players/${playerId}?season=${CURRENT_SEASON}`, ctrl.signal)
       .then((data) => setLoad({ status: "ready", id: playerId, data }))
       .catch((err: unknown) => {
         if (ctrl.signal.aborted) return;

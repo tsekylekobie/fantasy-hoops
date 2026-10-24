@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { PlayersResponse, PositionFilter, StatMode } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import PlayersTable from "./PlayersTable";
+import { fetchJson } from "./format";
 import PlayerModal from "./PlayerModal";
 import styles from "./PlayersBrowser.module.css";
 
@@ -108,11 +109,7 @@ export default function PlayersBrowser() {
       page: String(page),
       perPage: String(PER_PAGE),
     });
-    fetch(`/api/players?${params}`, { signal: ctrl.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Request failed (${res.status})`);
-        return (await res.json()) as PlayersResponse;
-      })
+    fetchJson<PlayersResponse>(`/api/players?${params}`, ctrl.signal)
       .then((data) => setLoad({ status: "ready", data }))
       .catch((err: unknown) => {
         if (ctrl.signal.aborted) return;
