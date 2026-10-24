@@ -61,3 +61,25 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
   UNIQUE (player_id, game_id)
 );
 CREATE INDEX IF NOT EXISTS pgs_season_player_idx ON player_game_stats (season, player_id);
+
+-- Additions (data-ingest layer). Columns are only ever added, never renamed.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS status_state text;      -- e.g. "final"
+ALTER TABLE games ADD COLUMN IF NOT EXISTS datetime timestamptz;   -- tip-off time
+ALTER TABLE games ADD COLUMN IF NOT EXISTS postponed boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS games_date_idx ON games (date);
+
+-- Denormalized from games so averages can filter regular season cheaply.
+ALTER TABLE player_game_stats ADD COLUMN IF NOT EXISTS postseason boolean NOT NULL DEFAULT false;
+ALTER TABLE player_game_stats ADD COLUMN IF NOT EXISTS plus_minus integer;
+CREATE INDEX IF NOT EXISTS pgs_player_game_idx ON player_game_stats (player_id, game_id);
+CREATE INDEX IF NOT EXISTS pgs_game_idx ON player_game_stats (game_id);
+
+-- Progress bookkeeping for resumable batch jobs (scripts/backfill-stats.ts).
+-- key e.g. "stats:season:2025"; cursor = last next_cursor fully stored.
+CREATE TABLE IF NOT EXISTS sync_state (
+  key          text PRIMARY KEY,
+  cursor       bigint,
+  completed_at timestamptz,
+  rows_written integer NOT NULL DEFAULT 0,
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
