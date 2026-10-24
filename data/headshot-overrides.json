@@ -1,3 +1,11 @@
 {
-  "_comment": "BALLDONTLIE player id -> NBA person id (or null to clear). Applied last by scripts/map-headshots.py."
+  "_comment": "BALLDONTLIE player id -> NBA person id (or null to clear). Applied last by scripts/map-headshots.py. Keys starting with _ are ignored.",
+  "_why": "Nicknames and name-order differences: Airious/Ace Bailey, Alexandre/Alex Sarr, Nah'Shon/Bones Hyland, Carlton/Bub Carrington, David Jones/David Jones Garcia, Nicolas/Nic Claxton, Hansen Yang/Yang Hansen.",
+  "1057260888": 1642846,
+  "1028028405": 1642259,
+  "17896031": 1630538,
+  "1028025235": 1642267,
+  "1028245237": 1642357,
+  "666508": 1629651,
+  "1057275769": 1642905
 }
