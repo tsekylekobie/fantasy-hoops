@@ -10,7 +10,10 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "sync:players": "tsx scripts/sync-teams-players.ts",
+    "backfill": "tsx scripts/backfill-stats.ts",
+    "fetch:samples": "node scripts/fetch-samples.mjs"
   },
   "dependencies": {
     "next": "15.5.28",
