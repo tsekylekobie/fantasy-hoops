@@ -240,6 +240,32 @@ export async function classifyGames(db: Db, season: number): Promise<{ playIn: n
      UPDATE games SET game_type = 'play_in' WHERE id IN (SELECT id FROM play_in)`,
     [season],
   );
+  // Older seasons (2023, 2024) have no ist_stage, so the Cup final can't be
+  // spotted directly. After play-in removal its two teams are the only ones
+  // with 83 regular games; the final is their mid-December meeting.
+  await db.query(
+    `WITH team_counts AS (
+       SELECT t.team_id, count(*) AS n
+       FROM games g
+       CROSS JOIN LATERAL (VALUES (g.home_team_id), (g.visitor_team_id)) AS t(team_id)
+       WHERE g.season = $1 AND g.game_type = 'regular' AND NOT g.postponed
+       GROUP BY t.team_id
+     ),
+     finalists AS (SELECT team_id FROM team_counts WHERE n = 83),
+     candidates AS (
+       SELECT g.id FROM games g
+       WHERE g.season = $1 AND g.game_type = 'regular'
+         AND g.home_team_id IN (SELECT team_id FROM finalists)
+         AND g.visitor_team_id IN (SELECT team_id FROM finalists)
+         AND extract(month FROM g.date) = 12 AND extract(day FROM g.date) BETWEEN 7 AND 20
+     )
+     UPDATE games SET game_type = 'cup_final'
+     WHERE id IN (SELECT id FROM candidates)
+       AND (SELECT count(*) FROM finalists) = 2
+       AND (SELECT count(*) FROM candidates) = 1
+       AND NOT EXISTS (SELECT 1 FROM games WHERE season = $1 AND game_type = 'cup_final')`,
+    [season],
+  );
   await db.query(
     `UPDATE player_game_stats s SET regular_season = (g.game_type = 'regular')
      FROM games g
