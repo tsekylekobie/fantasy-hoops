@@ -11,12 +11,14 @@
 // - A season whose stats finished and whose games are all final is skipped.
 // - A season that is still in progress gets an incremental pass from two days
 //   before the last completed run (catches stat corrections).
-// Postseason games and stats are stored too (postseason = true); averages
-// should filter on it.
+// Postseason games and stats are stored too (postseason = true). Averages
+// should filter on player_game_stats.regular_season, which also excludes
+// play-in games and the NBA Cup final (the provider marks those
+// postseason = false); see classifyGames.
 import "dotenv/config";
 import { Pool } from "pg";
 import { createClient, type DataClient } from "../src/lib/bdl";
-import { upsertGames, upsertStatLines } from "./lib/upsert";
+import { classifyGames, upsertGames, upsertStatLines } from "./lib/upsert";
 
 interface Args {
   seasons: number[];
@@ -175,14 +177,17 @@ async function main() {
       log(`season ${season}`);
       if (!args.skipGames) await backfillGames(db, api, season, args);
       await backfillStats(db, api, season, args);
+      const cls = await classifyGames(db, season);
+      log(`season ${season}: classified ${cls.playIn} play-in, ${cls.cupFinal} cup-final games (not regular season)`);
       const { rows } = await db.query(
         `SELECT
            (SELECT count(*)::int FROM games WHERE season = $1) AS games,
            (SELECT count(*)::int FROM player_game_stats WHERE season = $1) AS stats,
-           (SELECT count(*)::int FROM player_game_stats WHERE season = $1 AND min > 0) AS played`,
+           (SELECT count(*)::int FROM player_game_stats WHERE season = $1 AND min > 0) AS played,
+           (SELECT count(*)::int FROM player_game_stats WHERE season = $1 AND regular_season) AS regular`,
         [season],
       );
-      log(`season ${season}: ${rows[0].games} games, ${rows[0].stats} stat rows (${rows[0].played} with minutes)`);
+      log(`season ${season}: ${rows[0].games} games, ${rows[0].stats} stat rows (${rows[0].played} with minutes, ${rows[0].regular} regular season)`);
     }
     log(`all done: ${api.requestCount} requests in ${Math.round((Date.now() - t0) / 1000)}s`);
   } finally {

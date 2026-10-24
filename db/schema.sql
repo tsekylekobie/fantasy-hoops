@@ -83,3 +83,12 @@ CREATE TABLE IF NOT EXISTS sync_state (
   rows_written integer NOT NULL DEFAULT 0,
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
+
+-- The provider flags play-in games and the NBA Cup Championship as
+-- postseason = false, but neither counts toward official regular-season stats.
+-- game_type: 'regular' | 'cup_final' | 'play_in' | 'playoffs' (set by the backfill).
+-- player_game_stats.regular_season mirrors game_type = 'regular'; use it
+-- (not NOT postseason) for season averages.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS game_type text;
+ALTER TABLE player_game_stats ADD COLUMN IF NOT EXISTS regular_season boolean;
+CREATE INDEX IF NOT EXISTS pgs_season_regular_idx ON player_game_stats (season, regular_season, player_id);

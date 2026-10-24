@@ -130,11 +130,16 @@ export async function upsertGames(db: Db, games: Game[]): Promise<number> {
   }));
   const res = await db.query(
     `INSERT INTO games (id, date, season, status, status_state, period, time, postseason, postponed,
-       datetime, home_team_id, visitor_team_id, home_team_score, visitor_team_score, raw, updated_at)
+       datetime, home_team_id, visitor_team_id, home_team_score, visitor_team_score, raw, game_type,
+       updated_at)
      SELECT id, date, season, status, status_state, period, time, postseason, postponed,
        datetime, (SELECT t.id FROM teams t WHERE t.id = r.home_team_id),
        (SELECT t.id FROM teams t WHERE t.id = r.visitor_team_id),
-       home_team_score, visitor_team_score, raw, now()
+       home_team_score, visitor_team_score, raw,
+       CASE WHEN postseason THEN 'playoffs'
+            WHEN raw->>'ist_stage' = 'Championship' THEN 'cup_final'
+            ELSE 'regular' END,
+       now()
      FROM jsonb_to_recordset($1::jsonb) AS r(id int, date date, season int, status text,
        status_state text, period int, time text, postseason boolean, postponed boolean,
        datetime timestamptz, home_team_id int, visitor_team_id int, home_team_score int,
@@ -145,7 +150,11 @@ export async function upsertGames(db: Db, games: Game[]): Promise<number> {
        postseason = EXCLUDED.postseason, postponed = EXCLUDED.postponed,
        datetime = EXCLUDED.datetime, home_team_id = EXCLUDED.home_team_id,
        visitor_team_id = EXCLUDED.visitor_team_id, home_team_score = EXCLUDED.home_team_score,
-       visitor_team_score = EXCLUDED.visitor_team_score, raw = EXCLUDED.raw, updated_at = now()`,
+       visitor_team_score = EXCLUDED.visitor_team_score, raw = EXCLUDED.raw,
+       -- play_in is only detectable across a season (classifyGames); keep it.
+       game_type = CASE WHEN games.game_type = 'play_in' AND EXCLUDED.game_type = 'regular'
+                        THEN 'play_in' ELSE EXCLUDED.game_type END,
+       updated_at = now()`,
     [JSON.stringify(rows)],
   );
   return res.rowCount ?? 0;
@@ -180,10 +189,11 @@ export async function upsertStatLines(db: Db, lines: StatLine[]): Promise<number
   const res = await db.query(
     `INSERT INTO player_game_stats (id, player_id, game_id, team_id, season, postseason, min,
        fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, reb, ast, stl, blk, turnover, pf, pts,
-       plus_minus, raw, updated_at)
+       plus_minus, raw, regular_season, updated_at)
      SELECT id, player_id, game_id, (SELECT t.id FROM teams t WHERE t.id = r.team_id), season,
        postseason, min, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, reb, ast, stl, blk,
-       turnover, pf, pts, plus_minus, raw, now()
+       turnover, pf, pts, plus_minus, raw,
+       (SELECT g.game_type = 'regular' FROM games g WHERE g.id = r.game_id), now()
      FROM jsonb_to_recordset($1::jsonb) AS r(id int, player_id int, game_id int, team_id int,
        season int, postseason boolean, min numeric, fgm int, fga int, fg3m int, fg3a int,
        ftm int, fta int, oreb int, dreb int, reb int, ast int, stl int, blk int, turnover int,
@@ -195,10 +205,55 @@ export async function upsertStatLines(db: Db, lines: StatLine[]): Promise<number
        ftm = EXCLUDED.ftm, fta = EXCLUDED.fta, oreb = EXCLUDED.oreb, dreb = EXCLUDED.dreb,
        reb = EXCLUDED.reb, ast = EXCLUDED.ast, stl = EXCLUDED.stl, blk = EXCLUDED.blk,
        turnover = EXCLUDED.turnover, pf = EXCLUDED.pf, pts = EXCLUDED.pts,
-       plus_minus = EXCLUDED.plus_minus, raw = EXCLUDED.raw, updated_at = now()`,
+       plus_minus = EXCLUDED.plus_minus, raw = EXCLUDED.raw,
+       regular_season = EXCLUDED.regular_season, updated_at = now()`,
     [JSON.stringify(rows)],
   );
   return res.rowCount ?? 0;
+}
+
+/**
+ * Set games.game_type for a season and mirror it into
+ * player_game_stats.regular_season. Play-in games are flagged
+ * postseason=false by the provider; we detect them as non-postseason games
+ * played after both teams already had 82 regular-season games.
+ */
+export async function classifyGames(db: Db, season: number): Promise<{ playIn: number; cupFinal: number }> {
+  await db.query(
+    `UPDATE games SET game_type = CASE WHEN postseason THEN 'playoffs'
+                                       WHEN raw->>'ist_stage' = 'Championship' THEN 'cup_final'
+                                       ELSE 'regular' END
+     WHERE season = $1`,
+    [season],
+  );
+  await db.query(
+    `WITH team_games AS (
+       SELECT g.id, t.team_id,
+              row_number() OVER (PARTITION BY t.team_id ORDER BY g.date, g.datetime, g.id) AS n
+       FROM games g
+       CROSS JOIN LATERAL (VALUES (g.home_team_id), (g.visitor_team_id)) AS t(team_id)
+       WHERE g.season = $1 AND g.game_type = 'regular' AND NOT g.postponed
+     ),
+     play_in AS (
+       SELECT id FROM team_games GROUP BY id HAVING min(n) > 82
+     )
+     UPDATE games SET game_type = 'play_in' WHERE id IN (SELECT id FROM play_in)`,
+    [season],
+  );
+  await db.query(
+    `UPDATE player_game_stats s SET regular_season = (g.game_type = 'regular')
+     FROM games g
+     WHERE g.id = s.game_id AND s.season = $1
+       AND s.regular_season IS DISTINCT FROM (g.game_type = 'regular')`,
+    [season],
+  );
+  const { rows } = await db.query(
+    `SELECT count(*) FILTER (WHERE game_type = 'play_in')::int AS play_in,
+            count(*) FILTER (WHERE game_type = 'cup_final')::int AS cup_final
+     FROM games WHERE season = $1`,
+    [season],
+  );
+  return { playIn: rows[0].play_in, cupFinal: rows[0].cup_final };
 }
 
 function dedupe<T>(items: T[], key: (t: T) => string | number): T[] {
