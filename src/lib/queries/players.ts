@@ -3,7 +3,8 @@
 // the ~500 aggregated rows of one season.
 //
 // Rules: games played = stat rows with min > 0 (DNP rows have min 0);
-// postseason games are excluded everywhere; FG%/FT% = summed makes / summed attempts.
+// only regular-season games count (games.game_type = 'regular': no playoffs,
+// play-in or NBA Cup final); FG%/FT% = summed makes / summed attempts.
 import type { Pool } from "pg";
 import type {
   CategoryLine,
@@ -37,7 +38,7 @@ const SEASON_TOTALS_SQL = `
   WITH t AS (
     SELECT s.player_id, ${AGG}
     FROM player_game_stats s
-    JOIN games g ON g.id = s.game_id AND NOT g.postseason
+    JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
     WHERE s.season = $1 AND s.min > 0
     GROUP BY s.player_id
   )
@@ -147,7 +148,7 @@ export async function getPlayerDetail(db: Pool, playerId: number, season: number
     db.query<TotalsRow & { season: number }>(
       `SELECT s.season, s.player_id, ${AGG}
        FROM player_game_stats s
-       JOIN games g ON g.id = s.game_id AND NOT g.postseason
+       JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
        WHERE s.player_id = $1 AND s.season <= $2 AND s.min > 0
        GROUP BY s.season, s.player_id
        ORDER BY s.season DESC`,
@@ -175,7 +176,7 @@ export async function getPlayerDetail(db: Pool, playerId: number, season: number
               coalesce(s.stl, 0) AS stl, coalesce(s.blk, 0) AS blk,
               coalesce(s.turnover, 0) AS tov
        FROM player_game_stats s
-       JOIN games g ON g.id = s.game_id AND NOT g.postseason
+       JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
        LEFT JOIN teams opp ON opp.id = CASE WHEN s.team_id = g.home_team_id
                                             THEN g.visitor_team_id ELSE g.home_team_id END
        WHERE s.player_id = $1 AND s.season = $2 AND s.min > 0
