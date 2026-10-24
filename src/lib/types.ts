@@ -38,7 +38,7 @@ export interface PlayerSummary {
 }
 
 export interface PlayerRow extends PlayerSummary {
-  /** 1-based rank by 9CAT value across all players matching the filters. */
+  /** 1-based rank by 9CAT value among all players with a game this season (independent of q/pos). */
   rank: number;
   gp: number;
   /** Minutes per game in avg mode, total minutes in total mode. */
