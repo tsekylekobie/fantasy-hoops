@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Players</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:980px;box-sizing:border-box;padding:28px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase}
+.logo b{color:#C2410C}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:36px 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0}
+.bar{display:flex;gap:10px;margin:24px 0 16px;flex-wrap:wrap;align-items:center}
+.bar input{height:44px;box-sizing:border-box;width:280px;border:1px solid #CFC9BD;border-radius:10px;padding:0 14px;font:400 14px Inter,sans-serif;background:#fff;color:#16181D}
+.chip{height:44px;border:1px solid #CFC9BD;border-radius:999px;padding:0 16px;font:500 13px Inter,sans-serif;background:#fff;color:#16181D}
+.chip.on{background:#16181D;color:#fff;border-color:#16181D}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
+.g{display:grid;grid-template-columns:40px minmax(200px,1fr) 44px 52px repeat(9,66px);align-items:center;padding:0 16px;min-width:960px;box-sizing:border-box}
+.hd{height:44px;font-size:12px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #E2DDD1;background:#FBFAF6}
+.r{height:56px;border-bottom:1px solid #EEEAE0;font-size:15px;font-variant-numeric:tabular-nums}
+.n{text-align:right}
+.k{font-weight:600}
+.nm{background:none;border:0;padding:0;font:600 15px Inter,sans-serif;color:#16181D;cursor:pointer;text-align:left;display:block}
+.nm:hover{color:#C2410C;text-decoration:underline}
+.tm{font-size:12px;color:#5A5F68;display:block;margin-top:2px}.pl{display:flex;align-items:center;gap:12px}.av2{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
+.ft{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px;color:#4A4F57}
+.ft button{height:44px;padding:0 18px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;font:500 13px Inter,sans-serif;color:#16181D;margin-left:8px}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<div class="top"><div class="logo">Fantasy <b>Hoops</b></div><span class="tag">Sample data</span></div>
+<h1>Season averages</h1>
+<p class="sub">2026–27 · per game · 9-category</p>
+<div class="bar">
+<label><input type="text" placeholder="Search players" aria-label="Search players"></label>
+<button class="chip">All positions</button><button class="chip on">Per game</button><button class="chip">Totals</button><button class="chip">Sort: 9CAT value</button>
+</div>
+<div class="card">
+<div class="g hd"><span>#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span></div>
+<div class="g r"><span>1</span><span class="pl"><i class="av2">MD</i><span><button class="nm">Marcus Delaney</button><span class="tm">BOS · SG/SF</span></span></span><span class="n">3</span><span class="n">35.0</span><span class="n">.492</span><span class="n">.857</span><span class="n">3.0</span><span class="n k">29.0</span><span class="n">6.0</span><span class="n">5.3</span><span class="n">1.3</span><span class="n">0.7</span><span class="n">2.7</span></div>
+<div class="g r"><span>2</span><span class="pl"><i class="av2">TV</i><span><button class="nm">Tomas Veric</button><span class="tm">DEN · C</span></span></span><span class="n">3</span><span class="n">33.8</span><span class="n">.612</span><span class="n">.745</span><span class="n">0.4</span><span class="n k">24.1</span><span class="n">12.3</span><span class="n">8.9</span><span class="n">1.2</span><span class="n">1.1</span><span class="n">3.4</span></div>
+<div class="g r"><span>3</span><span class="pl"><i class="av2">JO</i><span><button class="nm">Jalen Okoro</button><span class="tm">OKC · PG</span></span></span><span class="n">3</span><span class="n">34.6</span><span class="n">.501</span><span class="n">.904</span><span class="n">2.4</span><span class="n k">27.8</span><span class="n">4.4</span><span class="n">7.2</span><span class="n">1.8</span><span class="n">0.4</span><span class="n">2.6</span></div>
+<div class="g r"><span>4</span><span class="pl"><i class="av2">DP</i><span><button class="nm">Devin Park</button><span class="tm">MIN · PF/C</span></span></span><span class="n">2</span><span class="n">32.1</span><span class="n">.546</span><span class="n">.801</span><span class="n">1.8</span><span class="n k">21.3</span><span class="n">10.8</span><span class="n">3.1</span><span class="n">1.0</span><span class="n">2.2</span><span class="n">1.9</span></div>
+<div class="g r"><span>5</span><span class="pl"><i class="av2">AW</i><span><button class="nm">Andre Whitlock</button><span class="tm">PHX · SG</span></span></span><span class="n">3</span><span class="n">36.0</span><span class="n">.458</span><span class="n">.867</span><span class="n">3.9</span><span class="n k">26.6</span><span class="n">4.9</span><span class="n">4.8</span><span class="n">1.1</span><span class="n">0.3</span><span class="n">2.9</span></div>
+<div class="g r"><span>6</span><span class="pl"><i class="av2">LF</i><span><button class="nm">Luis Ferrer</button><span class="tm">MIA · SF/PF</span></span></span><span class="n">2</span><span class="n">31.4</span><span class="n">.527</span><span class="n">.712</span><span class="n">1.2</span><span class="n k">18.9</span><span class="n">8.2</span><span class="n">4.6</span><span class="n">1.6</span><span class="n">1.4</span><span class="n">1.8</span></div>
+<div class="g r"><span>7</span><span class="pl"><i class="av2">KM</i><span><button class="nm">Kofi Mensah</button><span class="tm">MEM · C</span></span></span><span class="n">3</span><span class="n">30.5</span><span class="n">.668</span><span class="n">.603</span><span class="n">0.0</span><span class="n k">14.2</span><span class="n">11.5</span><span class="n">2.1</span><span class="n">0.8</span><span class="n">2.9</span><span class="n">1.4</span></div>
+<div class="g r"><span>8</span><span class="pl"><i class="av2">RC</i><span><button class="nm">Ryan Calloway</button><span class="tm">NYK · PG</span></span></span><span class="n">3</span><span class="n">33.0</span><span class="n">.441</span><span class="n">.925</span><span class="n">2.9</span><span class="n k">19.7</span><span class="n">3.2</span><span class="n">8.1</span><span class="n">1.3</span><span class="n">0.2</span><span class="n">2.1</span></div>
+<div class="g r"><span>9</span><span class="pl"><i class="av2">IB</i><span><button class="nm">Isaiah Brandt</button><span class="tm">CLE · PF</span></span></span><span class="n">3</span><span class="n">28.9</span><span class="n">.513</span><span class="n">.768</span><span class="n">1.5</span><span class="n k">16.4</span><span class="n">7.9</span><span class="n">2.8</span><span class="n">1.4</span><span class="n">1.0</span><span class="n">1.5</span></div>
+<div class="g r"><span>10</span><span class="pl"><i class="av2">NS</i><span><button class="nm">Nico Santoro</button><span class="tm">LAL · SF</span></span></span><span class="n">2</span><span class="n">32.7</span><span class="n">.478</span><span class="n">.834</span><span class="n">2.1</span><span class="n k">20.2</span><span class="n">5.5</span><span class="n">4.0</span><span class="n">1.5</span><span class="n">0.5</span><span class="n">2.3</span></div>
+</div>
+<div class="ft"><span>Showing 1–10 of 540 players</span><span><button>Previous</button><button>Next</button></span></div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

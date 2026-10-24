@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Player modal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.bg{width:1280px;height:1020px;box-sizing:border-box;padding:40px;background:repeating-linear-gradient(#76736D 0 55px,#6D6B66 55px 56px);font-family:Inter,system-ui,sans-serif;color:#16181D}
+.md{width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden}
+.hd{display:flex;align-items:center;gap:18px;padding:24px 28px}
+.av{width:60px;height:60px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:700 24px 'Barlow Condensed',sans-serif;display:flex;align-items:center;justify-content:center}
+.hd h2{font:700 36px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.hd p{margin:6px 0 0;font-size:14px;color:#4A4F57}
+.st{font-size:12px;font-weight:600;color:#1E3A8A;background:#DBEAFE;border-radius:999px;padding:4px 10px;margin-left:8px}
+.x{margin-left:auto;width:44px;height:44px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center}
+.tl{display:grid;grid-template-columns:repeat(9,1fr);background:#FBFAF6;border-top:1px solid #E2DDD1;border-bottom:1px solid #E2DDD1;padding:16px 28px}
+.tl div{display:flex;flex-direction:column;gap:4px}
+.tl small{font-size:11px;font-weight:600;letter-spacing:.06em;color:#4A4F57}
+.tl b{font:700 28px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+.sec{padding:22px 28px 6px}
+.sec h3{font:700 20px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px}
+.g{display:grid;align-items:center;font-size:14px;font-variant-numeric:tabular-nums;border-bottom:1px solid #EEEAE0;height:44px}
+.a{grid-template-columns:84px 150px repeat(10,1fr)}
+.b{grid-template-columns:90px repeat(11,1fr)}
+.h{height:36px;font-size:11px;font-weight:600;letter-spacing:.06em;color:#4A4F57;text-transform:uppercase;border-bottom:1px solid #E2DDD1}
+.n{text-align:right}
+.k{font-weight:600}
+</style>
+</helmet>
+<div class="bg"><div class="md">
+<div class="hd"><div class="av">MD</div><div><h2>Marcus Delaney<span class="st">Available</span></h2><p>Boston · SG/SF · 2026–27 season</p></div>
+<button class="x" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l12 12M15 3L3 15"/></svg></button></div>
+<div class="tl"><div><small>FG%</small><b>.492</b></div><div><small>FT%</small><b>.857</b></div><div><small>3PM</small><b>3.0</b></div><div><small>PTS</small><b>29.0</b></div><div><small>REB</small><b>6.0</b></div><div><small>AST</small><b>5.3</b></div><div><small>STL</small><b>1.3</b></div><div><small>BLK</small><b>0.7</b></div><div><small>TO</small><b>2.7</b></div></div>
+<div class="sec"><h3>Game log · 2026–27</h3>
+<div class="g a h"><span>Date</span><span>Opp</span><span class="n">MIN</span><span class="n">FG</span><span class="n">FT</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span></div>
+<div class="g a"><span>Oct 21</span><span>@ CHI · W</span><span class="n">36</span><span class="n">11-22</span><span class="n">7-8</span><span class="n">3</span><span class="n k">32</span><span class="n">7</span><span class="n">5</span><span class="n">2</span><span class="n">1</span><span class="n">3</span></div>
+<div class="g a"><span>Oct 22</span><span>vs ORL · W</span><span class="n">34</span><span class="n">9-19</span><span class="n">6-7</span><span class="n">2</span><span class="n k">26</span><span class="n">5</span><span class="n">6</span><span class="n">1</span><span class="n">0</span><span class="n">2</span></div>
+<div class="g a"><span>Oct 24</span><span>@ ATL · L</span><span class="n">35</span><span class="n">10-20</span><span class="n">5-6</span><span class="n">4</span><span class="n k">29</span><span class="n">6</span><span class="n">5</span><span class="n">1</span><span class="n">1</span><span class="n">3</span></div>
+</div>
+<div class="sec" style="padding-bottom:28px"><h3>Past seasons</h3>
+<div class="g b h"><span>Season</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span></div>
+<div class="g b"><span>2025–26</span><span class="n">71</span><span class="n">34.1</span><span class="n">.478</span><span class="n">.861</span><span class="n">2.8</span><span class="n k">26.7</span><span class="n">5.8</span><span class="n">5.0</span><span class="n">1.2</span><span class="n">0.5</span><span class="n">2.6</span></div>
+<div class="g b"><span>2024–25</span><span class="n">76</span><span class="n">33.2</span><span class="n">.471</span><span class="n">.849</span><span class="n">2.5</span><span class="n k">24.9</span><span class="n">5.4</span><span class="n">4.6</span><span class="n">1.1</span><span class="n">0.5</span><span class="n">2.5</span></div>
+<div class="g b"><span>2023–24</span><span class="n">68</span><span class="n">31.0</span><span class="n">.465</span><span class="n">.842</span><span class="n">2.1</span><span class="n k">22.3</span><span class="n">5.0</span><span class="n">4.1</span><span class="n">1.0</span><span class="n">0.4</span><span class="n">2.3</span></div>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1020}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

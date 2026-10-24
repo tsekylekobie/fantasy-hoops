@@ -1,0 +1,45 @@
+/* Design tokens from docs/design/*.mockup.html */
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --surface-muted: #fbfaf6;
+  --ink: #16181d;
+  --ink-muted: #4a4f57;
+  --ink-subtle: #5a5f68;
+  --border: #e2ddd1;
+  --border-strong: #cfc9bd;
+  --row-divider: #eeeae0;
+  --accent: #c2410c;
+  --accent-soft: #ffe7d6;
+  --accent-ink: #7c2d12;
+  --info-soft: #dbeafe;
+  --info-ink: #1e3a8a;
+  --radius: 10px;
+  --radius-card: 12px;
+  --font-display: var(--font-barlow), "Barlow Condensed", sans-serif;
+  --font-body: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
