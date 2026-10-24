@@ -14,6 +14,10 @@
   --accent-ink: #7c2d12;
   --info-soft: #dbeafe;
   --info-ink: #1e3a8a;
+  --warn-soft: #fef3c7;
+  --warn-ink: #78350f;
+  --danger-soft: #fee2e2;
+  --danger-ink: #991b1b;
   --radius: 10px;
   --radius-card: 12px;
   --font-display: var(--font-barlow), "Barlow Condensed", sans-serif;

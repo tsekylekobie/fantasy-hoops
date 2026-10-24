@@ -1,0 +1,42 @@
+// Number and label formatting shared by the players table and the player modal.
+
+/** 0.492 -> ".492"; 1 -> "1.000"; null -> "—" */
+export function fmtPct(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  const s = value.toFixed(3);
+  return s.startsWith("0") ? s.slice(1) : s;
+}
+
+/** One decimal, for per-game values. */
+export function fmtAvg(value: number): string {
+  return value.toFixed(1);
+}
+
+/** Whole number, for totals and single games. */
+export function fmtInt(value: number): string {
+  return Math.round(value).toLocaleString("en-US");
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-10-21" -> "Oct 21" (parsed as a plain date, so no time zone shift). */
+export function fmtGameDate(iso: string): string {
+  const [, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!m || !d || m < 1 || m > 12) return iso;
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
+/** "@ CHI · W" / "vs ORL · L" */
+export function fmtOpponent(opponentAbbr: string, home: boolean, result: "W" | "L" | null): string {
+  const base = `${home ? "vs" : "@"} ${opponentAbbr}`;
+  return result ? `${base} · ${result}` : base;
+}
+
+export function fullName(p: { firstName: string; lastName: string }): string {
+  return `${p.firstName} ${p.lastName}`.trim();
+}
+
+/** "TEAM · POS", skipping missing parts. */
+export function teamPos(team: string | null, pos: string | null): string {
+  return [team, pos].filter(Boolean).join(" · ") || "Free agent";
+}

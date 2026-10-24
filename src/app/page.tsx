@@ -1,8 +1,12 @@
-// Placeholder; the players table replaces this (see PLAN.md build step 5).
+import { Suspense } from "react";
+import PlayersBrowser from "@/components/players/PlayersBrowser";
+
+// The players table and modal are client-side and keep their state
+// (search, position, mode, page, open player) in the URL query string.
 export default function Home() {
   return (
-    <main style={{ padding: 40 }}>
-      <h1 style={{ fontFamily: "var(--font-display)", textTransform: "uppercase" }}>Season averages</h1>
-    </main>
+    <Suspense fallback={null}>
+      <PlayersBrowser />
+    </Suspense>
   );
 }

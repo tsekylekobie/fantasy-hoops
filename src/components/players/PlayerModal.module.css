@@ -1,0 +1,320 @@
+/* Player modal: matches docs/design/player-modal.mockup.html */
+
+.scrollLocked {
+  overflow: hidden;
+}
+
+.dialog {
+  width: min(920px, calc(100% - 32px));
+  max-width: 920px;
+  max-height: calc(100dvh - 80px);
+  margin: 40px auto auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dialog::backdrop {
+  background: rgba(22, 24, 29, 0.55);
+}
+
+.panel {
+  min-height: 0;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 28px;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.chip {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: none;
+  position: relative;
+  top: -3px;
+}
+
+.chipAvailable {
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+
+.chipDtd {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.chipOut {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.subline {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.close {
+  margin-left: auto;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--surface-muted);
+}
+
+.close:focus-visible,
+.retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 9CAT summary strip */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  margin: 0;
+  padding: 16px 28px;
+  background: var(--surface-muted);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tile dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.tile dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sections and tables */
+.section {
+  padding: 22px 28px 6px;
+}
+
+.lastSection {
+  padding-bottom: 28px;
+}
+
+.h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.logTable {
+  min-width: 760px;
+}
+
+.seasonTable {
+  min-width: 700px;
+}
+
+.cDate {
+  width: 84px;
+}
+
+.cOpp {
+  width: 150px;
+}
+
+.cSeason {
+  width: 90px;
+}
+
+.table th,
+.table td {
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.table thead tr {
+  height: 36px;
+}
+
+.table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr {
+  height: 44px;
+}
+
+.table td {
+  border-bottom: 1px solid var(--row-divider);
+}
+
+.table .n {
+  text-align: right;
+  padding-left: 8px;
+}
+
+.key {
+  font-weight: 600;
+}
+
+.empty {
+  margin: 0;
+  padding: 14px 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+/* Loading / error */
+.state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 28px 32px;
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+
+.retry {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .dialog {
+    margin-top: 16px;
+    max-height: calc(100dvh - 32px);
+  }
+
+  .header {
+    gap: 14px;
+    padding: 18px 16px;
+    align-items: flex-start;
+  }
+
+  .name {
+    font-size: 28px;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 14px;
+    padding: 14px 16px;
+  }
+
+  .tile dd {
+    font-size: 24px;
+  }
+
+  .section {
+    padding: 18px 16px 4px;
+  }
+
+  .logTable {
+    min-width: 700px;
+  }
+
+  .cDate {
+    width: 64px;
+  }
+
+  .cOpp {
+    width: 96px;
+  }
+
+  .seasonTable {
+    min-width: 600px;
+  }
+
+  .cSeason {
+    width: 72px;
+  }
+
+  .lastSection {
+    padding-bottom: 20px;
+  }
+
+  .state {
+    padding: 8px 16px 24px;
+  }
+}
