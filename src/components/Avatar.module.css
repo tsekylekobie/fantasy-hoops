@@ -1,0 +1,42 @@
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/*
+ * NBA headshots are 260x190 (landscape) with a transparent background; the
+ * head is horizontally centered with the face at about 40% of the height.
+ * `cover` fits the height and trims the sides; the 1.2x scale around a point
+ * just above the top edge moves the face to the circle's center and lets the
+ * shoulders fill the bottom.
+ */
+.img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0%;
+  transform: scale(1.2);
+  transform-origin: 50% -10%;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.loaded {
+  opacity: 1;
+}
+
+.initials[hidden] {
+  display: none;
+}
