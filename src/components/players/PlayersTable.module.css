@@ -11,7 +11,7 @@
 
 .table {
   width: 100%;
-  min-width: 960px;
+  min-width: 1054px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -35,7 +35,10 @@
 .cStat {
   width: 66px;
 }
-.cStat:last-child {
+.cPct {
+  width: 80px;
+}
+.cValue {
   width: 82px;
 }
 
@@ -90,6 +93,12 @@
 
 .key {
   font-weight: 600;
+}
+
+/* 9CAT value: the sort key, so it gets the accent. */
+.value {
+  font-weight: 600;
+  color: var(--accent-ink);
 }
 
 .player {
@@ -162,4 +171,53 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+}
+
+/* Sortable headers: the whole label is the button. */
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.n .sort {
+  flex-direction: row-reverse;
+}
+
+.sort:hover,
+.sortActive {
+  color: var(--ink);
+}
+
+.sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.arrow {
+  display: inline-block;
+  width: 9px;
+  font-size: 8px;
+  text-align: center;
+}
+
+.pct {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.volume {
+  font-size: 12px;
+  color: var(--ink-subtle);
 }

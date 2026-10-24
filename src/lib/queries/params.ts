@@ -1,10 +1,22 @@
 // Query-string parsing for the /api/players endpoints. Pure, unit tested.
-import { CURRENT_SEASON, type PositionFilter, type StatMode } from "../types";
+import {
+  CURRENT_SEASON,
+  SORT_KEYS,
+  defaultSortDir,
+  type PositionFilter,
+  type SortDir,
+  type SortKey,
+  type StatMode,
+  type StatRange,
+} from "../types";
 
 export class BadRequest extends Error {}
 
 export interface PlayersQuery {
   season: number;
+  range: StatRange;
+  sort: SortKey;
+  dir: SortDir;
   mode: StatMode;
   q: string;
   pos: PositionFilter;
@@ -31,10 +43,19 @@ export function parseSeason(params: URLSearchParams): number {
 export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   const mode = params.get("mode")?.trim() || "avg";
   if (mode !== "avg" && mode !== "total") throw new BadRequest("mode must be avg or total");
+  const range = params.get("range")?.trim() || "season";
+  if (range !== "season" && range !== "last14") throw new BadRequest("range must be season or last14");
+  const sort = (params.get("sort")?.trim() || "value") as SortKey;
+  if (!SORT_KEYS.includes(sort)) throw new BadRequest(`sort must be one of ${SORT_KEYS.join(", ")}`);
+  const dir = params.get("dir")?.trim() || defaultSortDir(sort);
+  if (dir !== "asc" && dir !== "desc") throw new BadRequest("dir must be asc or desc");
   const pos = params.get("pos")?.trim().toUpperCase() || "ALL";
   if (!["ALL", "G", "F", "C"].includes(pos)) throw new BadRequest("pos must be all, G, F or C");
   return {
     season: parseSeason(params),
+    range,
+    sort,
+    dir,
     mode,
     q: (params.get("q") ?? "").trim().slice(0, 100),
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,

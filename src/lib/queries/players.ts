@@ -13,6 +13,7 @@ import type {
   PlayerRow,
   PlayersResponse,
   SeasonRow,
+  SortKey,
   StatMode,
 } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
@@ -39,7 +40,7 @@ const SEASON_TOTALS_SQL = `
     SELECT s.player_id, ${AGG}
     FROM player_game_stats s
     JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
-    WHERE s.season = $1 AND s.min > 0
+    WHERE s.season = $1 AND s.min > 0 AND ($2::date IS NULL OR g.date >= $2::date)
     GROUP BY s.player_id
   )
   SELECT t.*, p.first_name, p.last_name, nullif(p.position, '') AS position,
@@ -97,15 +98,62 @@ export function categoryLine(t: TotalsRow, mode: StatMode): CategoryLine & { min
   };
 }
 
+// The last-14-days window ends at today, or at the season's last played game
+// for a finished season, so past seasons get their final two weeks.
+const LAST14_WINDOW_SQL = `
+  SELECT to_char(d - 13, 'YYYY-MM-DD') AS "from", to_char(d, 'YYYY-MM-DD') AS "to"
+  FROM (
+    SELECT least(current_date, max(g.date)) AS d
+    FROM games g
+    WHERE g.season = $1 AND g.game_type = 'regular'
+      AND EXISTS (SELECT 1 FROM player_game_stats s WHERE s.game_id = g.id AND s.min > 0)
+  ) x
+  WHERE d IS NOT NULL`;
+
+/** Sort key for a column (not "value"), from unrounded numbers in the requested mode. */
+export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) => number | string | null {
+  const per = (x: number, gp: number) => (mode === "avg" && gp > 0 ? x / gp : x);
+  switch (sort) {
+    case "name":
+      return (r) => `${r.last_name} ${r.first_name}`;
+    case "gp":
+      return (r) => r.gp;
+    case "fgPct":
+      return (r) => (r.fga > 0 ? r.fgm / r.fga : null);
+    case "ftPct":
+      return (r) => (r.fta > 0 ? r.ftm / r.fta : null);
+    case "value":
+      throw new Error("value is sorted by the valuation, not a row column");
+    default:
+      return (r) => per(r[sort], r.gp);
+  }
+}
+
 export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResponse> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season]);
-  // Value and rank over every player with a game this season, before q/pos.
+  let window: { from: string; to: string } | null = null;
+  if (q.range === "last14") {
+    const res = await db.query<{ from: string; to: string }>(LAST14_WINDOW_SQL, [q.season]);
+    window = res.rows[0] ?? null;
+  }
+  // No played games yet: a null bound returns no rows for last14 either way.
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]);
+  // Value and rank over every player with a game in the range, before q/pos.
   const values = valuePlayers(rows.map(toTotals));
 
+  const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
+  const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
-    .map((r) => ({ r, v: values.get(r.player_id)! }))
-    .sort((a, b) => a.v.rank - b.v.rank);
+    .map((r) => {
+      const v = values.get(r.player_id)!;
+      return { r, v, k: key ? key(r) : v.value };
+    })
+    .sort((a, b) => {
+      // Missing values (FG%/FT% with no attempts) go last in either direction.
+      if (a.k === null || b.k === null) return a.k === null ? (b.k === null ? a.v.rank - b.v.rank : 1) : -1;
+      if (typeof a.k === "string") return sign * a.k.localeCompare(b.k as string) || a.v.rank - b.v.rank;
+      return sign * (a.k - (b.k as number)) || a.v.rank - b.v.rank;
+    });
 
   const start = (q.page - 1) * q.perPage;
   const players: PlayerRow[] = matching.slice(start, start + q.perPage).map(({ r, v }) => {
@@ -125,7 +173,19 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     };
   });
 
-  return { season: q.season, mode: q.mode, page: q.page, perPage: q.perPage, total: matching.length, players };
+  return {
+    season: q.season,
+    range: q.range,
+    sort: q.sort,
+    dir: q.dir,
+    from: window?.from ?? null,
+    to: window?.to ?? null,
+    mode: q.mode,
+    page: q.page,
+    perPage: q.perPage,
+    total: matching.length,
+    players,
+  };
 }
 
 function seasonRow(season: number, t: TotalsRow): SeasonRow {

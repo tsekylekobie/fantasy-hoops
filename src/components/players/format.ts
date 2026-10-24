@@ -12,6 +12,11 @@ export function fmtAvg(value: number): string {
   return value.toFixed(1);
 }
 
+/** 9CAT value with two decimals and a real minus sign: 7.4 -> "7.40", -1.2 -> "−1.20". */
+export function fmtValue(value: number): string {
+  return value < 0 ? `\u2212${Math.abs(value).toFixed(2)}` : value.toFixed(2);
+}
+
 /** Whole number, for totals and single games. */
 export function fmtInt(value: number): string {
   return Math.round(value).toLocaleString("en-US");

@@ -3,39 +3,59 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { PlayersResponse, PositionFilter, StatMode } from "@/lib/types";
-import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
+import type { PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange } from "@/lib/types";
+import { CURRENT_SEASON, SORT_KEYS, defaultSortDir, seasonLabel } from "@/lib/types";
+import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import PlayersTable from "./PlayersTable";
-import { fetchJson } from "./format";
+import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
 import styles from "./PlayersBrowser.module.css";
 
 const PER_PAGE = 50;
 const SEARCH_DEBOUNCE_MS = 250;
 
-const POSITIONS: { value: PositionFilter; label: string }[] = [
-  { value: "all", label: "All" },
+const POSITIONS: SegmentedOption<PositionFilter>[] = [
+  { value: "all", label: "All positions" },
   { value: "G", label: "G" },
   { value: "F", label: "F" },
   { value: "C", label: "C" },
 ];
 
+const RANGES: SegmentedOption<StatRange>[] = [
+  { value: "season", label: "Season" },
+  { value: "last14", label: "Last 14 days" },
+];
+
+const MODES: SegmentedOption<StatMode>[] = [
+  { value: "avg", label: "Per game" },
+  { value: "total", label: "Totals" },
+];
+
 interface UrlState {
   q: string;
   pos: PositionFilter;
+  range: StatRange;
   mode: StatMode;
+  sort: SortKey;
+  dir: SortDir;
   page: number;
   player: number | null;
 }
 
 function readUrlState(params: URLSearchParams): UrlState {
   const pos = params.get("pos");
+  const rawSort = params.get("sort") as SortKey | null;
+  const sort: SortKey = rawSort && SORT_KEYS.includes(rawSort) ? rawSort : "value";
+  const dir = params.get("dir");
   const page = Number(params.get("page"));
   const player = Number(params.get("player"));
   return {
     q: params.get("q") ?? "",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
+    range: params.get("range") === "last14" ? "last14" : "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
+    sort,
+    dir: dir === "asc" || dir === "desc" ? dir : defaultSortDir(sort),
     page: Number.isInteger(page) && page > 1 ? page : 1,
     player: Number.isInteger(player) && player > 0 ? player : null,
   };
@@ -46,7 +66,10 @@ function toQueryString(s: UrlState): string {
   const p = new URLSearchParams();
   if (s.q) p.set("q", s.q);
   if (s.pos !== "all") p.set("pos", s.pos);
+  if (s.range !== "season") p.set("range", s.range);
   if (s.mode !== "avg") p.set("mode", s.mode);
+  if (s.sort !== "value") p.set("sort", s.sort);
+  if (s.dir !== defaultSortDir(s.sort)) p.set("dir", s.dir);
   if (s.page > 1) p.set("page", String(s.page));
   if (s.player !== null) p.set("player", String(s.player));
   const qs = p.toString();
@@ -63,7 +86,7 @@ export default function PlayersBrowser() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readUrlState(new URLSearchParams(searchParams.toString()));
-  const { q, pos, mode, page, player } = state;
+  const { q, pos, range, mode, sort, dir, page, player } = state;
 
   const navigate = useCallback(
     (patch: Partial<UrlState>, how: "push" | "replace" = "push") => {
@@ -103,7 +126,10 @@ export default function PlayersBrowser() {
     setLoad((prev) => ({ status: "loading", data: prev.data }));
     const params = new URLSearchParams({
       season: String(CURRENT_SEASON),
+      range,
       mode,
+      sort,
+      dir,
       q,
       pos,
       page: String(page),
@@ -120,7 +146,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, pos, mode, page, retryKey]);
+  }, [q, pos, range, mode, sort, dir, page, retryKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -164,9 +190,12 @@ export default function PlayersBrowser() {
           </Link>
         </header>
 
-        <h1 className={styles.title}>Season averages</h1>
+        <h1 className={styles.title}>{range === "last14" ? "Last 14 days" : "Season averages"}</h1>
         <p className={styles.sub}>
-          {seasonLabel(season)} · {mode === "total" ? "totals" : "per game"} · 9-category
+          {seasonLabel(season)}
+          {data?.range === "last14" && data.from && data.to && ` · ${fmtGameDate(data.from)} – ${fmtGameDate(data.to)}`}
+          {" · "}
+          {mode === "total" ? "totals" : "per game"} · 9-category
         </p>
 
         <div className={styles.bar}>
@@ -178,43 +207,23 @@ export default function PlayersBrowser() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className={styles.group} role="group" aria-label="Position">
-            {POSITIONS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                className={styles.chip}
-                aria-pressed={pos === p.value}
-                onClick={() => pos !== p.value && navigate({ pos: p.value, page: 1 })}
-              >
-                {p.value === "all" ? "All positions" : p.label}
-              </button>
-            ))}
-          </div>
-          <div className={styles.group} role="group" aria-label="Stat mode">
-            <button
-              type="button"
-              className={styles.chip}
-              aria-pressed={mode === "avg"}
-              onClick={() => mode !== "avg" && navigate({ mode: "avg" })}
-            >
-              Per game
-            </button>
-            <button
-              type="button"
-              className={styles.chip}
-              aria-pressed={mode === "total"}
-              onClick={() => mode !== "total" && navigate({ mode: "total" })}
-            >
-              Totals
-            </button>
-          </div>
-          <span className={`${styles.chip} ${styles.static}`}>Sort: 9CAT value</span>
+          <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
+          <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
+          <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
         </div>
 
         <PlayersTable
           data={data}
           mode={mode}
+          sort={sort}
+          dir={dir}
+          onSort={(key) =>
+            navigate({
+              sort: key,
+              dir: key === sort ? (dir === "asc" ? "desc" : "asc") : defaultSortDir(key),
+              page: 1,
+            })
+          }
           status={load.status}
           errorMessage={load.status === "error" ? load.message : null}
           onRetry={() => setRetryKey((k) => k + 1)}

@@ -2,22 +2,39 @@
 
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerRow, PlayersResponse, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fullName, teamPos } from "./format";
+import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
+import { fmtAvg, fmtInt, fmtPct, fmtValue, fullName, teamPos } from "./format";
 import styles from "./PlayersTable.module.css";
 
-const COLUMNS = ["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"] as const;
+/** Stat columns after # and Player, each sortable by its header. */
+const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
+  { label: "GP", sort: "gp", title: "Games played" },
+  { label: "MIN", sort: "min", title: "Minutes" },
+  { label: "FG%", sort: "fgPct", title: "Field goal % (makes/attempts below)" },
+  { label: "FT%", sort: "ftPct", title: "Free throw % (makes/attempts below)" },
+  { label: "3PM", sort: "fg3m" },
+  { label: "PTS", sort: "pts" },
+  { label: "REB", sort: "reb" },
+  { label: "AST", sort: "ast" },
+  { label: "STL", sort: "stl" },
+  { label: "BLK", sort: "blk" },
+  { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
+  { label: "Value", sort: "value", title: "9CAT value: sum of the nine category z-scores" },
+];
 
 interface Props {
   data: PlayersResponse | null;
   mode: StatMode;
+  sort: SortKey;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
   status: "loading" | "ready" | "error";
   errorMessage: string | null;
   onRetry: () => void;
   onOpenPlayer: (id: number) => void;
 }
 
-export default function PlayersTable({ data, mode, status, errorMessage, onRetry, onOpenPlayer }: Props) {
+export default function PlayersTable({ data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer }: Props) {
   const rows = data?.players ?? [];
   // The data's own mode decides formatting, so stale rows shown while the
   // other mode loads keep their correct decimals.
@@ -48,25 +65,26 @@ export default function PlayersTable({ data, mode, status, errorMessage, onRetry
           <col />
           <col className={styles.cGp} />
           <col className={styles.cMin} />
-          {Array.from({ length: 9 }, (_, i) => (
+          <col className={styles.cPct} />
+          <col className={styles.cPct} />
+          {Array.from({ length: 7 }, (_, i) => (
             <col key={i} className={styles.cStat} />
           ))}
+          <col className={styles.cValue} />
         </colgroup>
         <thead>
           <tr>
-            <th scope="col">#</th>
-            <th scope="col">Player</th>
+            <th scope="col" title="9CAT rank">#</th>
+            <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} />
             {COLUMNS.map((c) => (
-              <th key={c} scope="col" className={styles.n}>
-                {c}
-              </th>
+              <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} />
             ))}
           </tr>
         </thead>
         <tbody>
           {message ? (
             <tr className={styles.messageRow}>
-              <td colSpan={13}>
+              <td colSpan={COLUMNS.length + 2}>
                 <div className={styles.message} role={status === "error" ? "alert" : "status"}>
                   {message}
                 </div>
@@ -109,8 +127,12 @@ function Row({
       </td>
       <td className={styles.n}>{fmtInt(p.gp)}</td>
       <td className={styles.n}>{mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
-      <td className={styles.n}>{fmtPct(s.fgPct)}</td>
-      <td className={styles.n}>{fmtPct(s.ftPct)}</td>
+      <td className={styles.n}>
+        <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} />
+      </td>
+      <td className={styles.n}>
+        <PctCell pct={s.ftPct} made={s.ftm} att={s.fta} num={num} />
+      </td>
       <td className={styles.n}>{num(s.fg3m)}</td>
       <td className={`${styles.n} ${styles.key}`}>{num(s.pts)}</td>
       <td className={styles.n}>{num(s.reb)}</td>
@@ -118,6 +140,58 @@ function Row({
       <td className={styles.n}>{num(s.stl)}</td>
       <td className={styles.n}>{num(s.blk)}</td>
       <td className={styles.n}>{num(s.tov)}</td>
+      <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
     </tr>
+  );
+}
+
+function SortHeader({
+  label,
+  title,
+  sortKey,
+  numeric = false,
+  sort,
+  dir,
+  onSort,
+}: {
+  label: string;
+  title?: string;
+  sortKey: SortKey;
+  numeric?: boolean;
+  sort: SortKey;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort === sortKey;
+  return (
+    <th
+      scope="col"
+      className={numeric ? styles.n : undefined}
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
+    >
+      <button
+        type="button"
+        className={`${styles.sort} ${active ? styles.sortActive : ""}`}
+        title={title}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <span className={styles.arrow} aria-hidden="true">
+          {active ? (dir === "asc" ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+/** ".492" with "9.8/19.9" (per game) or "693/1457" (totals) underneath, so volume is visible. */
+function PctCell({ pct, made, att, num }: { pct: number | null; made: number; att: number; num: (v: number) => string }) {
+  return (
+    <span className={styles.pct}>
+      <span>{fmtPct(pct)}</span>
+      <span className={styles.volume}>
+        {num(made)}/{num(att)}
+      </span>
+    </span>
   );
 }
