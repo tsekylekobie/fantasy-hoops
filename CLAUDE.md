@@ -8,7 +8,7 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 - `src/lib/db.ts`: shared `pg` pool. `db/schema.sql`: idempotent schema (`npm run db:migrate`).
 - `src/app/api/players/`: JSON endpoints. Users read from our DB, never the API directly.
 - `src/components/`: UI. `Avatar` must fall back to initials.
-- `docs/design/*.mockup.html`: the design mockups (table page and modal) to match.
+- `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; the others (my team, matchup, league, claim, nav map, phone) are later-milestone exploration.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
 
 ## Conventions

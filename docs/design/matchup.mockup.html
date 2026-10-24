@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Matchup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1120px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.wk{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:28px 0 16px}
+.wk h1{font:700 20px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;color:#4A4F57}
+.pager{display:flex;gap:8px}
+.pager button{height:44px;padding:0 16px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;font:600 13px Inter,sans-serif;color:#16181D}
+.board{background:#16181D;color:#fff;border-radius:16px;padding:28px 32px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:24px}
+@media (max-width:760px){.board{grid-template-columns:minmax(0,1fr)}.side.r{text-align:left;align-items:flex-start}}
+.side{display:flex;flex-direction:column;gap:6px}
+.side.r{text-align:right;align-items:flex-end}
+.side .t{display:flex;align-items:center;gap:12px}
+.side.r .t{flex-direction:row-reverse}
+.side i{width:48px;height:48px;border-radius:50%;background:#C2410C;color:#fff;font:700 18px 'Barlow Condensed',sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;letter-spacing:.04em;flex:none}
+.side.r i{background:#3B3F47}
+.side h2{font:700 34px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.side p{margin:0;font-size:13px;color:#C9C5BC}
+.side a{color:#FDBA74;font-size:13px;font-weight:600}
+.score{font:700 88px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;text-align:center}
+.score small{display:block;font:600 12px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#C9C5BC;margin-top:8px}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;margin-top:20px}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto;min-width:0}
+.card h3{font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;padding:16px 20px 10px}
+.c{display:grid;grid-template-columns:90px minmax(120px,1fr) 64px minmax(120px,1fr);align-items:center;gap:12px;padding:0 20px;min-width:480px;height:52px;border-top:1px solid #EEEAE0;font-variant-numeric:tabular-nums;font-size:15px}
+.c.h{height:36px;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase}
+.c .cat{font:700 18px 'Barlow Condensed',sans-serif;letter-spacing:.04em}
+.c .cat small{display:block;font:500 11px Inter,sans-serif;letter-spacing:0;color:#5A5F68}
+.v{display:flex;align-items:baseline;gap:8px}
+.v.r{justify-content:flex-end}
+.v small{font-size:12px;color:#5A5F68}
+.v.w{font-weight:700}
+.v.w::before{content:"";width:8px;height:8px;border-radius:50%;background:#C2410C;align-self:center}
+.v.r.w::before{order:2}
+.res{text-align:center;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 0}
+.res.win{background:#FFE7D6;color:#7C2D12}
+.res.loss{background:#EFECE4;color:#4A4F57}
+.res.tie{background:#fff;border:1px dashed #CFC9BD;color:#4A4F57}
+.gl{padding:4px 20px 18px;display:flex;flex-direction:column;gap:14px}
+.gr{display:flex;flex-direction:column;gap:6px}
+.gr .top{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.gr .top span{font-weight:500;color:#4A4F57;font-variant-numeric:tabular-nums}
+.track{height:10px;border-radius:999px;background:#EFECE4;overflow:hidden}
+.fill{height:100%;border-radius:999px;background:#C2410C}
+.fill.o{background:#4A4F57}
+.foot{font-size:13px;color:#4A4F57;padding:0 20px 18px;margin:0}
+.lk{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 16px;border-radius:10px;background:#C2410C;color:#fff;text-decoration:none;font:600 14px Inter,sans-serif;margin:0 20px 20px}
+.lk:hover{background:#9A3412;color:#fff}
+.other{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);gap:8px;padding:0 20px;height:44px;align-items:center;border-top:1px solid #EEEAE0;font-size:13px}
+.other b{text-align:center;font:700 18px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+.other span:last-child{text-align:right}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="players-table.mockup.html">Players</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html" class="on" aria-current="page">Matchup</a><a href="league.mockup.html">League</a></div>
+<div class="me"><span class="tag">Sample data</span><a class="tmc" href="my-team.mockup.html"><i>BDC</i>Back Door Cuts</a></div>
+</nav>
+<div class="wk"><h1>Week 1 · Oct 20–25 · Day 5 of 6</h1><div class="pager"><button disabled>Previous week</button><button>Next week</button></div></div>
+<div class="board">
+<div class="side"><div class="t"><i>BDC</i><h2>Back Door Cuts</h2></div><p>31 games played · 17 left this week</p><a href="my-team.mockup.html">Set lineup</a></div>
+<div class="score">5–3–1<small>Categories won · lost · tied</small></div>
+<div class="side r"><div class="t"><i>PPC</i><h2>Pick &amp; Pop Culture</h2></div><p>34 games played · 14 left this week</p><a href="league.mockup.html">View their roster</a></div>
+</div>
+<div class="cols">
+<div class="card">
+<h3>Categories</h3>
+<div class="c h"><span>Cat</span><span>Back Door Cuts</span><span></span><span style="text-align:right">Pick &amp; Pop</span></div>
+<div class="c"><span class="cat">FG%</span><span class="v w">.487<small>198/407</small></span><span class="res win">Win</span><span class="v r"><small>181/384</small>.471</span></div>
+<div class="c"><span class="cat">FT%</span><span class="v">.812<small>82/101</small></span><span class="res loss">Loss</span><span class="v r w"><small>71/84</small>.845</span></div>
+<div class="c"><span class="cat">3PM</span><span class="v">48</span><span class="res loss">Loss</span><span class="v r w">52</span></div>
+<div class="c"><span class="cat">PTS</span><span class="v w">612</span><span class="res win">Win</span><span class="v r">598</span></div>
+<div class="c"><span class="cat">REB</span><span class="v w">241</span><span class="res win">Win</span><span class="v r">228</span></div>
+<div class="c"><span class="cat">AST</span><span class="v">139</span><span class="res loss">Loss</span><span class="v r w">141</span></div>
+<div class="c"><span class="cat">STL</span><span class="v w">38</span><span class="res win">Win</span><span class="v r">31</span></div>
+<div class="c"><span class="cat">BLK</span><span class="v">22</span><span class="res tie">Tie</span><span class="v r">22</span></div>
+<div class="c"><span class="cat">TO<small>lower wins</small></span><span class="v w">61</span><span class="res win">Win</span><span class="v r">68</span></div>
+<p class="foot" style="padding-top:14px">Week totals. FG% and FT% are total makes over total attempts for the week.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+<div class="card">
+<h3>Games left this week</h3>
+<div class="gl">
+<div class="gr"><div class="top">Back Door Cuts<span>17 games</span></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+<div class="gr"><div class="top">Pick &amp; Pop Culture<span>14 games</span></div><div class="track"><div class="fill o" style="width:82%"></div></div></div>
+</div>
+<p class="foot">Starter games only. One starter (Bram Adeyemi) sits idle today.</p>
+<a class="lk" href="my-team.mockup.html">Fix today’s lineup</a>
+</div>
+<div class="card">
+<h3>Around the league</h3>
+<div class="other"><span>Glass Cleaners</span><b>6–3–0</b><span>Euro Steppers</span></div>
+<div class="other"><span>Splash Zone</span><b>4–4–1</b><span>Corner Three Club</span></div>
+<div class="other"><span>Full Court Press</span><b>3–5–1</b><span>Paint Protectors</span></div>
+<div class="other"><span>Fast Break Fund</span><b>7–2–0</b><span>Moving Screens</span></div>
+<div class="other"><span>Bench Mob</span><b>4–5–0</b><span>Free Throw Line Dancers</span></div>
+</div>
+</div>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

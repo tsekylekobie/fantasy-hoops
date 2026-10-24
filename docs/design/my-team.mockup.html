@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My team</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1300px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:32px 0 20px}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:0 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 14px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:#16181D;color:#16181D}
+.btn.pri{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn.pri:hover{background:#9A3412;color:#fff}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.sum{grid-template-columns:minmax(0,1fr)}}
+.sc{background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;color:#16181D;text-decoration:none}
+a.sc:hover{border-color:#C2410C;color:#16181D}
+.sc small{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#4A4F57}
+.sc b{font:700 34px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+.sc span{font-size:13px;color:#4A4F57}
+.sc em{font-style:normal;color:#C2410C;font-weight:600}
+.days{display:flex;gap:8px;margin:28px 0 14px;flex-wrap:wrap;align-items:center}
+.days .lb{font:700 20px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;margin-right:8px}
+.day{width:72px;height:56px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;color:#16181D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px Inter,sans-serif;cursor:pointer}
+.day small{font-size:11px;font-weight:500;color:#5A5F68}
+.day.on{background:#16181D;border-color:#16181D;color:#fff}
+.day.on small{color:#D9D5CC}
+.note{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:12px;padding:10px 12px 10px 16px;margin-bottom:12px;font-size:14px}
+.note.tip{background:#FFF4EC;border:1px solid #F5C6A5}
+.note.mv{background:#16181D;color:#fff}
+.note.ok{background:#E8F0E6;border:1px solid #B9CFB3;color:#1F3A1B}
+.note p{margin:0;flex:1 1 320px}
+.note .btn{height:40px}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
+.g{display:grid;grid-template-columns:60px minmax(220px,1fr) 150px repeat(10,52px) 116px;column-gap:6px;align-items:center;padding:0 16px;min-width:1160px;box-sizing:border-box}
+.hd{height:40px;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #E2DDD1;background:#FBFAF6}
+.grp{display:flex;justify-content:space-between;gap:12px;padding:14px 16px 8px;min-width:1160px;box-sizing:border-box;font:700 16px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E2DDD1}
+.grp span{font:500 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:#4A4F57}
+.r{height:60px;border-bottom:1px solid #EEEAE0;font-size:14px;font-variant-numeric:tabular-nums}
+.r.sel{background:#FFF4EC}
+.r.target{background:#FBFAF6}
+.r.off{opacity:.4}
+.slot{display:inline-flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:6px;background:#EFECE4;font:700 14px 'Barlow Condensed',sans-serif;letter-spacing:.05em}
+.r.sel .slot{background:#16181D;color:#fff}
+.r.target .slot{background:#C2410C;color:#fff}
+.pl{display:flex;align-items:center;gap:12px;min-width:0}
+.av{width:38px;height:38px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
+.av.e{background:transparent;border:1px dashed #CFC9BD}
+.nm{font:600 14px Inter,sans-serif;color:#16181D;text-decoration:none}
+.nm:hover{color:#C2410C;text-decoration:underline}
+.nm.e{color:#5A5F68;font-weight:500}
+.tm{font-size:12px;color:#5A5F68;display:block;margin-top:2px}
+.st{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:6px}
+.st.DTD{background:#FEF3C7;color:#92400E}
+.st.Out{background:#FEE2E2;color:#991B1B}
+.gm{font-size:13px;color:#16181D}
+.gm.ng{color:#92400E;font-weight:600}
+.gm.bn{color:#5A5F68}
+.n{text-align:right}
+.mvb{height:44px;width:100%;box-sizing:border-box;border-radius:8px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 13px Inter,sans-serif;cursor:pointer}
+.mvb:hover{border-color:#16181D}
+.mvb.go{background:#C2410C;border-color:#C2410C;color:#fff}
+.mvb.cx{background:#16181D;border-color:#16181D;color:#fff}
+.mvb:disabled{cursor:default;color:#8A8F98;border-color:#E2DDD1}
+.foot{margin-top:14px;font-size:13px;color:#4A4F57}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="players-table.mockup.html">Players</a><a href="my-team.mockup.html" class="on" aria-current="page">My team</a><a href="matchup.mockup.html">Matchup</a><a href="league.mockup.html">League</a></div>
+<div class="me"><span class="tag">Sample data</span><a class="tmc" href="my-team.mockup.html"><i>BDC</i>Back Door Cuts</a></div>
+</nav>
+<div class="head">
+<div><h1>Back Door Cuts</h1><p class="sub">Week 1 · 3rd of 12 · Waiver priority 7</p></div>
+<div class="acts"><a class="btn" href="league.mockup.html">Transactions</a><a class="btn pri" href="players-table.mockup.html">Add a player</a></div>
+</div>
+<div class="sum">
+<a class="sc" href="matchup.mockup.html"><small>This week vs Pick &amp; Pop Culture</small><b>5–3–1</b><span><em>Leading</em> · FG%, PTS, REB, STL, TO · View matchup</span></a>
+<div class="sc"><small>Starters playing today</small><b>{{playing}} of 10</b><span>{{playingNote}}</span></div>
+<div class="sc"><small>Moves this week</small><b>1 of 4</b><span>Waivers run daily at 3:00 AM ET · No pending claims</span></div>
+</div>
+<div class="days" role="group" aria-label="Lineup day">
+<span class="lb">Lineup</span>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="6"><button class="{{d.cls}}" onClick="{{d.pick}}">{{d.label}}<small>{{d.games}}</small></button></sc-for>
+</div>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><div class="note ok" role="status"><p>{{toast}}</p></div></sc-if>
+<sc-if value="{{selecting}}" hint-placeholder-val="{{ false }}"><div class="note mv"><p>Moving <b>{{selName}}</b>. Pick a highlighted slot. Greyed-out slots are not eligible for his position.</p><button class="btn" onClick="{{cancel}}">Cancel</button></div></sc-if>
+<sc-if value="{{hasTip}}" hint-placeholder-val="{{ true }}"><div class="note tip"><p>{{tipText}}</p><button class="btn pri" onClick="{{fixTip}}">Swap them</button></div></sc-if>
+<div class="card">
+<div class="g hd"><span>Slot</span><span>Player</span><span>{{dayShort}}</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span></span></div>
+<sc-for list="{{rows}}" as="item" hint-placeholder-count="18">
+<sc-if value="{{item.hdr}}" hint-placeholder-val="{{ false }}"><div class="grp">{{item.label}}<span>{{item.hint}}</span></div></sc-if>
+<sc-if value="{{item.isRow}}" hint-placeholder-val="{{ true }}">
+<div class="{{item.cls}}">
+<span><span class="slot">{{item.slot}}</span></span>
+<span class="pl">
+<sc-if value="{{item.has}}" hint-placeholder-val="{{ true }}"><i class="av">{{item.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{item.name}}</a><sc-if value="{{item.hasStatus}}" hint-placeholder-val="{{ false }}"><span class="{{item.stCls}}">{{item.status}}</span></sc-if><span class="tm">{{item.meta}}</span></span></sc-if>
+<sc-if value="{{item.empty}}" hint-placeholder-val="{{ false }}"><i class="av e"></i><span class="nm e">Empty</span></sc-if>
+</span>
+<span class="{{item.gcls}}">{{item.game}}</span>
+<sc-for list="{{item.stats}}" as="s" hint-placeholder-count="10"><span class="n">{{s.v}}</span></sc-for>
+<button class="{{item.bc}}" disabled="{{item.disabled}}" onClick="{{item.click}}" aria-label="{{item.aria}}">{{item.btn}}</button>
+</div>
+</sc-if>
+</sc-for>
+</div>
+<p class="foot">Season per-game averages. Lineup changes save right away and lock for each player at his game's tip-off. IL slots take players listed Out (league setting).</p>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1300}}'>
+var SLOTS=[['PG','PG'],['SG','SG'],['G','G'],['SF','SF'],['PF','PF'],['F','F'],['C1','C'],['C2','C'],['U1','UTIL'],['U2','UTIL'],['B1','BN'],['B2','BN'],['B3','BN'],['I1','IL'],['I2','IL']];
+var TYPE={};SLOTS.forEach(function(s){TYPE[s[0]]=s[1];});
+var STARTERS=['PG','SG','G','SF','PF','F','C1','C2','U1','U2'];
+var BENCH=['B1','B2','B3'];
+var IL=['I1','I2'];
+var BLANK=['','','','','','','','','',''];
+var P={
+ok:{n:'Jalen Okoro',t:'OKC',pos:['PG'],g:'vs SAC · 8:00 PM',s:['34.6','.501','.904','2.4','27.8','4.4','7.2','1.8','0.4','2.6']},
+aw:{n:'Andre Whitlock',t:'PHX',pos:['SG'],g:'@ LAL · 10:30 PM',s:['36.0','.458','.867','3.9','26.6','4.9','4.8','1.1','0.3','2.9']},
+rc:{n:'Ryan Calloway',t:'NYK',pos:['PG'],g:'vs BKN · 7:30 PM',s:['33.0','.441','.925','2.9','19.7','3.2','8.1','1.3','0.2','2.1']},
+lf:{n:'Luis Ferrer',t:'MIA',pos:['SF','PF'],g:'@ TOR · 7:30 PM',s:['31.4','.527','.712','1.2','18.9','8.2','4.6','1.6','1.4','1.8']},
+ib:{n:'Isaiah Brandt',t:'CLE',pos:['PF'],g:'vs DET · 7:00 PM',s:['28.9','.513','.768','1.5','16.4','7.9','2.8','1.4','1.0','1.5']},
+tl:{n:'Theo Lindqvist',t:'SAS',pos:['SF','PF'],g:'vs DAL · 8:30 PM',s:['30.2','.489','.790','1.9','15.8','6.7','3.0','1.2','0.8','1.6']},
+ba:{n:'Bram Adeyemi',t:'UTA',pos:['C'],g:null,s:['29.4','.602','.688','0.1','13.6','10.9','1.9','0.7','1.9','1.7']},
+so:{n:'Silas Ortega',t:'CHA',pos:['PF','C'],g:'@ ATL · 7:30 PM',s:['27.7','.554','.731','0.8','14.1','9.4','2.2','0.9','1.6','1.5']},
+dk:{n:'Darnell Pike',t:'IND',pos:['SG','SF'],g:'@ MIL · 8:00 PM',s:['30.8','.462','.841','2.7','17.2','4.1','3.3','1.0','0.4','1.7']},
+oh:{n:'Owen Hartley',t:'POR',pos:['PG','SG'],g:'vs GSW · 10:00 PM',s:['29.1','.447','.882','2.2','15.5','3.0','5.9','1.1','0.2','2.0']},
+cw:{n:'Cam Whitfield',t:'DAL',pos:['SF'],g:'@ SAS · 8:30 PM',s:['26.4','.471','.802','1.6','12.3','4.8','2.1','0.9','0.5','1.0']},
+rt:{n:'Reggie Tanaka',t:'WAS',pos:['C'],g:'vs ORL · 7:00 PM',s:['25.2','.583','.702','0.3','11.8','9.6','1.4','0.6','1.5','1.3']},
+eb:{n:'Eli Brooks',t:'SAC',pos:['SG'],g:'@ OKC · 8:00 PM',st:'DTD',s:['27.9','.452','.851','2.4','13.9','3.1','2.6','0.8','0.2','1.4']},
+jf:{n:'Jordan Faye',t:'HOU',pos:['PF'],g:null,st:'Out',s:['—','—','—','—','—','—','—','—','—','—']}
+};
+var DEF={PG:'ok',SG:'aw',G:'rc',SF:'lf',PF:'ib',F:'tl',C1:'ba',C2:'so',U1:'dk',U2:'oh',B1:'cw',B2:'rt',B3:'eb',I1:'jf',I2:null};
+var DAYS=[{label:'Tue 20',games:'4 games',long:'Tue, Oct 20'},{label:'Wed 21',games:'9 games',long:'Wed, Oct 21'},{label:'Thu 22',games:'5 games',long:'Thu, Oct 22'},{label:'Fri 23',games:'10 games',long:'Fri, Oct 23'},{label:'Today',games:'Sat 24',long:'Sat, Oct 24'},{label:'Sun 25',games:'6 games',long:'Sun, Oct 25'}];
+function has(p,x){return p.pos.indexOf(x)>=0;}
+function elig(p,t){
+if(t==='IL')return p.st==='Out';
+if(t==='BN'||t==='UTIL')return true;
+if(t==='G')return has(p,'PG')||has(p,'SG');
+if(t==='F')return has(p,'SF')||has(p,'PF');
+return has(p,t);
+}
+function canSwap(a,A,B){
+if(A===B||!a[A])return false;
+return elig(P[a[A]],TYPE[B])&&(!a[B]||elig(P[a[B]],TYPE[A]));
+}
+function where(t){return t==='BN'?'the bench':t==='IL'?'the IL':t;}
+class Component extends DCLogic {
+cur(){var s=this.state||{};return {a:s.assign||DEF,sel:s.sel||null,day:s.day==null?4:s.day,toast:s.toast||''};}
+tap(id){
+var c=this.cur();
+if(!c.sel){if(c.a[id])this.setState({sel:id,toast:''});return;}
+if(id===c.sel){this.setState({sel:null});return;}
+if(canSwap(c.a,c.sel,id))this.swap(c.sel,id);
+}
+swap(A,B){
+var a=Object.assign({},this.cur().a);var pa=a[A];var pb=a[B];
+a[B]=pa;a[A]=pb||null;
+var msg=P[pa].n+' moved to '+where(TYPE[B])+(pb?'. '+P[pb].n+' moved to '+where(TYPE[A]):'')+'. Lineup saved.';
+this.setState({assign:a,sel:null,toast:msg});
+}
+renderVals(){
+var self=this;var c=this.cur();var a=c.a;var sel=c.sel;
+function row(id){
+var t=TYPE[id];var pid=a[id];var p=pid?P[pid]:null;var starter=STARTERS.indexOf(id)>=0;
+var mode='idle';
+if(sel)mode=id===sel?'sel':(canSwap(a,sel,id)?'target':'off');
+var btn=mode==='sel'?'Cancel':mode==='target'?'Move here':(p?'Move':'');
+return {isRow:true,hdr:false,slot:t,has:!!p,empty:!p,name:p?p.n:'',ini:p?p.n.split(' ').map(function(w){return w[0];}).join(''):'',
+meta:p?p.t+' · '+p.pos.join('/'):'',game:p?(p.g||'No game'):'',gcls:p&&!p.g?(starter?'gm ng':'gm bn'):'gm',
+hasStatus:!!(p&&p.st),status:p&&p.st?p.st:'',stCls:'st '+(p&&p.st?p.st:''),
+stats:(p?p.s:BLANK).map(function(v){return {v:v};}),cls:'g r '+mode,btn:btn,
+bc:mode==='sel'?'mvb cx':mode==='target'?'mvb go':'mvb',disabled:mode==='off'||(!sel&&!p),
+aria:(btn||'Move')+' '+(p?p.n:'empty '+t+' slot'),click:function(){self.tap(id);}};
+}
+var playing=STARTERS.filter(function(id){return a[id]&&P[a[id]].g;}).length;
+var tip=null;
+STARTERS.forEach(function(sid){
+if(tip||!a[sid]||P[a[sid]].g)return;
+BENCH.forEach(function(b){if(!tip&&a[b]&&P[a[b]].g&&canSwap(a,b,sid))tip={s:sid,b:b};});
+});
+var rows=[{hdr:true,isRow:false,label:'Starters',hint:playing+' of 10 have a game today'}].concat(STARTERS.map(row),
+[{hdr:true,isRow:false,label:'Bench',hint:'Stats count only from starting slots'}],BENCH.map(row),
+[{hdr:true,isRow:false,label:'Injured list',hint:'2 slots · players listed Out only · frees a roster spot'}],IL.map(row));
+return {
+rows:rows,playing:playing,
+playingNote:playing===10?'Every starter has a game today':(10-playing)+' starter'+(10-playing>1?'s':'')+' sit idle. See the tip below.',
+hasTip:!!tip&&!sel,
+tipText:tip?P[a[tip.s]].n+' ('+TYPE[tip.s]+') has no game today. '+P[a[tip.b]].n+' on your bench plays '+P[a[tip.b]].g.replace(' · ',' at ')+'.':'',
+fixTip:function(){if(tip)self.swap(tip.b,tip.s);},
+hasToast:!!c.toast,toast:c.toast,
+selecting:!!sel,selName:sel&&a[sel]?P[a[sel]].n:'',cancel:function(){self.setState({sel:null});},
+days:DAYS.map(function(d,i){return {label:d.label,games:d.games,cls:i===c.day?'day on':'day',pick:function(){self.setState({day:i});}};}),
+dayShort:c.day===4?'Today':DAYS[c.day].label
+};
+}
+}
+</script>
+</body>
+</html>

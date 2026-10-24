@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>League</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1120px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0 0 20px}
+.sw{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.chip{height:44px;border:1px solid #CFC9BD;border-radius:999px;padding:0 16px;font:500 13px Inter,sans-serif;background:#fff;color:#16181D}
+.chip.on{background:#16181D;color:#fff;border-color:#16181D}
+.cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.main{flex:999 1 620px;min-width:0}
+.aside{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
+.card h3{font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;padding:16px 20px 10px;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.card h3 a{font:600 13px Inter,sans-serif;text-transform:none;letter-spacing:0}
+.s{display:grid;grid-template-columns:36px minmax(200px,1fr) 96px 64px 48px 64px;align-items:center;gap:8px;padding:0 20px;min-width:600px;box-sizing:border-box;height:52px;border-top:1px solid #EEEAE0;font-size:14px;font-variant-numeric:tabular-nums}
+.s.h{height:36px;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase}
+.s.me2{background:#FFF4EC}
+.s.cut{border-top:2px dashed #CFC9BD}
+.tn{display:flex;align-items:center;gap:10px;font-weight:600;min-width:0}
+.tn i{width:32px;height:32px;border-radius:50%;background:#EFECE4;color:#16181D;font:700 12px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.s.me2 .tn i{background:#16181D;color:#fff}
+.tn a{color:#16181D;text-decoration:none}
+.tn a:hover{color:#C2410C;text-decoration:underline}
+.n{text-align:right}
+.set{display:flex;flex-direction:column;padding:0 20px 8px}
+.kv{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #EEEAE0;font-size:14px}
+.kv span{color:#4A4F57}
+.kv b{font-weight:600;text-align:right}
+.kv b em{font-style:normal;display:block;font-size:12px;font-weight:500;color:#C2410C}
+.ev{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-top:1px solid #EEEAE0;font-size:14px}
+.ev small{font-size:12px;color:#5A5F68}
+.plus{color:#166534;font-weight:600}
+.minus{color:#991B1B;font-weight:600}
+.foot{font-size:13px;color:#4A4F57;padding:12px 20px 16px;margin:0;border-top:1px solid #EEEAE0}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="players-table.mockup.html">Players</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="league.mockup.html" class="on" aria-current="page">League</a></div>
+<div class="me"><span class="tag">Sample data</span><a class="tmc" href="my-team.mockup.html"><i>BDC</i>Back Door Cuts</a></div>
+</nav>
+<h1>League</h1>
+<p class="sub">12 teams · Head-to-head, 9 categories · 2026–27</p>
+<div class="sw"><button class="chip on">Standings</button><button class="chip">Schedule</button><button class="chip">Transactions</button><button class="chip">Settings</button></div>
+<div class="cols">
+<div class="main card">
+<h3>Standings<a href="matchup.mockup.html">This week’s matchups</a></h3>
+<div class="s h"><span>#</span><span>Team</span><span class="n">W–L–T</span><span class="n">Pct</span><span class="n">GB</span><span class="n">Moves</span></div>
+<div class="s"><span>1</span><span class="tn"><i>FBF</i><a href="my-team.mockup.html">Fast Break Fund</a></span><span class="n">7–2–0</span><span class="n">.778</span><span class="n">–</span><span class="n">3</span></div>
+<div class="s"><span>2</span><span class="tn"><i>GLC</i><a href="my-team.mockup.html">Glass Cleaners</a></span><span class="n">6–3–0</span><span class="n">.667</span><span class="n">1.0</span><span class="n">2</span></div>
+<div class="s me2"><span>3</span><span class="tn"><i>BDC</i><a href="my-team.mockup.html">Back Door Cuts</a></span><span class="n">5–3–1</span><span class="n">.611</span><span class="n">1.5</span><span class="n">1</span></div>
+<div class="s"><span>4</span><span class="tn"><i>PNT</i><a href="my-team.mockup.html">Paint Protectors</a></span><span class="n">5–3–1</span><span class="n">.611</span><span class="n">1.5</span><span class="n">1</span></div>
+<div class="s"><span>5</span><span class="tn"><i>FTL</i><a href="my-team.mockup.html">Free Throw Line Dancers</a></span><span class="n">5–4–0</span><span class="n">.556</span><span class="n">2.0</span><span class="n">0</span></div>
+<div class="s"><span>6</span><span class="tn"><i>SPZ</i><a href="my-team.mockup.html">Splash Zone</a></span><span class="n">4–4–1</span><span class="n">.500</span><span class="n">2.5</span><span class="n">4</span></div>
+<div class="s cut"><span>7</span><span class="tn"><i>CTC</i><a href="my-team.mockup.html">Corner Three Club</a></span><span class="n">4–4–1</span><span class="n">.500</span><span class="n">2.5</span><span class="n">1</span></div>
+<div class="s"><span>8</span><span class="tn"><i>BMB</i><a href="my-team.mockup.html">Bench Mob</a></span><span class="n">4–5–0</span><span class="n">.444</span><span class="n">3.0</span><span class="n">2</span></div>
+<div class="s"><span>9</span><span class="tn"><i>FCP</i><a href="my-team.mockup.html">Full Court Press</a></span><span class="n">3–5–1</span><span class="n">.389</span><span class="n">3.5</span><span class="n">0</span></div>
+<div class="s"><span>10</span><span class="tn"><i>PPC</i><a href="my-team.mockup.html">Pick &amp; Pop Culture</a></span><span class="n">3–5–1</span><span class="n">.389</span><span class="n">3.5</span><span class="n">2</span></div>
+<div class="s"><span>11</span><span class="tn"><i>EUS</i><a href="my-team.mockup.html">Euro Steppers</a></span><span class="n">3–6–0</span><span class="n">.333</span><span class="n">4.0</span><span class="n">3</span></div>
+<div class="s"><span>12</span><span class="tn"><i>MVS</i><a href="my-team.mockup.html">Moving Screens</a></span><span class="n">2–7–0</span><span class="n">.222</span><span class="n">5.0</span><span class="n">0</span></div>
+<p class="foot">Category record across all weeks. Top 6 make the playoffs (dashed line). Team names open that team’s roster, read-only unless it is yours.</p>
+</div>
+<div class="aside">
+<div class="card">
+<h3>League rules<a href="league.mockup.html">Edit (commissioner)</a></h3>
+<div class="set">
+<div class="kv"><span>Waivers run</span><b>Daily, 3:00 AM ET<em>Configurable</em></b></div>
+<div class="kv"><span>Waiver period after a drop</span><b>2 days</b></div>
+<div class="kv"><span>IL eligibility</span><b>Players listed Out<em>Configurable</em></b></div>
+<div class="kv"><span>Adds per week</span><b>4</b></div>
+<div class="kv"><span>Roster</span><b>PG SG G SF PF F C C UTIL UTIL<em style="color:#4A4F57">+ 3 bench, 2 IL</em></b></div>
+</div>
+</div>
+<div class="card">
+<h3>Recent moves<a href="league.mockup.html">All</a></h3>
+<div class="ev"><span><b>Splash Zone</b> <span class="plus">added</span> Nate Kowal, <span class="minus">dropped</span> Ty Benford</span><small>Waiver claim · Today 3:00 AM</small></div>
+<div class="ev"><span><b>Fast Break Fund</b> <span class="plus">added</span> Mason Reyes</span><small>Free agent · Yesterday 9:41 PM</small></div>
+<div class="ev"><span><b>Back Door Cuts</b> moved Jordan Faye to IL</span><small>Lineup · Yesterday 6:12 PM</small></div>
+<div class="ev"><span><b>Euro Steppers</b> <span class="minus">dropped</span> Caleb Moore</span><small>On waivers until Sun 3:00 AM · Thu 11:05 AM</small></div>
+</div>
+</div>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

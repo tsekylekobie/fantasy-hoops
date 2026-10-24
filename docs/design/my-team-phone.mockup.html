@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My team on a phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.ph{width:390px;height:844px;box-sizing:border-box;background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.logo{font:700 22px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tag{font-size:11px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:4px 10px}
+.hd{padding:4px 16px 10px}
+.hd h1{font:700 34px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.hd a{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;border-radius:10px;background:#16181D;color:#fff;text-decoration:none;font-size:13px}
+.hd a b{font:700 20px 'Barlow Condensed',sans-serif;color:#FDBA74}
+.days{display:flex;gap:6px;padding:0 16px 10px}
+.day{flex:1;height:44px;border:1px solid #CFC9BD;border-radius:8px;background:#fff;font:600 12px Inter,sans-serif;color:#16181D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.day.on{background:#16181D;border-color:#16181D;color:#fff}
+.day small{font-size:10px;font-weight:500;opacity:.8}
+.tip{margin:0 16px 10px;padding:10px 12px;border-radius:10px;background:#FFF4EC;border:1px solid #F5C6A5;font-size:13px;display:flex;align-items:center;gap:10px}
+.tip button{margin-left:auto;height:36px;padding:0 12px;border-radius:8px;border:0;background:#C2410C;color:#fff;font:600 12px Inter,sans-serif;flex:none}
+.list{flex:1;overflow:hidden;background:#fff;border-top:1px solid #E2DDD1}
+.grp{padding:10px 16px 6px;font:700 14px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;color:#4A4F57;background:#FBFAF6;border-bottom:1px solid #EEEAE0}
+.r{display:flex;align-items:center;gap:10px;height:58px;padding:0 16px;border-bottom:1px solid #EEEAE0}
+.slot{width:40px;height:26px;border-radius:6px;background:#EFECE4;font:700 13px 'Barlow Condensed',sans-serif;letter-spacing:.05em;display:flex;align-items:center;justify-content:center;flex:none}
+.who{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.who b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{font-size:12px;color:#5A5F68}
+.who span.ng{color:#92400E;font-weight:600}
+.ln{font-size:12px;color:#4A4F57;font-variant-numeric:tabular-nums;text-align:right;flex:none}
+.ln b{display:block;font:700 16px 'Barlow Condensed',sans-serif;color:#16181D}
+.tb{display:flex;border-top:1px solid #E2DDD1;background:#fff;padding-bottom:20px}
+.tb a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:58px;color:#5A5F68;text-decoration:none;font:600 11px Inter,sans-serif}
+.tb a.on{color:#C2410C}
+.tb svg{display:block}
+</style>
+</helmet>
+<div class="ph">
+<div class="top"><a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a><span class="tag">Sample data</span></div>
+<div class="hd"><h1>Back Door Cuts</h1><a href="matchup.mockup.html"><span>Week 1 vs Pick &amp; Pop Culture</span><b>5–3–1</b></a></div>
+<div class="days"><span class="day">Thu<small>22</small></span><span class="day">Fri<small>23</small></span><span class="day on">Today<small>Sat 24</small></span><span class="day">Sun<small>25</small></span></div>
+<div class="tip"><span>Adeyemi has no game. Tanaka (bench) plays at 7:00 PM.</span><button>Swap</button></div>
+<div class="list">
+<div class="grp">Starters · 9 of 10 play</div>
+<div class="r"><span class="slot">PG</span><span class="who"><b>Jalen Okoro</b><span>OKC · vs SAC 8:00 PM</span></span><span class="ln"><b>27.8</b>PTS</span></div>
+<div class="r"><span class="slot">SG</span><span class="who"><b>Andre Whitlock</b><span>PHX · @ LAL 10:30 PM</span></span><span class="ln"><b>26.6</b>PTS</span></div>
+<div class="r"><span class="slot">G</span><span class="who"><b>Ryan Calloway</b><span>NYK · vs BKN 7:30 PM</span></span><span class="ln"><b>19.7</b>PTS</span></div>
+<div class="r"><span class="slot">SF</span><span class="who"><b>Luis Ferrer</b><span>MIA · @ TOR 7:30 PM</span></span><span class="ln"><b>18.9</b>PTS</span></div>
+<div class="r"><span class="slot">PF</span><span class="who"><b>Isaiah Brandt</b><span>CLE · vs DET 7:00 PM</span></span><span class="ln"><b>16.4</b>PTS</span></div>
+<div class="r"><span class="slot">F</span><span class="who"><b>Theo Lindqvist</b><span>SAS · vs DAL 8:30 PM</span></span><span class="ln"><b>15.8</b>PTS</span></div>
+<div class="r"><span class="slot">C</span><span class="who"><b>Bram Adeyemi</b><span class="ng">UTA · No game</span></span><span class="ln"><b>13.6</b>PTS</span></div>
+<div class="r"><span class="slot">C</span><span class="who"><b>Silas Ortega</b><span>CHA · @ ATL 7:30 PM</span></span><span class="ln"><b>14.1</b>PTS</span></div>
+</div>
+<nav class="tb" aria-label="Main">
+<a href="players-table.mockup.html"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Players</a>
+<a href="my-team.mockup.html" class="on" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2 3-4 3S8.5 4.7 8 3z"></path></svg>My team</a>
+<a href="matchup.mockup.html"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"></path></svg>Matchup</a>
+<a href="league.mockup.html"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8 21h8M9 17h6"></path></svg>League</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How the pages connect</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.m{width:1280px;height:780px;box-sizing:border-box;padding:40px 48px;background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;gap:20px}
+h1{font:700 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.lead{margin:0;font-size:15px;color:#4A4F57;max-width:80ch}
+.bar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:#16181D;color:#fff;font-size:13px;flex-wrap:wrap}
+.bar b{font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase}
+.bar b em{font-style:normal;color:#FDBA74}
+.bar span{padding:6px 12px;border-radius:999px;background:#2B2E35}
+.bar .r{margin-left:auto;background:transparent;border:1px solid #4A4F57}
+.cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.c{background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.c h2{font:700 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0;display:flex;justify-content:space-between;align-items:baseline}
+.c h2 a{font:600 13px Inter,sans-serif;text-transform:none}
+.c p{margin:0;font-size:13px;color:#4A4F57}
+.c ul{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.c h4{margin:6px 0 0;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#4A4F57}
+.go{display:flex;flex-direction:column;gap:6px}
+.go a{display:flex;justify-content:space-between;gap:8px;font-size:13px;text-decoration:none;color:#16181D;padding:8px 10px;border-radius:8px;background:#FBFAF6;border:1px solid #EEEAE0}
+.go a:hover{border-color:#C2410C;color:#16181D}
+.go a span{color:#C2410C;font-weight:600}
+.ov{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.o{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px dashed #CFC9BD;border-radius:12px;background:#FBFAF6}
+.o i{font-style:normal;font:700 12px Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:4px 10px;flex:none}
+.o p{margin:0;font-size:14px}
+.o p a{font-weight:600}
+</style>
+</helmet>
+<div class="m">
+<h1>How the pages connect</h1>
+<p class="lead">Four top-level pages share one header. Everything else is an overlay that opens on top of the current page, so closing it puts you back where you were.</p>
+<div class="bar"><b>Fantasy <em>Hoops</em></b><span>Players</span><span>My team</span><span>Matchup</span><span>League</span><span class="r">Team chip → My team</span></div>
+<div class="cols">
+<div class="c"><h2>Players<a href="players-table.mockup.html">Open</a></h2><p>Every NBA player, searchable. The M1 table, plus an Owner column.</p>
+<h4>Goes to</h4><div class="go"><a href="player-modal.mockup.html">Player name<span>Player card</span></a><a href="claim-player.mockup.html">Add / Claim<span>Add or claim sheet</span></a></div></div>
+<div class="c"><h2>My team<a href="my-team.mockup.html">Open</a></h2><p>Your roster by slot for one day, with games today and season stats. Move players between slots here.</p>
+<h4>Goes to</h4><div class="go"><a href="matchup.mockup.html">Week score card<span>Matchup</span></a><a href="players-table.mockup.html">Add a player<span>Players, filtered to available</span></a><a href="player-modal.mockup.html">Player name<span>Player card</span></a></div></div>
+<div class="c"><h2>Matchup<a href="matchup.mockup.html">Open</a></h2><p>This week’s head-to-head: 9 categories, who leads each, games left.</p>
+<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Set lineup<span>My team</span></a><a href="league.mockup.html">Opponent<span>Their roster</span></a></div></div>
+<div class="c"><h2>League<a href="league.mockup.html">Open</a></h2><p>Standings, schedule, every team’s moves, and the league rules (waiver time, IL rule).</p>
+<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Any team name<span>That roster</span></a><a href="matchup.mockup.html">This week<span>Matchups</span></a></div></div>
+</div>
+<div class="ov">
+<div class="o"><i>Overlay</i><p><a href="player-modal.mockup.html">Player card</a> opens from any player name on any page. When the player is a free agent or on waivers, it also gets an Add or Claim button.</p></div>
+<div class="o"><i>Overlay</i><p><a href="claim-player.mockup.html">Add or claim sheet</a> asks who to drop when the roster is full. Free agents join right away; waiver players become a claim that runs at the league’s waiver time.</p></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":780}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
