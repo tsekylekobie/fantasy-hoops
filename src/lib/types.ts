@@ -156,6 +156,20 @@ export interface FantasyTeamSummary {
   abbreviation: string;
 }
 
+/** One row of a matchup roster, for the day shown (or the week). */
+export interface MatchupPlayer extends PlayerSummary {
+  /** Slot on the day shown; for week totals, on today (clamped to the week). Null: no longer on the roster. */
+  slot: LineupSlot | null;
+  /** Day view: his NBA game that day. Always null for week totals. */
+  game: LineupGame | null;
+  /**
+   * Day view: his line for that day's game, started or not (null until it has a
+   * stat row; min 0 = didn't play). Week totals: summed over the games he
+   * started (null if none yet).
+   */
+  stats: (CategoryLine & { min: number; gp: number }) | null;
+}
+
 export interface MatchupSide extends FantasyTeamSummary {
   /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
   stats: CategoryLine;
@@ -163,15 +177,19 @@ export interface MatchupSide extends FantasyTeamSummary {
   gamesPlayed: number;
   /** Starter games still to tip off this week (current lineup and NBA teams). */
   gamesLeft: number;
+  /** Slot order (starters, BN, IL, IL+), then players who left the roster. */
+  players: MatchupPlayer[];
 }
 
 export interface Matchup {
-  /** The signed-in manager's team. */
+  /** Left side: the signed-in manager's team when it plays in this matchup, else the team asked for. */
   team: MatchupSide;
   opponent: MatchupSide;
   /** Outcome of each category for `team`. */
   results: Record<CategoryKey, CategoryResult>;
   score: MatchupScore;
+  /** Whether `team` is the signed-in manager's. */
+  isMine: boolean;
 }
 
 /** Another pairing this week, scored for teamA. teamB null = playoff bye. */
@@ -179,6 +197,8 @@ export interface OtherMatchup {
   teamA: FantasyTeamSummary;
   teamB: FantasyTeamSummary | null;
   score: MatchupScore;
+  /** Contains the signed-in manager's team. */
+  isMine: boolean;
 }
 
 /** The /matchup page: one league week from the signed-in manager's side. */
@@ -194,13 +214,21 @@ export interface MatchupWeek {
   /** 1-based day of the week while live, else null. */
   day: number | null;
   days: number;
-  /** null when signed out, without a team, or the team has no game (bye). */
+  /** The league's today, yyyy-mm-dd, and its IANA time zone (for tip-off times). */
+  today: string;
+  timeZone: string;
+  /** The league's slot counts in display order; slots with 0 are left out. */
+  slots: { slot: LineupSlot; count: number }[];
+  /** Whose stats the rosters show: a date in the week, or null for week totals. */
+  statsDate: string | null;
+  /**
+   * The matchup asked for (?team=), else the signed-in manager's. Null when
+   * neither applies or that team has a bye.
+   */
   matchup: Matchup | null;
   /** The manager's team, when signed in and in the league. */
   myTeam: FantasyTeamSummary | null;
-  /** The manager's starters whose NBA team doesn't play today (live weeks only). */
-  idleStarters: PlayerSummary[];
-  /** Every other pairing this week. */
+  /** Every pairing this week other than `matchup`. */
   others: OtherMatchup[];
 }
 
