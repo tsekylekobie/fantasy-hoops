@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Fantasy Hoops",
   description: "Season averages for our 9-category league",
 };
+
+// viewport-fit=cover so the phone tab bar can pad for the home indicator.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 // Runs before first paint so the page never flashes the wrong theme. Keep the
 // storage key in sync with THEME_STORAGE_KEY in components/ThemeToggle.tsx.

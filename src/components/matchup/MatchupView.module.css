@@ -578,8 +578,158 @@ a.pageBtn:hover {
   }
 }
 
+/* Phones: wide tables scroll inside their card, with the team or the slot and
+   player columns sticky (the my-team phone pattern). */
 @media (max-width: 640px) {
   .page {
-    padding: 8px 16px 40px;
+    padding: 8px 16px 24px;
+  }
+
+  .wk {
+    margin: 20px 0 12px;
+  }
+
+  .wk h1 {
+    font-size: 17px;
+  }
+
+  .pager {
+    flex: 1 1 auto;
+  }
+
+  .pageBtn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .board {
+    padding: 20px 16px;
+    gap: 14px;
+  }
+
+  .side h2 {
+    font-size: 28px;
+  }
+
+  .side i {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+
+  .score {
+    font-size: 64px;
+  }
+
+  .top {
+    margin-top: 14px;
+    gap: 14px;
+  }
+
+  .card h3,
+  .card > .foot,
+  .notice p {
+    position: sticky;
+    left: 0;
+  }
+
+  .card h3 {
+    padding: 14px 16px 8px;
+  }
+
+  .card > .foot {
+    padding: 12px 16px 16px;
+  }
+
+  .other {
+    padding: 0 16px;
+  }
+
+  .cs {
+    grid-template-columns: 112px repeat(9, 50px) 56px;
+    column-gap: 0;
+    padding: 0 12px 0 0;
+    min-width: 630px;
+  }
+
+  .ros {
+    gap: 14px;
+  }
+
+  .g {
+    grid-template-columns: 48px 150px repeat(2, 46px) repeat(7, 36px);
+    column-gap: 0;
+    padding: 0 12px 0 0;
+    min-width: 562px;
+  }
+
+  .cs > :first-child,
+  .g > :nth-child(1),
+  .g > :nth-child(2) {
+    position: sticky;
+    z-index: 1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+  }
+
+  .cs > :first-child,
+  .g > :nth-child(1) {
+    left: 0;
+    padding-left: 12px;
+  }
+
+  .cs > :first-child {
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  .csRow > :first-child {
+    display: block;
+    line-height: 56px;
+  }
+
+  .g > :nth-child(2) {
+    left: 48px;
+    padding-right: 8px;
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  .gHead > :nth-child(-n + 2),
+  .gTotal > :nth-child(-n + 2),
+  .gRow.dim > :nth-child(-n + 2) {
+    background: var(--surface-muted);
+  }
+
+  .pl > [aria-hidden="true"] {
+    display: none;
+  }
+
+  /* Next to the sticky columns, where it can be seen without scrolling. */
+  .dnp {
+    text-align: left;
+    padding-left: 10px;
+  }
+
+  .days {
+    gap: 6px;
+    margin: 20px 0 12px;
+  }
+
+  .daysLabel {
+    flex-basis: 100%;
+    font-size: 17px;
+  }
+
+  .day {
+    flex: 0 0 calc((100% - 18px) / 4);
+    min-width: 0;
+    height: 44px;
+    padding: 0 4px;
+    font-size: 12px;
+  }
+
+  .day small {
+    font-size: 10px;
   }
 }

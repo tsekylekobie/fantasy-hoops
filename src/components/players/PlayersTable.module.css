@@ -221,3 +221,62 @@
   font-size: 12px;
   color: var(--ink-subtle);
 }
+
+/* Phones: the table scrolls inside its card with # and Player sticky
+   (the my-team phone pattern); headshots drop out to give the stats room. */
+@media (max-width: 640px) {
+  .table {
+    min-width: 990px;
+  }
+
+  .cRank {
+    width: 40px;
+  }
+
+  .table th:nth-child(-n + 2),
+  .table td:nth-child(-n + 2) {
+    position: sticky;
+    z-index: 1;
+    background: var(--surface);
+  }
+
+  .table thead th:nth-child(-n + 2) {
+    background: var(--surface-muted);
+  }
+
+  .table th:first-child,
+  .table td:first-child {
+    left: 0;
+    padding-left: 12px;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    left: 40px;
+    padding-right: 8px;
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  /* Loading / empty / error span every column; keep the text in view. */
+  .messageRow td {
+    position: static;
+  }
+
+  .message {
+    position: sticky;
+    left: 12px;
+    width: calc(100vw - 60px);
+  }
+
+  .player > [aria-hidden="true"] {
+    display: none;
+  }
+
+  .table tbody tr {
+    font-size: 14px;
+  }
+
+  .name {
+    font-size: 14px;
+  }
+}

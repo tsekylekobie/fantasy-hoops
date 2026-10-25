@@ -317,4 +317,14 @@
   .state {
     padding: 8px 16px 24px;
   }
+
+  /* Date / season column stays put while the stats scroll. */
+  .table th:first-child,
+  .table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
 }

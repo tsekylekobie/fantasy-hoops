@@ -95,3 +95,10 @@ input {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Room for the phone tab bar (SiteHeader). */
+@media (max-width: 640px) {
+  body {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom));
+  }
+}

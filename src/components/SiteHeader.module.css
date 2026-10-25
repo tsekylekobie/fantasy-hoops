@@ -62,14 +62,50 @@
   padding: 6px 0;
 }
 
+.icon {
+  display: none;
+}
+
+/* Phones: logo and account stay on top; the tabs become a bottom tab bar
+   (docs/design/my-team-phone.mockup.html, .tb). globals.css pads the body for it. */
 @media (max-width: 640px) {
   .nav {
-    padding-top: 6px;
+    gap: 8px;
+  }
+
+  .logo {
+    font-size: 22px;
   }
 
   .tabs {
-    order: 3;
-    width: 100%;
-    margin: 0 -14px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    flex-wrap: nowrap;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .tabs a {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    height: 58px;
+    padding: 0 4px;
+    font-size: 11px;
+    color: var(--ink-subtle);
+    border-bottom: 0;
+  }
+
+  .tabs a.on {
+    color: var(--accent);
+  }
+
+  .icon {
+    display: block;
   }
 }
