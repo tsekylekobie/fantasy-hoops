@@ -10,12 +10,22 @@ import MatchupView from "@/components/matchup/MatchupView";
 export const metadata: Metadata = { title: "Matchup · Fantasy Hoops" };
 export const dynamic = "force-dynamic";
 
-// Server-rendered from our DB. ?week=N picks a week; the default is this week.
-export default async function MatchupPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const { week: rawWeek } = await searchParams;
-  const n = Number(rawWeek);
-  const week = Number.isInteger(n) && n > 0 ? n : null;
+const positiveInt = (raw: string | undefined) => {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+// Server-rendered from our DB. ?week=N picks a week (default this week),
+// ?team=ID another team's matchup (default yours), ?stats=yyyy-mm-dd|week the
+// rosters' stats (default today while the week is live, else week totals).
+export default async function MatchupPage({ searchParams }: {
+  searchParams: Promise<{ week?: string; team?: string; stats?: string }>;
+}) {
+  const { week, team, stats } = await searchParams;
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
-  const data = await getMatchupWeek(pool, CURRENT_SEASON, week, session?.user.id ?? null);
+  const data = await getMatchupWeek(pool, CURRENT_SEASON, positiveInt(week), session?.user.id ?? null, {
+    teamId: positiveInt(team),
+    stats: stats ?? null,
+  });
   return <MatchupView data={data} signedIn={session !== null} />;
 }
