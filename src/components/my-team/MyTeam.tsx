@@ -6,12 +6,14 @@
 // days and players whose game has tipped off are locked. Stats are the day's
 // box score, and the starters' total is what counts toward the matchup.
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
-// /team/[id] shows another manager's team with the same layout, read-only.
+// /team/[id] shows another manager's team with the same layout, read-only,
+// with a link to propose a trade; your own trades show under your lineup.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
+import TradesPanel from "@/components/trades/TradesPanel";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import type {
   AutoLineupRequest,
@@ -364,6 +366,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         {readOnly ? (
           <div className={styles.actions}>
             <Link className={styles.btn} href="/league">League standings</Link>
+            <Link className={styles.btn} href={`/team/${data.team.id}/trade`}>Propose trade</Link>
             <Link className={`${styles.btn} ${styles.primary}`} href={`/matchup?team=${data.team.id}`}>This week’s matchup</Link>
           </div>
         ) : (
@@ -466,6 +469,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         Stats are each player&apos;s box score for the day; they fill in as games are played.
         {!readOnly && " Changes save right away and carry forward to later days until a day you set separately."}
       </p>
+      {!readOnly && <TradesPanel scope="mine" />}
     </Shell>
   );
 }

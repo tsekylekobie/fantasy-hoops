@@ -1,9 +1,10 @@
 // The /league page: docs/design/league.mockup.html (standings), plus this
 // week's scoreboard. Team names open that team's roster (yours is /my-team);
-// a score opens that matchup.
+// a score opens that matchup. Trades in review (and yours) sit below.
 import Link from "next/link";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
+import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
 import styles from "./LeagueView.module.css";
 
@@ -46,6 +47,7 @@ function Overview({ data }: { data: LeagueOverview }) {
         <Standings data={data} />
         <Scoreboard data={data} />
       </div>
+      <TradesPanel scope="league" />
     </>
   );
 }
