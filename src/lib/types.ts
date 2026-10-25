@@ -133,3 +133,18 @@ export const CURRENT_SEASON = 2026;
 export function seasonLabel(season: number): string {
   return `${season}–${String((season + 1) % 100).padStart(2, "0")}`;
 }
+
+/** The signed-in user, as the UI sees it. */
+export interface SessionUser {
+  id: number;
+  email: string;
+  name: string;
+  pictureUrl: string | null;
+}
+
+/** GET /api/auth/session */
+export interface SessionResponse {
+  user: SessionUser | null;
+  /** True when sign-in goes to the local mock page instead of Google. */
+  mock: boolean;
+}

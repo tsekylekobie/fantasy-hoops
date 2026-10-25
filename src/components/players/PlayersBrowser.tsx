@@ -7,6 +7,7 @@ import type { PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatR
 import { CURRENT_SEASON, SORT_KEYS, defaultSortDir, seasonLabel } from "@/lib/types";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import ThemeToggle from "@/components/ThemeToggle";
+import UserMenu from "@/components/UserMenu";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
@@ -189,7 +190,10 @@ export default function PlayersBrowser() {
           <Link href="/" className={styles.logo}>
             Fantasy <b>Hoops</b>
           </Link>
-          <ThemeToggle />
+          <div className={styles.topActions}>
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </header>
 
         <h1 className={styles.title}>{range === "last14" ? "Last 14 days" : "Season averages"}</h1>
