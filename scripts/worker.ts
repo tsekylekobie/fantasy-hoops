@@ -11,15 +11,19 @@
 //   corrections  Once a day after WORKER_CORRECTIONS_HOUR (default 9, league time):
 //                the last 3 days of games and stat lines again, for stat corrections.
 //   rosters      Every 12 h: teams, players, and the season's schedule.
+//   lineups      Every 15 min and just after midnight (league time): saves each
+//                team's lineup for every day through today, so past days stay
+//                fixed even if the roster changes later. Database only, no API.
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
 // slow ones. All API calls share one client, so the RPM limit holds across
-// tasks. The worker never writes lineup tables: lineup locks read
-// games.status_state and games.datetime, which this keeps fresh.
+// tasks. Lineup locks read games.status_state and games.datetime, which this
+// keeps fresh; the only lineup writes are the lineups task's (freezeLineups).
 import "dotenv/config";
 import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
+import { freezeSeasonLineups } from "../src/lib/queries/lineup";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -141,6 +145,14 @@ async function rosters(): Promise<Result> {
   return { summary: `${teams} teams, ${players} players, ${games} games in the ${season} schedule`, nextInMs: 12 * HOUR };
 }
 
+/** Saves every team's lineup through today (league time); see freezeLineups. */
+async function lineups(): Promise<Result> {
+  const { teams, rows } = await freezeSeasonLineups(db, season);
+  // Right after midnight too, so a new day is pinned before anyone changes a roster.
+  const nextInMs = Math.min(15 * MIN, msUntilLocalHour(0) + MIN);
+  return { summary: `${rows} lineup rows saved for ${teams} teams`, nextInMs };
+}
+
 interface Task {
   name: string;
   run: () => Promise<Result>;
@@ -165,6 +177,7 @@ const TASKS: Task[] = [
     nextAt: 0,
   },
   { name: "rosters", run: rosters, firstDue: (last) => (last ? last.getTime() + 12 * HOUR : now()), nextAt: 0 },
+  { name: "lineups", run: lineups, firstDue: () => now(), nextAt: 0 },
 ];
 
 let stopping = false;

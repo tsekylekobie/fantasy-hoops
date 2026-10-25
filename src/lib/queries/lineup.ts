@@ -3,14 +3,18 @@
 // Storage (db/migrations/0004_league_play.sql): lineup_slots holds the lineup
 // a team set for a date. A day without rows uses the most recent earlier day
 // that has them, so a change carries forward until the next day the manager
-// set explicitly, and later edits never rewrite past days. Before a team's
-// first edit, its standing lineup (roster_players.slot) is saved as rows on
-// the season's first day, so past days keep showing what they were.
-// roster_players.slot mirrors the latest lineup.
+// set explicitly. Before a team has any rows, its standing lineup
+// (roster_players.slot) is used; roster_players.slot mirrors the latest lineup.
 //
-// Players who join the roster after a day's rows were written show on BN;
-// rows for players who have left are ignored, except on past days with their
-// own rows, which are the record of who played.
+// The past never changes: freezeLineups saves every day through today as rows
+// of its own, so a past day no longer depends on the current roster or on
+// roster_players.slot. It runs before every lineup read and write, from the
+// sync worker, and MUST run before any roster change (add, drop, trade).
+//
+// A past day with its own rows shows exactly those rows: they're the record
+// of who was on the team and where. Today and later follow the current
+// roster: players who joined after the rows were written show on BN, and
+// rows for players who have left are ignored.
 import type { Pool, PoolClient } from "pg";
 import { autoLineup, eligibleSlots, validateLineup, type SlotCounts } from "../lineup/rules";
 import {
@@ -204,12 +208,13 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
   const isPast = date < team.today;
 
   const slots = new Map<number, LineupSlot>();
-  if (src.length === 0) {
+  if (isPast && hasOwnRows) {
+    for (const r of src) slots.set(r.player_id, r.slot);
+  } else if (src.length === 0) {
     for (const r of rosterRes.rows) slots.set(r.player_id, r.slot);
   } else {
     const fromRows = new Map(src.map((r) => [r.player_id, r.slot]));
     for (const r of rosterRes.rows) slots.set(r.player_id, fromRows.get(r.player_id) ?? "BN");
-    if (isPast && hasOwnRows) for (const r of src) if (!slots.has(r.player_id)) slots.set(r.player_id, r.slot);
   }
 
   const [infoRes, dayRes] = await Promise.all([
@@ -248,22 +253,59 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
   return { date, players, hasOwnRows };
 }
 
+/**
+ * Saves each day from the season's first game through the league's today that
+ * has no rows of its own, as the lineup it shows right now: the latest earlier
+ * day's rows (or the standing lineup, before any), with the current roster.
+ * Same rule as loadDay, so nothing on screen changes; it just stops changing
+ * later. Idempotent. Call holding the team lock (withTeamLock). Returns rows added.
+ */
+export async function freezeLineups(db: PoolClient, teamId: number): Promise<number> {
+  const { rowCount } = await db.query(
+    `WITH t AS (
+       SELECT ft.id, ft.league_id, (now() AT TIME ZONE l.time_zone)::date AS today,
+              (SELECT min(g.date) FROM games g WHERE g.season = l.season) AS first_day
+         FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
+        WHERE ft.id = $1
+     ), missing AS (
+       -- Days with no rows of their own, and the latest earlier day that has some.
+       SELECT day::date AS day,
+              (SELECT max(ls.date) FROM lineup_slots ls WHERE ls.fantasy_team_id = t.id AND ls.date < day::date) AS src
+         FROM t, generate_series(t.first_day, t.today, interval '1 day') AS day
+        WHERE NOT EXISTS (SELECT 1 FROM lineup_slots ls WHERE ls.fantasy_team_id = t.id AND ls.date = day::date)
+     )
+     INSERT INTO lineup_slots (league_id, fantasy_team_id, date, player_id, slot)
+     SELECT t.league_id, t.id, m.day, rp.player_id,
+            CASE WHEN m.src IS NULL THEN rp.slot ELSE coalesce(ls.slot, 'BN') END
+       FROM t CROSS JOIN missing m
+       JOIN roster_players rp ON rp.fantasy_team_id = t.id
+       LEFT JOIN lineup_slots ls ON ls.fantasy_team_id = t.id AND ls.date = m.src AND ls.player_id = rp.player_id
+     ON CONFLICT DO NOTHING`,
+    [teamId],
+  );
+  return rowCount ?? 0;
+}
+
+/** freezeLineups for every team in `season`'s leagues, one transaction per team (for the sync worker). */
+export async function freezeSeasonLineups(pool: Pool, season: number): Promise<{ teams: number; rows: number }> {
+  const { rows: teams } = await pool.query<{ id: string }>(
+    `SELECT ft.id FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id WHERE l.season = $1 ORDER BY ft.id`,
+    [season],
+  );
+  let rows = 0;
+  for (const t of teams) rows += await withTeamLock(pool, Number(t.id), (db) => freezeLineups(db, Number(t.id)));
+  return { teams: teams.length, rows };
+}
+
 /** Writes `date`'s lineup. Call inside a transaction holding the team lock. */
 async function writeDay(db: PoolClient, team: TeamContext, date: string, slots: Map<number, LineupSlot>): Promise<void> {
-  // First edit ever: keep the standing lineup as the record for earlier days.
-  const { rows: [state] } = await db.query<{ any_rows: boolean; later_rows: boolean; first_day: string | null }>(
-    `SELECT EXISTS (SELECT 1 FROM lineup_slots WHERE fantasy_team_id = $1) AS any_rows,
-            EXISTS (SELECT 1 FROM lineup_slots WHERE fantasy_team_id = $1 AND date > $2) AS later_rows,
-            (SELECT to_char(min(date), 'YYYY-MM-DD') FROM games WHERE season = $3) AS first_day`,
-    [team.teamId, date, team.season],
+  // Pin today and earlier first, so updating roster_players.slot below can't
+  // change them (they'd otherwise still fall back to it).
+  await freezeLineups(db, team.teamId);
+  const { rows: [state] } = await db.query<{ later_rows: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM lineup_slots WHERE fantasy_team_id = $1 AND date > $2) AS later_rows`,
+    [team.teamId, date],
   );
-  if (!state.any_rows && state.first_day && state.first_day < date) {
-    await db.query(
-      `INSERT INTO lineup_slots (league_id, fantasy_team_id, date, player_id, slot)
-       SELECT league_id, fantasy_team_id, $2, player_id, slot FROM roster_players WHERE fantasy_team_id = $1`,
-      [team.teamId, state.first_day],
-    );
-  }
   await db.query(`DELETE FROM lineup_slots WHERE fantasy_team_id = $1 AND date = $2`, [team.teamId, date]);
   const ids = [...slots.keys()];
   await db.query(
@@ -281,12 +323,15 @@ async function writeDay(db: PoolClient, team: TeamContext, date: string, slots: 
   }
 }
 
-/** Runs `fn` in a transaction that holds the team's row lock, so two tabs can't interleave edits. */
-async function withTeamLock<T>(pool: Pool, team: TeamContext, fn: (db: PoolClient) => Promise<T>): Promise<T> {
+/**
+ * Runs `fn` in a transaction that holds the team's row lock, so two tabs (or
+ * the worker) can't interleave lineup writes. Roster changes should take it too.
+ */
+export async function withTeamLock<T>(pool: Pool, teamId: number, fn: (db: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(`SELECT 1 FROM fantasy_teams WHERE id = $1 FOR UPDATE`, [team.teamId]);
+    await client.query(`SELECT 1 FROM fantasy_teams WHERE id = $1 FOR UPDATE`, [teamId]);
     const out = await fn(client);
     await client.query("COMMIT");
     return out;
@@ -311,7 +356,7 @@ export async function setLineup(
   pool: Pool, team: TeamContext, date: string, next: Map<number, LineupSlot>, values: Values,
 ): Promise<void> {
   assertEditable(team, date);
-  await withTeamLock(pool, team, async (db) => {
+  await withTeamLock(pool, team.teamId, async (db) => {
     const day = await loadDay(db, team, date, values);
     const names = new Map(day.players.map((p) => [p.id, `${p.firstName} ${p.lastName}`.trim()]));
     const error = validateLineup(rulePlayers(day), next, team.rosterSlots, names);
@@ -330,7 +375,7 @@ export async function autoSetLineup(
   pool: Pool, team: TeamContext, dates: string[], values: Values,
 ): Promise<string[]> {
   for (const d of dates) assertEditable(team, d);
-  return withTeamLock(pool, team, async (db) => {
+  return withTeamLock(pool, team.teamId, async (db) => {
     const changed: string[] = [];
     for (const date of dates) {
       const day = await loadDay(db, team, date, values);
@@ -378,6 +423,7 @@ export async function remainingWeekDays(db: Db, team: TeamContext, date: string)
 
 /** The full response for one date. */
 export async function getTeamLineup(pool: Pool, team: TeamContext, date: string, values: Values): Promise<TeamLineupResponse> {
+  await withTeamLock(pool, team.teamId, (db) => freezeLineups(db, team.teamId));
   const [day, week] = await Promise.all([loadDay(pool, team, date, values), getWeek(pool, team, date)]);
   let start = week?.startsOn;
   let end = week?.endsOn;
