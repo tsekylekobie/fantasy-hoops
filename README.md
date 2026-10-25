@@ -27,6 +27,9 @@ npm run db:migrate
 ```
 
 The default `DATABASE_URL=postgres://localhost:5432/fantasy_hoops` works for a local server.
+`npm run db:migrate` applies any new files in `db/migrations/` and skips ones already applied;
+`npm run db:migrate -- --status` lists them. To change the schema, add the next numbered file
+there. Never edit one that has been committed.
 
 With Docker instead:
 
@@ -47,6 +50,9 @@ npm run backfill -- --seasons 2024,2023   # optional: more past seasons for the 
 
 The backfill is resumable: re-run the same command after an interruption and it continues where it stopped.
 Finished seasons are skipped. Options: `--since YYYY-MM-DD`, `--force` (reload a season), `--skip-games`.
+
+For local testing, `npm run db:seed:league` (after the backfill) creates a 12-team league with mock
+managers and drafted rosters. Re-run it to reset the rosters; `-- --seed=7` gives a different draft.
 
 ## 4. Headshots (optional)
 

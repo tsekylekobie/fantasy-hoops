@@ -1,6 +1,7 @@
--- Fantasy Hoops schema. Idempotent: safe to re-run (npm run db:migrate).
--- Column names follow the documented BALLDONTLIE fields; `raw` keeps the full
--- API object until the field names are confirmed against data/samples/.
+-- Baseline: the NBA data tables as they stood before numbered migrations.
+-- Written with IF NOT EXISTS so databases created from the old schema.sql
+-- adopt it without changes. Column names follow the documented BALLDONTLIE
+-- fields; `raw` keeps the full API object.
 
 CREATE TABLE IF NOT EXISTS teams (
   id           integer PRIMARY KEY,          -- BALLDONTLIE team id
@@ -92,28 +93,3 @@ CREATE TABLE IF NOT EXISTS sync_state (
 ALTER TABLE games ADD COLUMN IF NOT EXISTS game_type text;
 ALTER TABLE player_game_stats ADD COLUMN IF NOT EXISTS regular_season boolean;
 CREATE INDEX IF NOT EXISTS pgs_season_regular_idx ON player_game_stats (season, regular_season, player_id);
-
--- Sign-in (Google OAuth). google_sub is Google's stable account id; mock
--- sign-ins in local dev use 'mock:<email>' so they never collide with real ones.
-CREATE TABLE IF NOT EXISTS users (
-  id           bigserial PRIMARY KEY,
-  google_sub   text NOT NULL UNIQUE,
-  email        text NOT NULL,
-  name         text NOT NULL,
-  picture_url  text,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  last_seen_at timestamptz NOT NULL DEFAULT now()
-);
-
--- One row per signed-in device. The cookie holds a random token; only its
--- SHA-256 is stored, so a leaked table can't be replayed as cookies.
--- expires_at slides forward while the device keeps using the app.
-CREATE TABLE IF NOT EXISTS sessions (
-  token_hash   bytea PRIMARY KEY,
-  user_id      bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_agent   text,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  last_used_at timestamptz NOT NULL DEFAULT now(),
-  expires_at   timestamptz NOT NULL
-);
-CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);

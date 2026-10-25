@@ -1,5 +1,5 @@
 // Provider-neutral data types returned by the src/lib/bdl client.
-// Field names match our DB columns (db/schema.sql) so ingest code can write
+// Field names match our DB columns (db/migrations/) so ingest code can write
 // them directly. `raw` keeps the provider's original object.
 
 export interface Team {
