@@ -268,7 +268,7 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   .table {
-    min-width: 990px;
+    min-width: 1094px;
   }
 
   .cRank {
