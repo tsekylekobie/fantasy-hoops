@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
-import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fullName } from "./format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtWaiverTime, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
 
 interface Props {
@@ -163,7 +163,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
 function DetailHead({
   data, onAdd, myTeamId,
 }: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
-  const { player, owner } = data;
+  const { player, owner, waiver } = data;
   const chip = player.availability ? AVAILABILITY[player.availability] : null;
   const team = player.teamName ?? player.teamAbbr;
   const subline = [team, player.position, `${seasonLabel(data.season)} season`].filter(Boolean).join(" · ");
@@ -174,15 +174,26 @@ function DetailHead({
         <h2 id="player-modal-title" className={styles.name}>
           {fullName(player)}
           {chip && <span className={`${styles.chip} ${chip.className}`}>{chip.label}</span>}
+          {owner === null && waiver && <span className={`${styles.chip} ${styles.chipWaivers}`}>On waivers</span>}
         </h2>
         <p className={styles.subline}>
           {subline}
           {owner && ` · ${owner.teamId === myTeamId ? "On your team" : `On ${owner.abbreviation}`}`}
         </p>
+        {owner === null && waiver && (
+          <p className={styles.subline}>
+            {waiver.reason === "game_started"
+              ? "His game has started, so he's on waivers"
+              : waiver.droppedBy
+                ? `Dropped by ${waiver.droppedBy.name}`
+                : "Recently dropped"}{" "}
+            · Clears {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
+          </p>
+        )}
       </div>
       {owner === null && onAdd && (
-        <button type="button" className={styles.add} onClick={() => onAdd(player.id)}>
-          Add
+        <button type="button" className={`${styles.add} ${waiver ? styles.claim : ""}`} onClick={() => onAdd(player.id)}>
+          {waiver ? "Claim" : "Add"}
         </button>
       )}
     </>

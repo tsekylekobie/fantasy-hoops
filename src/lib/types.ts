@@ -66,6 +66,8 @@ export interface PlayerRow extends PlayerSummary {
   value: number;
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
+  /** Set when he's a free agent on waivers: adding him is a claim. */
+  waiver: PlayerWaiver | null;
 }
 
 /**
@@ -87,6 +89,8 @@ export interface PlayersResponse {
   perPage: number;
   total: number;
   players: PlayerRow[];
+  /** The league's time zone, for showing each player's `waiver.clearsAt`. */
+  timeZone: string;
 }
 
 export interface GameLogRow {
@@ -126,6 +130,10 @@ export interface PlayerDetailResponse {
   };
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
+  /** Set when he's a free agent on waivers: adding him is a claim. */
+  waiver: PlayerWaiver | null;
+  /** The league's time zone, for showing `waiver.clearsAt`. */
+  timeZone: string;
   season: number;
   /** Per-game averages for `season`; null if the player has no games in it. */
   seasonAverages: SeasonRow | null;
@@ -413,6 +421,15 @@ export interface PlayerOwner {
 /** Immediate: rosters change now (free agents). Waiver: a pending claim that runs at the league's waiver time. */
 export type AddMode = "immediate" | "waiver";
 
+/** A free agent on waivers: adding him is a claim that processes at `clearsAt`. */
+export interface PlayerWaiver {
+  /** The waiver run that decides his claims (and after which he's a free agent), ISO UTC. */
+  clearsAt: string;
+  /** dropped: recently dropped (leagues.waiver_days); game_started: his game today has tipped off (waivers_after_game_start). */
+  reason: "dropped" | "game_started";
+  droppedBy: FantasyTeamSummary | null;
+}
+
 /** One of the manager's players, as the drop list shows him. */
 export interface RosterMoveOption extends PlayerSummary {
   /** His slot today. IL and IL+ don't count against the roster limit. */
@@ -431,6 +448,8 @@ export interface RosterMoveOption extends PlayerSummary {
 export interface AddCandidate extends PlayerSummary {
   owner: PlayerOwner | null;
   mode: AddMode;
+  /** Set when mode is "waiver". */
+  waiver: PlayerWaiver | null;
   /** Season per-game averages; null with no games yet. */
   seasonAverages: CategoryLine | null;
   /** Why he can't be added (rostered, adds limit reached); null when he can. */
@@ -446,6 +465,11 @@ export interface RosterMovesContext {
   teamCount: number;
   /** The league's today, yyyy-mm-dd. */
   today: string;
+  /** The league's time zone, for showing waiver times. */
+  timeZone: string;
+  /** Whether a dropped player goes on waivers, and for how many days. */
+  dropsToWaivers: boolean;
+  waiverDays: number;
   /** Players counted against the limit (everyone not on IL/IL+ today), and the limit (non-IL slots). */
   rosterCount: number;
   rosterLimit: number;
@@ -477,4 +501,53 @@ export interface RosterMoveResult {
   processAt: string | null;
   added: PlayerSummary | null;
   dropped: PlayerSummary | null;
+}
+
+// Waivers (/api/team/claims, the League page's waiver order)
+
+/** One of the manager's waiver claims. */
+export interface WaiverClaim {
+  id: number;
+  status: "pending" | "completed" | "failed" | "cancelled";
+  /** The team's preference order among its pending claims, 1 = first; null once processed. */
+  rank: number | null;
+  add: PlayerSummary;
+  drop: PlayerSummary | null;
+  /** ISO UTC: when it processes (pending) or processed. */
+  processAt: string;
+  processedAt: string | null;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+/**
+ * GET /api/team/claims: the signed-in manager's pending claims in rank order,
+ * and claims processed in the last 7 days, newest first.
+ */
+export interface MyClaimsResponse {
+  timeZone: string;
+  /** Local daily run time, "HH:MM". */
+  waiverTime: string;
+  nextRunAt: string;
+  waiverPriority: number | null;
+  teamCount: number;
+  pending: WaiverClaim[];
+  recent: WaiverClaim[];
+}
+
+/** PUT /api/team/claims { order: claimIds } reorders all pending claims (responds MyClaimsResponse). DELETE /api/team/claims/:id cancels one. */
+export interface ClaimOrderRequest {
+  order: number[];
+}
+
+/** The League page's waiver order and settings. */
+export interface WaiverOrder {
+  type: "continual_rolling" | "reverse_standings" | "faab";
+  timeZone: string;
+  waiverTime: string;
+  waiverDays: number;
+  waiversAfterGameStart: boolean;
+  nextRunAt: string;
+  /** First claim first. */
+  teams: (FantasyTeamSummary & { priority: number; pendingClaims: number })[];
 }

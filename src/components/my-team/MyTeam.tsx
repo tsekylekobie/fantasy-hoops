@@ -24,6 +24,7 @@ import type {
   TeamLineupResponse,
 } from "@/lib/types";
 import { LINEUP_SLOTS, STARTING_SLOTS } from "@/lib/types";
+import MyClaims from "@/components/waivers/MyClaims";
 import styles from "./MyTeam.module.css";
 
 /**
@@ -466,6 +467,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         Stats are each player&apos;s box score for the day; they fill in as games are played.
         {!readOnly && " Changes save right away and carry forward to later days until a day you set separately."}
       </p>
+      {!readOnly && <MyClaims />}
     </Shell>
   );
 }

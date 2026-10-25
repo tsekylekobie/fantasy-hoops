@@ -19,6 +19,7 @@ import type {
 } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals } from "./value";
+import { getWaiverStatus } from "./waiverStatus";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -159,9 +160,10 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const [{ rows }, owners] = await Promise.all([
+  const [{ rows }, owners, waivers] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
     getOwners(db, q.season),
+    getWaiverStatus(db, q.season),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos.
   const values = valuePlayers(rows.map(toTotals));
@@ -198,6 +200,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       stats,
       value: Math.round(v.value * 100) / 100,
       owner: owners.get(r.player_id) ?? null,
+      waiver: waivers.players.get(r.player_id) ?? null,
     };
   });
 
@@ -214,6 +217,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     perPage: q.perPage,
     total: matching.length,
     players,
+    timeZone: waivers.timeZone,
   };
 }
 
@@ -223,7 +227,7 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
 
 /** Returns null when the player id does not exist. */
 export async function getPlayerDetail(db: Pool, playerId: number, season: number): Promise<PlayerDetailResponse | null> {
-  const [playerRes, seasonsRes, logRes, owners] = await Promise.all([
+  const [playerRes, seasonsRes, logRes, owners, waivers] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -273,6 +277,7 @@ export async function getPlayerDetail(db: Pool, playerId: number, season: number
       [playerId, season],
     ),
     getOwners(db, season),
+    getWaiverStatus(db, season),
   ]);
 
   const p = playerRes.rows[0];
@@ -302,6 +307,8 @@ export async function getPlayerDetail(db: Pool, playerId: number, season: number
       availability: null,
     },
     owner: owners.get(p.id) ?? null,
+    waiver: waivers.players.get(p.id) ?? null,
+    timeZone: waivers.timeZone,
     season,
     seasonAverages: current ? seasonRow(season, current) : null,
     gameLog,
