@@ -2,20 +2,63 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LineupSlot } from "../types";
-import { autoLineup, eligibleSlots, validateLineup, type AutoPlayer, type SlotCounts } from "./rules";
+import {
+  autoLineup,
+  eligibleSlots,
+  ilEligibility,
+  rosterProblems,
+  validateLineup,
+  type AutoPlayer,
+  type IlRules,
+  type SlotCounts,
+} from "./rules";
 
-const IL = { il: ["Out"], ilPlus: ["Out", "Day-To-Day"] };
+const IL: IlRules = { il: { statuses: ["Out"], minDays: 0 }, ilPlus: { statuses: ["Out", "Day-To-Day"], minDays: 0 } };
 const COUNTS: SlotCounts = { PG: 1, SG: 1, G: 1, SF: 1, PF: 1, F: 1, C: 2, UTIL: 2, BN: 3, IL: 2 };
 
 function p(id: number, position: string, slot: LineupSlot, over: Partial<AutoPlayer> = {}): AutoPlayer {
-  return { id, slot, eligible: eligibleSlots(position, null, IL), locked: false, plays: true, value: 0, ...over };
+  return { id, slot, eligible: eligibleSlots(position, []), locked: false, plays: true, value: 0, ...over };
 }
 
+const out = (date: string) => ({ status: "Out", date });
+const dtd = (date: string) => ({ status: "Day-To-Day", date });
+
 test("eligibility: G-F fills guard and forward slots, IL needs an Out status", () => {
-  assert.deepEqual(eligibleSlots("G-F", null, IL), ["PG", "SG", "G", "SF", "PF", "F", "UTIL", "BN"]);
-  assert.deepEqual(eligibleSlots("C", "Out", IL), ["C", "UTIL", "BN", "IL", "IL+"]);
-  assert.deepEqual(eligibleSlots("C", "Day-To-Day", IL), ["C", "UTIL", "BN", "IL+"]);
-  assert.deepEqual(eligibleSlots(null, null, IL), ["UTIL", "BN"]);
+  assert.deepEqual(eligibleSlots("G-F", ilEligibility([], IL, "2026-10-25")), ["PG", "SG", "G", "SF", "PF", "F", "UTIL", "BN"]);
+  assert.deepEqual(eligibleSlots("C", ilEligibility([out("2026-10-25")], IL, "2026-10-25")), ["C", "UTIL", "BN", "IL", "IL+"]);
+  assert.deepEqual(eligibleSlots("C", ilEligibility([dtd("2026-10-25")], IL, "2026-10-25")), ["C", "UTIL", "BN", "IL+"]);
+  assert.deepEqual(eligibleSlots(null, []), ["UTIL", "BN"]);
+});
+
+test("IL rule: minimum days count from the start of the qualifying run, to the lineup's date", () => {
+  const rule: IlRules = { il: { statuses: ["Out"], minDays: 3 }, ilPlus: { statuses: ["Out", "Day-To-Day"], minDays: 3 } };
+  // Day-To-Day since the 20th, Out since the 23rd.
+  const stint = [dtd("2026-10-20"), out("2026-10-23")];
+  assert.deepEqual(ilEligibility(stint, rule, "2026-10-25"), ["IL+"]);
+  assert.deepEqual(ilEligibility(stint, rule, "2026-10-26"), ["IL", "IL+"]);
+  // Back to Day-To-Day: IL no longer applies, IL+ keeps the unbroken run.
+  assert.deepEqual(ilEligibility([...stint, dtd("2026-10-26")], rule, "2026-10-27"), ["IL+"]);
+  assert.deepEqual(ilEligibility([{ status: "Probable", date: "2026-10-01" }], rule, "2026-10-27"), []);
+});
+
+test("roster problems: a healthy player on IL, and too many active players", () => {
+  const counts: SlotCounts = { C: 1, BN: 1, IL: 1 };
+  const roster = [
+    { id: 1, slot: "C" as const, eligible: eligibleSlots("C", []), name: "Ann" },
+    { id: 2, slot: "IL" as const, eligible: eligibleSlots("C", ["IL"]), name: "Bo" },
+  ];
+  assert.deepEqual(rosterProblems(roster, counts), []);
+  roster[1].eligible = eligibleSlots("C", []);
+  assert.match(rosterProblems(roster, counts)[0], /Bo is on IL but no longer qualifies/);
+  const crowded = [...roster.slice(0, 1), { id: 3, slot: "BN" as const, eligible: eligibleSlots("C", []), name: "Cy" }, { id: 4, slot: "BN" as const, eligible: eligibleSlots("C", []), name: "Di" }];
+  assert.match(rosterProblems(crowded, counts)[0], /3 active players; the limit is 2/);
+});
+
+test("validate: moving a player off IL can't overfill the active roster", () => {
+  const players = [p(1, "C", "C"), p(2, "C", "BN"), p(3, "C", "IL")];
+  const names = new Map<number, string>();
+  assert.match(validateLineup(players, new Map([[1, "C"], [2, "BN"], [3, "BN"]]), { C: 1, BN: 1, IL: 1 }, names)!, /roster is full \(2 not counting IL\)/);
+  assert.equal(validateLineup(players, new Map([[1, "C"], [2, "BN"], [3, "BN"]]), { C: 1, BN: 2, IL: 1 }, names), null);
 });
 
 test("validate: swapping a starter and a bench player", () => {

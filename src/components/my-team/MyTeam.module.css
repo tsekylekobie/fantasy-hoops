@@ -188,6 +188,19 @@
   color: var(--danger-ink);
 }
 
+.illegal {
+  border: 1px solid var(--danger-ink);
+}
+
+.illegalText {
+  flex: 1 1 320px;
+}
+
+.illegalText ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 .info {
   background: var(--surface-muted);
   border: 1px solid var(--border);
@@ -374,6 +387,21 @@
 .out {
   background: var(--danger-soft);
   color: var(--danger-ink);
+}
+
+/* IL rule chips: can move to IL / on IL but no longer qualifies. */
+.ilOk {
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+
+.ilBad {
+  background: var(--danger-ink);
+  color: var(--on-ink);
+}
+
+.illegalRow {
+  box-shadow: inset 3px 0 0 var(--danger-ink);
 }
 
 .game {

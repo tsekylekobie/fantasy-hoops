@@ -10,19 +10,62 @@ export function isStarting(slot: LineupSlot): boolean {
   return STARTING_SLOTS.includes(slot);
 }
 
+export interface IlSlotRule {
+  /** Injury statuses (player_injuries.status) that qualify. */
+  statuses: string[];
+  /** Days he must have been listed with a qualifying status, without a break. 0 = right away. */
+  minDays: number;
+}
+
+/** The league's IL eligibility rule (leagues.il_statuses, il_min_days, and the IL+ pair). */
 export interface IlRules {
-  /** Injury statuses that may use IL / IL+ (league settings). */
-  il: string[];
-  ilPlus: string[];
+  il: IlSlotRule;
+  ilPlus: IlSlotRule;
+}
+
+/**
+ * One injury report entry from the player's current stint on the report
+ * (since he was last off it), oldest first. `date` is the league-local day it
+ * was observed, yyyy-mm-dd.
+ */
+export interface InjuryReport {
+  status: string;
+  date: string;
+}
+
+const dayNumber = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000;
+
+/**
+ * THE IL eligibility rule: which IL slots a player may move into on `onDate`.
+ * A slot qualifies when his current status is one of its statuses and he's
+ * been listed with one of them, without a break, for at least its minDays.
+ * An empty stint means he's healthy.
+ */
+export function ilEligibility(stint: InjuryReport[], il: IlRules, onDate: string): LineupSlot[] {
+  const out: LineupSlot[] = [];
+  for (const [slot, rule] of [["IL", il.il], ["IL+", il.ilPlus]] as const) {
+    let i = stint.length - 1;
+    if (i < 0 || !rule.statuses.includes(stint[i].status)) continue;
+    while (i > 0 && rule.statuses.includes(stint[i - 1].status)) i--;
+    const days = Math.max(0, dayNumber(onDate) - dayNumber(stint[i].date));
+    if (days >= rule.minDays) out.push(slot);
+  }
+  return out;
+}
+
+/** "Out, 3+ days on the injury report" */
+export function describeIlRule(rule: IlSlotRule): string {
+  const statuses = rule.statuses.length > 0 ? rule.statuses.join(" or ") : "Nobody";
+  return rule.minDays > 0 ? `${statuses}, ${rule.minDays}+ day${rule.minDays > 1 ? "s" : ""} on the injury report` : statuses;
 }
 
 /**
  * Slots a player may hold. BALLDONTLIE positions are "G", "F", "C" or
  * combinations like "F-C"; a G fills PG/SG/G, an F fills SF/PF/F. Everyone
- * fits UTIL and BN; IL slots depend on the injury status and league rules.
+ * fits UTIL and BN; `ilSlots` comes from ilEligibility.
  */
-export function eligibleSlots(position: string | null, injuryStatus: string | null, il: IlRules): LineupSlot[] {
-  const out = new Set<LineupSlot>();
+export function eligibleSlots(position: string | null, ilSlots: LineupSlot[]): LineupSlot[] {
+  const out = new Set<LineupSlot>(ilSlots);
   for (const p of (position ?? "").split("-")) {
     if (p === "G") (["PG", "SG", "G"] as const).forEach((s) => out.add(s));
     if (p === "F") (["SF", "PF", "F"] as const).forEach((s) => out.add(s));
@@ -30,10 +73,39 @@ export function eligibleSlots(position: string | null, injuryStatus: string | nu
   }
   out.add("UTIL");
   out.add("BN");
-  if (injuryStatus && il.il.includes(injuryStatus)) out.add("IL");
-  if (injuryStatus && il.ilPlus.includes(injuryStatus)) out.add("IL+");
   // Display order follows the slot list.
   return (["PG", "SG", "G", "SF", "PF", "F", "C", "UTIL", "BN", "IL", "IL+"] as const).filter((s) => out.has(s));
+}
+
+export const isIlSlot = (slot: LineupSlot) => IL_SLOTS.includes(slot);
+
+/** Players a roster may hold outside IL: the league's non-IL slots, bench included. */
+export function activeRosterLimit(counts: SlotCounts): number {
+  return Object.entries(counts)
+    .filter(([slot]) => !isIlSlot(slot as LineupSlot))
+    .reduce((n, [, count]) => n + (count ?? 0), 0);
+}
+
+/**
+ * Why a roster is illegal, as messages for the manager; empty when it's
+ * legal. Illegal = someone on IL who no longer qualifies (he stays put, like
+ * Yahoo), or more active players than the limit. While illegal, a team can't
+ * add players or place waiver claims; drops and lineup moves still work.
+ */
+export function rosterProblems(
+  players: { id: number; slot: LineupSlot; eligible: LineupSlot[]; name: string }[],
+  counts: SlotCounts,
+): string[] {
+  const out: string[] = [];
+  for (const p of players) {
+    if (isIlSlot(p.slot) && !p.eligible.includes(p.slot)) {
+      out.push(`${p.name} is on ${p.slot} but no longer qualifies. Move him to the bench (if the roster is full, drop someone first) or drop him.`);
+    }
+  }
+  const active = players.filter((p) => !isIlSlot(p.slot)).length;
+  const limit = activeRosterLimit(counts);
+  if (active > limit) out.push(`${active} active players; the limit is ${limit} not counting IL. Drop a player or move one to IL.`);
+  return out;
 }
 
 export interface RulePlayer {
@@ -47,7 +119,8 @@ export interface RulePlayer {
  * Checks a proposed lineup (player id -> slot) against the current one.
  * Returns an error message, or null when it's allowed. A player who stays in
  * his slot is always fine, even if he no longer qualifies for it (e.g. an IL
- * player who got healthy); slot counts only fail when a move overfills a slot.
+ * player who got healthy: rosterProblems flags that); slot counts only fail
+ * when a move overfills a slot or the active roster.
  */
 export function validateLineup(
   players: RulePlayer[],
@@ -73,8 +146,14 @@ export function validateLineup(
         : `${name} can't play ${slot}.`;
     }
   }
+  // Moving someone off IL can't push the active roster past the limit.
+  const active = (m: Map<LineupSlot, number>) => [...m].reduce((n, [s, c]) => n + (isIlSlot(s) ? 0 : c), 0);
+  const limit = activeRosterLimit(counts);
+  if (active(after) > limit && active(after) > active(before)) {
+    return `Your roster is full (${limit} not counting IL). Drop a player before moving someone off IL.`;
+  }
   for (const [slot, n] of after) {
-    if (slot === "BN") continue; // the bench grows as needed; roster size is capped by adds, not lineups
+    if (slot === "BN") continue; // the bench grows as needed; the active limit above caps it
     const limit = counts[slot] ?? 0;
     if (n > limit && n > (before.get(slot) ?? 0)) {
       return limit === 0 ? `This league has no ${slot} slot.` : `Only ${limit} ${slot} slot${limit > 1 ? "s" : ""}.`;

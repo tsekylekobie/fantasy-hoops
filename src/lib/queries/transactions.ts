@@ -8,6 +8,10 @@
 // Rules:
 // - The roster limit is the league's non-IL slots (roster_slots minus IL and
 //   IL+); players on IL/IL+ today don't count. An add over the limit needs a drop.
+// - An illegal roster (lineup/rules.ts rosterProblems: someone on IL who no
+//   longer qualifies, or too many active players) can't add anyone, waiver
+//   claims included, unless the same move's drop makes it legal. Drops alone
+//   are always allowed: they're one way to fix it.
 // - Adds (free agents and waiver claims, not trades) are capped per matchup
 //   week and per season by leagues.max_adds_per_week / max_adds_per_season.
 // - A player locked in a starting slot today (his game has tipped off, or the
@@ -16,11 +20,10 @@
 // - Whether an add is immediate or a waiver claim is decided by
 //   transactions/policy.ts; for now every add is immediate.
 import type { Pool, PoolClient } from "pg";
-import { isStarting } from "../lineup/rules";
+import { activeRosterLimit, isIlSlot, isStarting, rosterProblems } from "../lineup/rules";
 import { addMode, dropDestination, type MovePolicyLeague } from "../transactions/policy";
 import type {
   AddCandidate,
-  LineupSlot,
   PlayerOwner,
   PlayerSummary,
   RosterMoveOption,
@@ -34,8 +37,6 @@ type Db = Pool | PoolClient;
 
 /** A move the rules refuse; the message is shown to the manager. */
 export class TransactionError extends LineupError {}
-
-const IL_SLOTS: LineupSlot[] = ["IL", "IL+"];
 
 interface LeagueRules extends MovePolicyLeague {
   maxAddsPerWeek: number | null;
@@ -73,13 +74,18 @@ async function countAdds(db: Db, team: TeamContext): Promise<{ week: number; sea
   return r;
 }
 
-function rosterLimit(team: TeamContext): number {
-  return Object.entries(team.rosterSlots)
-    .filter(([slot]) => !IL_SLOTS.includes(slot as LineupSlot))
-    .reduce((n, [, count]) => n + (count ?? 0), 0);
+const rosterLimit = (team: TeamContext) => activeRosterLimit(team.rosterSlots);
+
+const countsAgainstLimit = (day: DayState) => day.players.filter((p) => !isIlSlot(p.slot)).length;
+
+/** Today's roster problems if `dropId` were gone (null = as it is). */
+function problemsAfterDrop(team: TeamContext, day: DayState, dropId: number | null): string[] {
+  if (dropId === null) return day.problems;
+  const rest = day.players.filter((p) => p.id !== dropId).map((p) => ({ ...p, name: name(p) }));
+  return rosterProblems(rest, team.rosterSlots);
 }
 
-const countsAgainstLimit = (day: DayState) => day.players.filter((p) => !IL_SLOTS.includes(p.slot)).length;
+const illegalMessage = (problems: string[]) => `Your roster is illegal, so you can't add players until it's fixed. ${problems[0]}`;
 
 const name = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim();
 
@@ -147,7 +153,7 @@ function seasonLine(values: Values, id: number) {
   return line;
 }
 
-function rosterOptions(day: DayState, values: Values): RosterMoveOption[] {
+function rosterOptions(team: TeamContext, day: DayState, values: Values): RosterMoveOption[] {
   return day.players
     .map((p) => {
       const cur = values.current.get(p.id);
@@ -158,6 +164,8 @@ function rosterOptions(day: DayState, values: Values): RosterMoveOption[] {
         pts: avg?.pts ?? null, reb: avg?.reb ?? null,
         value: Math.round((cur?.value ?? values.previous.get(p.id)?.value ?? 0) * 100) / 100,
         dropBlocked: dropBlocked(p),
+        fixesIllegalRoster: day.problems.length > 0 && problemsAfterDrop(team, day, p.id).length === 0
+          && countsAgainstLimit(day) - (isIlSlot(p.slot) ? 0 : 1) + 1 <= rosterLimit(team),
       };
     })
     .sort((a, b) => a.value - b.value);
@@ -192,11 +200,12 @@ export async function getRosterMovesContext(
     today: team.today,
     rosterCount: countsAgainstLimit(day),
     rosterLimit: rosterLimit(team),
+    rosterProblems: day.problems,
     addsThisWeek: adds.week,
     maxAddsPerWeek: rules.maxAddsPerWeek,
     addsThisSeason: adds.season,
     maxAddsPerSeason: rules.maxAddsPerSeason,
-    roster: rosterOptions(day, values),
+    roster: rosterOptions(team, day, values),
     add,
   };
 }
@@ -240,10 +249,12 @@ export async function runRosterMove(
         if (!t) throw new TransactionError("Player not found.", 404);
         const blocked = addBlocked(team, rules, adds, t);
         if (blocked) throw new TransactionError(blocked, 409);
+        const problems = problemsAfterDrop(team, day, dropPlayerId);
+        if (problems.length > 0) throw new TransactionError(illegalMessage(problems), 409);
         // Waivers session: record a pending 'waiver_claim' (process_at from the
         // league's waiver_time) and return it, instead of refusing.
         if (addMode(rules, { onWaivers: t.on_waivers, gameStarted: t.game_started }) === "waiver") throw new TransactionError("Waiver claims aren't open yet.", 409);
-        const droppingCounted = dropped !== null && !IL_SLOTS.includes(day.players.find((x) => x.id === dropPlayerId)!.slot);
+        const droppingCounted = dropped !== null && !isIlSlot(day.players.find((x) => x.id === dropPlayerId)!.slot);
         const after = countsAgainstLimit(day) + 1 - (droppingCounted ? 1 : 0);
         if (after > rosterLimit(team)) {
           throw new TransactionError(

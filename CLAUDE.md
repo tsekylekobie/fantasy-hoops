@@ -12,6 +12,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 - `src/app/api/players/`: JSON endpoints. Users read from our DB, never the API directly.
 - `src/app/api/team/transactions/` + `src/lib/queries/transactions.ts`: add/drop. `src/lib/transactions/policy.ts`
   is the one place that decides immediate add vs. waiver claim (and where dropped players go).
+- `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (league data: `il_statuses`,
+  `il_min_days` and the IL+ pair); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; the others (my team, matchup, league, claim, nav map, phone) are later-milestone exploration.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
