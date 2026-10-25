@@ -3,7 +3,7 @@
 // jsonb_to_recordset, so a page of 100 rows is a single statement.
 
 import type { PoolClient, Pool } from "pg";
-import type { Game, Player, StatLine, Team } from "../../src/lib/bdl";
+import type { Game, Injury, Player, StatLine, Team } from "../../src/lib/bdl";
 
 type Db = Pool | PoolClient;
 
@@ -280,6 +280,51 @@ export async function classifyGames(db: Db, season: number): Promise<{ playIn: n
     [season],
   );
   return { playIn: rows[0].play_in, cupFinal: rows[0].cup_final };
+}
+
+/**
+ * Appends to player_injuries (a history: the latest row per player is his
+ * current report) only where the report changed. "Available" is stored as a
+ * NULL status, the same as leaving the report; players on the last report
+ * but missing from this one get a NULL row. An empty report is ignored
+ * rather than clearing everyone. Call inside a transaction.
+ */
+export async function recordInjuries(db: Db, report: Injury[]): Promise<number> {
+  if (!report.length) return 0;
+  await ensurePlayers(db, report.map((i) => i.player));
+  const rows = dedupe(report, (i) => i.playerId).map((i) => ({
+    player_id: i.playerId,
+    status: i.status === "Available" ? null : i.status,
+    return_date: i.returnDate,
+    description: i.description,
+    raw: i.raw,
+  }));
+  const res = await db.query(
+    `WITH latest AS (
+       SELECT DISTINCT ON (player_id) player_id, status, return_date, description
+         FROM player_injuries ORDER BY player_id, observed_at DESC, id DESC
+     ),
+     feed AS (
+       SELECT * FROM jsonb_to_recordset($1::jsonb)
+         AS r(player_id int, status text, return_date date, description text, raw jsonb)
+     ),
+     changed AS (
+       SELECT f.player_id, f.status, f.return_date, f.description, f.raw
+         FROM feed f LEFT JOIN latest l ON l.player_id = f.player_id
+        WHERE (l.player_id IS NULL AND f.status IS NOT NULL)
+           OR (l.player_id IS NOT NULL AND (l.status, l.return_date, l.description)
+                 IS DISTINCT FROM (f.status, f.return_date, f.description))
+     ),
+     dropped AS (
+       SELECT l.player_id, NULL::text, NULL::date, NULL::text, NULL::jsonb
+         FROM latest l
+        WHERE l.status IS NOT NULL AND NOT EXISTS (SELECT 1 FROM feed f WHERE f.player_id = l.player_id)
+     )
+     INSERT INTO player_injuries (player_id, status, return_date, description, raw)
+     SELECT * FROM changed UNION ALL SELECT * FROM dropped`,
+    [JSON.stringify(rows)],
+  );
+  return res.rowCount ?? 0;
 }
 
 function dedupe<T>(items: T[], key: (t: T) => string | number): T[] {

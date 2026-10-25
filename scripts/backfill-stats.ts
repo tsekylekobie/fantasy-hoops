@@ -18,6 +18,7 @@
 import "dotenv/config";
 import { Pool } from "pg";
 import { createClient, type DataClient } from "../src/lib/bdl";
+import { getState, log, saveState, seasonIsOpen } from "./lib/sync";
 import { classifyGames, upsertGames, upsertStatLines } from "./lib/upsert";
 
 interface Args {
@@ -48,48 +49,6 @@ function parseArgs(argv: string[]): Args {
   if (args.since && !/^\d{4}-\d{2}-\d{2}$/.test(args.since)) throw new Error("--since must be YYYY-MM-DD");
   return args;
 }
-
-interface SyncState {
-  cursor: number | null;
-  completedAt: Date | null;
-}
-
-async function getState(db: Pool, key: string): Promise<SyncState | null> {
-  const { rows } = await db.query(`SELECT cursor, completed_at FROM sync_state WHERE key = $1`, [key]);
-  if (!rows.length) return null;
-  return { cursor: rows[0].cursor == null ? null : Number(rows[0].cursor), completedAt: rows[0].completed_at };
-}
-
-async function saveState(
-  db: Pool | import("pg").PoolClient,
-  key: string,
-  cursor: number | null,
-  completed: boolean,
-  rowsWritten: number,
-) {
-  await db.query(
-    `INSERT INTO sync_state (key, cursor, completed_at, rows_written, updated_at)
-     VALUES ($1, $2, CASE WHEN $3 THEN now() END, $4, now())
-     ON CONFLICT (key) DO UPDATE SET
-       cursor = EXCLUDED.cursor,
-       completed_at = CASE WHEN $3 THEN now() ELSE sync_state.completed_at END,
-       rows_written = sync_state.rows_written + $4,
-       updated_at = now()`,
-    [key, cursor, completed, rowsWritten],
-  );
-}
-
-/** A season is "open" if any stored game is neither final nor postponed. */
-async function seasonIsOpen(db: Pool, season: number): Promise<boolean> {
-  const { rows } = await db.query(
-    `SELECT count(*)::int AS n FROM games
-     WHERE season = $1 AND NOT postponed AND coalesce(status_state, lower(status)) <> 'final'`,
-    [season],
-  );
-  return rows[0].n > 0;
-}
-
-const log = (msg: string) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${msg}`);
 
 async function backfillGames(db: Pool, api: DataClient, season: number, args: Args) {
   const key = `games:${season}`;

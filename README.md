@@ -78,11 +78,29 @@ For a production build: `npm run build && npm start`.
 
 ## Keeping the current season up to date
 
-New games are not loaded automatically yet. To pull in games since the last run:
+Run the sync worker in a second terminal next to `npm run dev`:
 
 ```sh
-npm run backfill -- --seasons 2026
+npm run worker
 ```
+
+It keeps the database current on its own, logging one line per pass:
+
+| Task | Cadence | What it pulls |
+|---|---|---|
+| `live` | every 2 min while a game is live; otherwise every 30 min, or just after the next tip-off | today's and yesterday's games (scores, status, clock), and stat lines for games in progress or finished in the last 5 hours |
+| `injuries` | every 15 min on game days, every 2 h otherwise | the injury report; a `player_injuries` row is added only when a player's report changes |
+| `corrections` | once a day after 9 AM | the last 3 days of games and stat lines again, for stat corrections |
+| `rosters` | every 12 h | teams, players and the season schedule (about 90 requests, 2 minutes) |
+
+Ctrl-C stops it after the current pass, and restarting is safe: each task's last run is saved in
+`sync_state` (`worker:<task>`), so a restart doesn't redo the slow passes. `npm run worker -- --once`
+runs every task once and exits. All tasks share one API client, so together they stay under
+`BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 120),
+`WORKER_CORRECTIONS_HOUR` (default 9) and `WORKER_TIME_ZONE` (default `America/New_York`).
+In production it runs as its own process (e.g. a second Railway service with `npm run worker`).
+
+Without the worker, `npm run backfill -- --seasons 2026` pulls in everything since the last run.
 
 ## Checks
 

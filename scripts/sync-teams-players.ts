@@ -2,32 +2,24 @@
 // Usage: npm run sync:players
 // Players on defunct franchises or without a team get team_id null.
 // nba_person_id is never touched (scripts/map-headshots.py owns it).
+// The worker (scripts/worker.ts) runs the same pass twice a day.
 import "dotenv/config";
 import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
-import { upsertPlayers, upsertTeams } from "./lib/upsert";
+import { syncTeamsAndPlayers } from "./lib/sync";
 
 async function main() {
   const db = new Pool({ connectionString: process.env.DATABASE_URL });
   const api = createClient();
   const started = Date.now();
   try {
-    const teams = (await api.teams()).filter((t) => t.isCurrent);
-    await upsertTeams(db, teams);
-    console.log(`teams: upserted ${teams.length}`);
-
-    let total = 0;
-    let pages = 0;
-    for await (const page of api.players()) {
-      total += await upsertPlayers(db, page.items);
-      pages++;
-      if (pages % 10 === 0) console.log(`players: ${total} after ${pages} pages`);
-    }
+    const { teams, players } = await syncTeamsAndPlayers(db, api);
+    console.log(`teams: upserted ${teams}`);
     const { rows } = await db.query(
       `SELECT count(*)::int AS n, count(team_id)::int AS with_team FROM players`,
     );
     console.log(
-      `players: upserted ${total} in ${pages} pages; table has ${rows[0].n} (${rows[0].with_team} on a current team). ` +
+      `players: upserted ${players}; table has ${rows[0].n} (${rows[0].with_team} on a current team). ` +
         `${api.requestCount} requests, ${Math.round((Date.now() - started) / 1000)}s`,
     );
   } finally {
