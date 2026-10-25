@@ -10,6 +10,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   `schema_migrations`. Never edit a migration that has been committed; add the next number instead.
   `scripts/dev/seed-league.ts` (`npm run db:seed:league`) seeds a 12-team league with mock managers.
 - `src/app/api/players/`: JSON endpoints. Users read from our DB, never the API directly.
+- `src/app/api/team/transactions/` + `src/lib/queries/transactions.ts`: add/drop. `src/lib/transactions/policy.ts`
+  is the one place that decides immediate add vs. waiver claim (and where dropped players go).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; the others (my team, matchup, league, claim, nav map, phone) are later-milestone exploration.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.

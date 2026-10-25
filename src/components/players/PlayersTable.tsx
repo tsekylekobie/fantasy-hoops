@@ -32,9 +32,15 @@ interface Props {
   errorMessage: string | null;
   onRetry: () => void;
   onOpenPlayer: (id: number) => void;
+  /** Free agents get an Add button that calls this. */
+  onAddPlayer: (id: number) => void;
+  /** The signed-in manager's team, whose players get a dark chip. */
+  myTeamId: number | null;
 }
 
-export default function PlayersTable({ data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer }: Props) {
+export default function PlayersTable({
+  data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer, onAddPlayer, myTeamId,
+}: Props) {
   const rows = data?.players ?? [];
   // The data's own mode decides formatting, so stale rows shown while the
   // other mode loads keep their correct decimals.
@@ -71,6 +77,7 @@ export default function PlayersTable({ data, mode, sort, dir, onSort, status, er
             <col key={i} className={styles.cStat} />
           ))}
           <col className={styles.cValue} />
+          <col className={styles.cOwner} />
         </colgroup>
         <thead>
           <tr>
@@ -79,19 +86,24 @@ export default function PlayersTable({ data, mode, sort, dir, onSort, status, er
             {COLUMNS.map((c) => (
               <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} />
             ))}
+            <th scope="col" className={styles.n}>
+              Owner
+            </th>
           </tr>
         </thead>
         <tbody>
           {message ? (
             <tr className={styles.messageRow}>
-              <td colSpan={COLUMNS.length + 2}>
+              <td colSpan={COLUMNS.length + 3}>
                 <div className={styles.message} role={status === "error" ? "alert" : "status"}>
                   {message}
                 </div>
               </td>
             </tr>
           ) : (
-            rows.map((p) => <Row key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} />)
+            rows.map((p) => (
+              <Row key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId} />
+            ))
           )}
         </tbody>
       </table>
@@ -104,11 +116,15 @@ function Row({
   num,
   mode,
   onOpen,
+  onAdd,
+  myTeamId,
 }: {
   p: PlayerRow;
   num: (v: number) => string;
   mode: StatMode;
   onOpen: (id: number) => void;
+  onAdd: (id: number) => void;
+  myTeamId: number | null;
 }) {
   const s = p.stats;
   return (
@@ -141,6 +157,17 @@ function Row({
       <td className={styles.n}>{num(s.blk)}</td>
       <td className={styles.n}>{num(s.tov)}</td>
       <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
+      <td className={`${styles.n} ${styles.own}`}>
+        {p.owner === null ? (
+          <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} onClick={() => onAdd(p.id)}>
+            Add
+          </button>
+        ) : p.owner.teamId === myTeamId ? (
+          <span className={styles.mine}>{p.owner.abbreviation}</span>
+        ) : (
+          p.owner.abbreviation
+        )}
+      </td>
     </tr>
   );
 }

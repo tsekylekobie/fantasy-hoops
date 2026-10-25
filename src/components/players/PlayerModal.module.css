@@ -84,6 +84,34 @@
   color: var(--ink-muted);
 }
 
+/* Add (free agents): sits before the close button. */
+.add {
+  margin-left: auto;
+  flex: none;
+  height: 44px;
+  min-width: 88px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-ink);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+
+.add:hover {
+  background: var(--accent-ink);
+}
+
+.add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.add + .close {
+  margin-left: 0;
+}
+
 .close {
   margin-left: auto;
   flex: none;
