@@ -9,6 +9,7 @@ import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
+import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
 import styles from "./PlayersBrowser.module.css";
 
 const PER_PAGE = 50;
@@ -126,6 +127,18 @@ export default function PlayersBrowser() {
     return () => clearTimeout(t);
   }, [search, navigate]);
 
+  // Add sheet (over the table or the modal), and the manager's team for "mine" chips.
+  const [adding, setAdding] = useState<number | null>(null);
+  const [myTeamId, setMyTeamId] = useState<number | null>(null);
+  const [movesKey, setMovesKey] = useState(0);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchMyTeamId(ctrl.signal).then((id) => {
+      if (!ctrl.signal.aborted) setMyTeamId(id);
+    });
+    return () => ctrl.abort();
+  }, []);
+
   // Table data.
   const [load, setLoad] = useState<Load>({ status: "loading", data: null });
   const [retryKey, setRetryKey] = useState(0);
@@ -155,7 +168,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, sort, dir, page, retryKey]);
+  }, [q, scope, pos, range, mode, sort, dir, page, retryKey, movesKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -232,6 +245,8 @@ export default function PlayersBrowser() {
           errorMessage={load.status === "error" ? load.message : null}
           onRetry={() => setRetryKey((k) => k + 1)}
           onOpenPlayer={openPlayer}
+          onAddPlayer={setAdding}
+          myTeamId={myTeamId}
         />
 
         <div className={styles.footer}>
@@ -247,7 +262,8 @@ export default function PlayersBrowser() {
         </div>
       </div>
 
-      <PlayerModal playerId={player} onClose={closePlayer} />
+      <PlayerModal playerId={player} onClose={closePlayer} onAdd={setAdding} myTeamId={myTeamId} refreshKey={movesKey} />
+      <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>
   );
 }

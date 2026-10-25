@@ -64,6 +64,8 @@ export interface PlayerRow extends PlayerSummary {
   stats: CategoryLine;
   /** 9CAT value (sum of category z-scores; higher is better). */
   value: number;
+  /** The fantasy team he's on in the season's league; null = free agent. */
+  owner: PlayerOwner | null;
 }
 
 /**
@@ -122,6 +124,8 @@ export interface PlayerDetailResponse {
     /** No injury data in M1, so this is null and the UI hides the chip. */
     availability: "available" | "day-to-day" | "out" | null;
   };
+  /** The fantasy team he's on in the season's league; null = free agent. */
+  owner: PlayerOwner | null;
   season: number;
   /** Per-game averages for `season`; null if the player has no games in it. */
   seasonAverages: SeasonRow | null;
@@ -289,6 +293,36 @@ export interface LeagueOverview {
   myTeam: FantasyTeamSummary | null;
 }
 
+/** transactions.type: every kind of roster move the league records. */
+export type TransactionType = "add" | "drop" | "add_drop" | "waiver_claim" | "trade" | "commissioner";
+
+/** One player moved by a transaction. from null = from free agents or waivers; to null = dropped. */
+export interface TransactionMove {
+  player: PlayerSummary;
+  from: FantasyTeamSummary | null;
+  to: FantasyTeamSummary | null;
+}
+
+/** A completed transaction, for the League page's Recent transactions list. */
+export interface LeagueTransaction {
+  id: number;
+  type: TransactionType;
+  /** When rosters changed (processed_at, else created_at), ISO timestamp. */
+  at: string;
+  /** Who made the move (trades: the proposer). */
+  team: FantasyTeamSummary | null;
+  /** Trades: the other side. */
+  tradeTeam: FantasyTeamSummary | null;
+  /** Adds first, then moves between teams, then drops. */
+  moves: TransactionMove[];
+}
+
+/** The League page's Recent transactions: newest first, and the league's time zone for times. */
+export interface RecentTransactions {
+  timeZone: string;
+  transactions: LeagueTransaction[];
+}
+
 /** The signed-in user, as the UI sees it. */
 export interface SessionUser {
   id: number;
@@ -387,4 +421,81 @@ export interface AutoLineupRequest {
 export interface AutoLineupResponse extends TeamLineupResponse {
   /** Days whose lineup changed, yyyy-mm-dd. */
   changed: string[];
+}
+
+// Add / drop (/api/team/transactions)
+
+/** The fantasy team a player is on. */
+export interface PlayerOwner {
+  teamId: number;
+  abbreviation: string;
+}
+
+/** Immediate: rosters change now (free agents). Waiver: a pending claim that runs at the league's waiver time. */
+export type AddMode = "immediate" | "waiver";
+
+/** One of the manager's players, as the drop list shows him. */
+export interface RosterMoveOption extends PlayerSummary {
+  /** His slot today. IL and IL+ don't count against the roster limit. */
+  slot: LineupSlot;
+  injuryStatus: string | null;
+  /** Season per-game points and rebounds; null with no games yet. */
+  pts: number | null;
+  reb: number | null;
+  /** 9CAT value this season (last season before he plays); the list is sorted by it, lowest first. */
+  value: number;
+  /** Why he can't be dropped right now (e.g. locked in today's lineup); null when he can. */
+  dropBlocked: string | null;
+}
+
+/** The player being added, as the add sheet shows him. */
+export interface AddCandidate extends PlayerSummary {
+  owner: PlayerOwner | null;
+  mode: AddMode;
+  /** Season per-game averages; null with no games yet. */
+  seasonAverages: CategoryLine | null;
+  /** Why he can't be added (rostered, adds limit reached); null when he can. */
+  addBlocked: string | null;
+}
+
+/**
+ * GET /api/team/transactions?add=<playerId>: the signed-in manager's roster
+ * and limits, for the add/drop sheet. `add` is filled in when ?add= is given.
+ */
+export interface RosterMovesContext {
+  team: FantasyTeamSummary & { waiverPriority: number | null };
+  teamCount: number;
+  /** The league's today, yyyy-mm-dd. */
+  today: string;
+  /** Players counted against the limit (everyone not on IL/IL+ today), and the limit (non-IL slots). */
+  rosterCount: number;
+  rosterLimit: number;
+  /** Adds (free agents and waiver claims) this matchup week and season; null limit = unlimited. */
+  addsThisWeek: number;
+  maxAddsPerWeek: number | null;
+  addsThisSeason: number;
+  maxAddsPerSeason: number | null;
+  /** Lowest value first. */
+  roster: RosterMoveOption[];
+  add: AddCandidate | null;
+}
+
+/**
+ * POST /api/team/transactions: add a free agent, drop a player, or both at
+ * once (one DB transaction). At least one id is required; an add that would
+ * overfill the roster needs a drop. Responds with RosterMoveResult.
+ */
+export interface RosterMoveRequest {
+  addPlayerId?: number;
+  dropPlayerId?: number;
+}
+
+export interface RosterMoveResult {
+  transactionId: number;
+  type: "add" | "drop" | "add_drop" | "waiver_claim";
+  /** completed = rosters changed; pending = waiver claim waiting for processAt. */
+  status: "completed" | "pending";
+  processAt: string | null;
+  added: PlayerSummary | null;
+  dropped: PlayerSummary | null;
 }

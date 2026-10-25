@@ -11,7 +11,7 @@
 
 .table {
   width: 100%;
-  min-width: 1054px;
+  min-width: 1158px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -40,6 +40,9 @@
 }
 .cValue {
   width: 82px;
+}
+.cOwner {
+  width: 104px;
 }
 
 .table th,
@@ -220,6 +223,45 @@
 .volume {
   font-size: 12px;
   color: var(--ink-subtle);
+}
+
+/* Owner column: Add for free agents, the team's abbreviation otherwise. */
+.own {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-subtle);
+}
+
+.mine {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 72px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-ink);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+
+.add:hover {
+  background: var(--accent-ink);
+}
+
+.add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Phones: the table scrolls inside its card with # and Player sticky

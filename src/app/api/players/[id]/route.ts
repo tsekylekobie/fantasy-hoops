@@ -23,7 +23,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const [detail, thisWeek] = await Promise.all([getPlayerDetail(pool, id, season), getPlayerWeek(pool, id, season)]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
     const body: PlayerDetailResponse = { ...detail, thisWeek };
-    return NextResponse.json(body, { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=60" } });
+    // No caching: owners change with every add and drop.
+    return NextResponse.json(body, { headers: { "Cache-Control": "no-cache" } });
   } catch (err) {
     console.error(`GET /api/players/${id} failed`, err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

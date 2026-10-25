@@ -11,6 +11,12 @@ interface Props {
   /** The player to show; null keeps the dialog closed. */
   playerId: number | null;
   onClose: () => void;
+  /** Free agents get an Add button that calls this. */
+  onAdd?: (id: number) => void;
+  /** The signed-in manager's team, to say "On your team". */
+  myTeamId?: number | null;
+  /** Bump to refetch (e.g. after an add changed his owner). */
+  refreshKey?: number;
 }
 
 type Load =
@@ -25,7 +31,7 @@ const AVAILABILITY: Record<"available" | "day-to-day" | "out", { label: string; 
   out: { label: "Out", className: styles.chipOut },
 };
 
-export default function PlayerModal({ playerId, onClose }: Props) {
+export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const closingFromProp = useRef(false);
@@ -73,7 +79,8 @@ export default function PlayerModal({ playerId, onClose }: Props) {
   useEffect(() => {
     if (playerId === null) return;
     const ctrl = new AbortController();
-    setLoad({ status: "loading", id: playerId });
+    // A refresh keeps the loaded player on screen until the new data arrives.
+    setLoad((prev) => (prev.status === "ready" && prev.id === playerId ? prev : { status: "loading", id: playerId }));
     fetchJson<PlayerDetailResponse>(`/api/players/${playerId}?season=${CURRENT_SEASON}`, ctrl.signal)
       .then((data) => setLoad({ status: "ready", id: playerId, data }))
       .catch((err: unknown) => {
@@ -81,7 +88,7 @@ export default function PlayerModal({ playerId, onClose }: Props) {
         setLoad({ status: "error", id: playerId, message: err instanceof Error ? err.message : "Something went wrong." });
       });
     return () => ctrl.abort();
-  }, [playerId, retryKey]);
+  }, [playerId, retryKey, refreshKey]);
 
   const requestClose = () => onCloseRef.current();
 
@@ -110,7 +117,7 @@ export default function PlayerModal({ playerId, onClose }: Props) {
         {/* The close button stays mounted across loading -> loaded so focus isn't lost. */}
         <div className={styles.header}>
           {data ? (
-            <DetailHead data={data} />
+            <DetailHead data={data} onAdd={onAdd} myTeamId={myTeamId} />
           ) : (
             <div className={styles.headText}>
               <h2 id="player-modal-title" className={styles.name}>
@@ -153,8 +160,10 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   );
 }
 
-function DetailHead({ data }: { data: PlayerDetailResponse }) {
-  const { player } = data;
+function DetailHead({
+  data, onAdd, myTeamId,
+}: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
+  const { player, owner } = data;
   const chip = player.availability ? AVAILABILITY[player.availability] : null;
   const team = player.teamName ?? player.teamAbbr;
   const subline = [team, player.position, `${seasonLabel(data.season)} season`].filter(Boolean).join(" · ");
@@ -166,8 +175,16 @@ function DetailHead({ data }: { data: PlayerDetailResponse }) {
           {fullName(player)}
           {chip && <span className={`${styles.chip} ${chip.className}`}>{chip.label}</span>}
         </h2>
-        <p className={styles.subline}>{subline}</p>
+        <p className={styles.subline}>
+          {subline}
+          {owner && ` · ${owner.teamId === myTeamId ? "On your team" : `On ${owner.abbreviation}`}`}
+        </p>
       </div>
+      {owner === null && onAdd && (
+        <button type="button" className={styles.add} onClick={() => onAdd(player.id)}>
+          Add
+        </button>
+      )}
     </>
   );
 }

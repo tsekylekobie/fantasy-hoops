@@ -10,6 +10,7 @@ import type {
   CategoryLine,
   GameLogRow,
   PlayerDetailResponse,
+  PlayerOwner,
   PlayerRow,
   PlayersResponse,
   SeasonRow,
@@ -110,11 +111,17 @@ const LAST14_WINDOW_SQL = `
   ) x
   WHERE d IS NOT NULL`;
 
-// Players on a team in the season's league (one league per season; the newest wins).
+// Players on a team in the season's league (one league per season; the newest wins), and the team.
 const ROSTERED_SQL = `
-  SELECT rp.player_id
+  SELECT rp.player_id, ft.id::int AS team_id, ft.abbreviation
   FROM roster_players rp
+  JOIN fantasy_teams ft ON ft.id = rp.fantasy_team_id
   WHERE rp.league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)`;
+
+async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOwner>> {
+  const { rows } = await db.query<{ player_id: number; team_id: number; abbreviation: string }>(ROSTERED_SQL, [season]);
+  return new Map(rows.map((r) => [r.player_id, { teamId: r.team_id, abbreviation: r.abbreviation }]));
+}
 
 /** Sort key for a column (not "value"), from unrounded numbers in the requested mode. */
 export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) => number | string | null {
@@ -152,11 +159,9 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const [{ rows }, rostered] = await Promise.all([
+  const [{ rows }, owners] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
-    q.scope === "fa"
-      ? db.query<{ player_id: number }>(ROSTERED_SQL, [q.season]).then((res) => new Set(res.rows.map((r) => r.player_id)))
-      : null,
+    getOwners(db, q.season),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos.
   const values = valuePlayers(rows.map(toTotals));
@@ -164,7 +169,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
-    .filter((r) => !rostered?.has(r.player_id))
+    .filter((r) => q.scope === "all" || !owners.has(r.player_id))
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
     .map((r) => {
       const v = values.get(r.player_id)!;
@@ -192,6 +197,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       min,
       stats,
       value: Math.round(v.value * 100) / 100,
+      owner: owners.get(r.player_id) ?? null,
     };
   });
 
@@ -215,12 +221,12 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
   return { season, gp: t.gp, ...categoryLine(t, "avg") };
 }
 
-/** Returns null when the player id does not exist. */
-/** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup). */
+/** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
+ *  Returns null when the player id does not exist. */
 export async function getPlayerDetail(
   db: Pool, playerId: number, season: number,
 ): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
-  const [playerRes, seasonsRes, logRes] = await Promise.all([
+  const [playerRes, seasonsRes, logRes, owners] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -269,6 +275,7 @@ export async function getPlayerDetail(
        ORDER BY g.date DESC, g.id DESC`,
       [playerId, season],
     ),
+    getOwners(db, season),
   ]);
 
   const p = playerRes.rows[0];
@@ -297,6 +304,7 @@ export async function getPlayerDetail(
       teamName: p.team_name,
       availability: null,
     },
+    owner: owners.get(p.id) ?? null,
     season,
     seasonAverages: current ? seasonRow(season, current) : null,
     gameLog,
