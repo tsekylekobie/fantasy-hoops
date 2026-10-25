@@ -1,17 +1,20 @@
 "use client";
 
 // My team: the signed-in manager's daily lineup (docs/design/my-team.mockup.html).
-// Pick a day, tap Move on a player, then tap a highlighted slot. Changes save
-// right away. Past days and players whose game has tipped off are locked.
+// Pick a day, tap a player's slot, then tap a highlighted slot (an open spot,
+// the bench, or another player to swap with). Changes save right away. Past
+// days and players whose game has tipped off are locked. Stats are the day's
+// box score, and the starters' total is what counts toward the matchup.
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
-import { fetchJson, fmtAvg, fmtPct, fullName } from "@/components/players/format";
+import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import type {
   AutoLineupRequest,
   AutoLineupResponse,
+  CategoryLine,
   LineupGame,
   LineupPlayer,
   LineupSlot,
@@ -21,14 +24,18 @@ import type {
 import { LINEUP_SLOTS, STARTING_SLOTS } from "@/lib/types";
 import styles from "./MyTeam.module.css";
 
-/** One lineup spot. Slots with more players than the league allows get extra (overflow) spots. */
+/**
+ * One lineup spot. Slots with more players than the league lists get extra
+ * spots; while a player is being moved, the bench gets an open spot too, since
+ * moving to the bench never needs a swap.
+ */
 interface Spot {
   key: string;
   slot: LineupSlot;
   player: LineupPlayer | null;
 }
 
-function buildSpots(data: TeamLineupResponse): Spot[] {
+function buildSpots(data: TeamLineupResponse, openBench: boolean): Spot[] {
   const bySlot = new Map<LineupSlot, LineupPlayer[]>();
   for (const p of data.players) bySlot.set(p.slot, [...(bySlot.get(p.slot) ?? []), p]);
   const spots: Spot[] = [];
@@ -38,11 +45,12 @@ function buildSpots(data: TeamLineupResponse): Spot[] {
     for (let i = 0; i < Math.max(count, players.length); i++) {
       spots.push({ key: `${slot}-${i}`, slot, player: players[i] ?? null });
     }
+    if (slot === "BN" && openBench && players.length >= count) spots.push({ key: "BN-open", slot, player: null });
   }
   return spots;
 }
 
-/** Whether the player in `from` can move to `to` (swapping with whoever is there). */
+/** Whether the player in `from` can move to `to`: into it if it's open, else swapping with whoever is there. */
 function canMove(from: Spot, to: Spot): boolean {
   const a = from.player;
   const b = to.player;
@@ -94,6 +102,37 @@ function gamesClass(remaining: number): string {
 }
 
 const LOCK_TEXT = { past: "Past days are locked", game: "Locked at tip-off", day: "Locked at the day's first tip-off" };
+
+/** Summed day lines; FG%/FT% from summed makes / attempts. */
+function sumLines(lines: CategoryLine[]): CategoryLine {
+  const t = { fgm: 0, fga: 0, ftm: 0, fta: 0, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0 };
+  for (const l of lines) for (const k of Object.keys(t) as (keyof typeof t)[]) t[k] += l[k];
+  const pct = (m: number, a: number) => (a > 0 ? m / a : null);
+  return { ...t, fgPct: pct(t.fgm, t.fga), ftPct: pct(t.ftm, t.fta) };
+}
+
+/** The ten stat cells: MIN, FG%, FT%, then the counting stats. Percentages show makes/attempts below. */
+function statCells(line: CategoryLine | null, min: number | null, dnp: boolean) {
+  if (dnp) return [<span key="min" className={`${styles.num} ${styles.dnp}`}>DNP</span>, ...blankCells(9)];
+  if (!line) return blankCells(10);
+  const shooting = (p: number | null, m: number, a: number, k: string) => (
+    <span key={k} className={styles.num}>
+      {fmtPct(p)}
+      <small className={styles.shots}>{m}/{a}</small>
+    </span>
+  );
+  return [
+    <span key="min" className={styles.num}>{min === null ? "" : Math.round(min)}</span>,
+    shooting(line.fgPct, line.fgm, line.fga, "fg"),
+    shooting(line.ftPct, line.ftm, line.fta, "ft"),
+    ...([line.fg3m, line.pts, line.reb, line.ast, line.stl, line.blk, line.tov] as number[]).map((v, i) => (
+      <span key={i} className={styles.num}>{v}</span>
+    )),
+  ];
+}
+
+const blankCells = (n: number) => Array.from({ length: n }, (_, i) => <span key={`b${i}`} className={styles.num} />);
+
 
 async function sendJson<T>(url: string, method: "PUT" | "POST", body: unknown): Promise<T> {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -163,18 +202,21 @@ export default function MyTeam() {
   }
 
   const editable = data.date >= data.today;
-  const spots = buildSpots(data);
+  // The selected spot's key is stable whether or not the open bench spot is shown.
+  const selPlayer = selected ? buildSpots(data, false).find((s) => s.key === selected)?.player ?? null : null;
+  const spots = buildSpots(data, selPlayer !== null && selPlayer.slot !== "BN");
   const sel = spots.find((s) => s.key === selected) ?? null;
   const starters = spots.filter((s) => isStarter(s.slot));
   const bench = spots.filter((s) => s.slot === "BN");
   const injured = spots.filter((s) => s.slot === "IL" || s.slot === "IL+");
-  const playing = starters.filter((s) => s.player && plays(s.player)).length;
   const isToday = data.date === data.today;
   const dayName = isToday ? "today" : longDay(data.date);
   const idleFixable =
     editable &&
     starters.some((s) => !s.player || (!s.player.lock && !plays(s.player))) &&
     bench.some((s) => s.player && !s.player.lock && plays(s.player));
+  const starterLines = starters.flatMap((s) => (s.player?.dayStats ? [s.player.dayStats] : []));
+  const totals = sumLines(starterLines);
 
   async function save(next: TeamLineupResponse, message: string) {
     if (!data) return;
@@ -244,14 +286,32 @@ export default function MyTeam() {
     const p = spot.player;
     let mode: "idle" | "sel" | "target" | "off" = "idle";
     if (sel) mode = spot.key === sel.key ? "sel" : canMove(sel, spot) ? "target" : "off";
-    const label = mode === "sel" ? "Cancel" : mode === "target" ? "Move here" : p?.lock ? "Locked" : p ? "Move" : "";
-    const disabled = saving || mode === "off" || (mode === "idle" && (!p || !!p.lock || !editable));
+    // The slot badge is the move control: pick a player, then a target.
+    const tappable = !saving && (mode === "sel" || mode === "target" || (mode === "idle" && !!p && !p.lock && editable));
+    let slotLabel = "";
+    if (mode === "sel") slotLabel = `Cancel moving ${p ? fullName(p) : ""}`;
+    else if (mode === "target") slotLabel = p ? `Swap with ${fullName(p)} at ${spot.slot}` : `Move to ${where(spot.slot)}`;
+    else if (p) slotLabel = p.lock ? `${fullName(p)}: ${LOCK_TEXT[p.lock]}` : `Move ${fullName(p)}`;
     const noGame = p && !p.game;
     const gameCls = noGame && isStarter(spot.slot) ? styles.noGame : p?.game?.state === "live" ? styles.live : "";
-    const stats = p?.season;
+    const day = p?.dayStats ?? null;
+    // Final game but no minutes (or no stat row at all, e.g. listed Out).
+    const dnp = p?.game?.state === "final" && (day === null || day.min === 0);
     return (
       <div key={spot.key} className={`${styles.grid} ${styles.row} ${styles[mode]}`}>
-        <span><span className={styles.slot}>{spot.slot}</span></span>
+        <span>
+          <button
+            type="button"
+            className={`${styles.slot} ${p?.lock ? styles.slotLocked : ""}`}
+            disabled={!tappable}
+            title={p?.lock && mode === "idle" ? LOCK_TEXT[p.lock] : undefined}
+            aria-label={slotLabel || `Empty ${spot.slot} slot`}
+            aria-pressed={mode === "sel"}
+            onClick={() => tap(spot)}
+          >
+            {spot.slot}
+          </button>
+        </span>
         <span className={styles.player}>
           {p ? (
             <>
@@ -272,7 +332,7 @@ export default function MyTeam() {
           ) : (
             <>
               <span className={styles.emptyAvatar} aria-hidden="true" />
-              <span className={styles.emptyName}>Empty</span>
+              <span className={styles.emptyName}>{spot.key === "BN-open" ? "Move to bench" : "Empty"}</span>
             </>
           )}
         </span>
@@ -287,42 +347,15 @@ export default function MyTeam() {
             </span>
           )}
         </span>
-        {stats
-          ? [fmtAvg(stats.min), fmtPct(stats.fgPct), fmtPct(stats.ftPct), fmtAvg(stats.fg3m), fmtAvg(stats.pts),
-             fmtAvg(stats.reb), fmtAvg(stats.ast), fmtAvg(stats.stl), fmtAvg(stats.blk), fmtAvg(stats.tov)]
-              .map((v, i) => <span key={i} className={styles.num}>{v}</span>)
-          : Array.from({ length: 10 }, (_, i) => <span key={i} className={styles.num}>{p ? "—" : ""}</span>)}
-        <span>
-          {label && (
-            <button
-              type="button"
-              className={`${styles.moveBtn} ${mode === "target" ? styles.go : mode === "sel" ? styles.cancel : ""}`}
-              disabled={disabled}
-              title={p?.lock ? LOCK_TEXT[p.lock] : undefined}
-              aria-label={`${label} ${p ? fullName(p) : `empty ${spot.slot} slot`}`}
-              onClick={() => tap(spot)}
-            >
-              {label}
-            </button>
-          )}
-        </span>
+        {statCells(day, day?.min ?? null, dnp)}
       </div>
     );
   }
 
-  const weekLabel = data.week ? `${data.week.isPlayoffs ? "Playoffs · " : ""}Week ${data.week.week}` : "Off week";
-  const totalStarters = starters.length;
-
   return (
     <Shell>
       <div className={styles.head}>
-        <div>
-          <h1 className={styles.title}>{data.team.name}</h1>
-          <p className={styles.sub}>
-            {weekLabel} · {data.league.name}
-            {data.team.waiverPriority !== null && ` · Waiver priority ${data.team.waiverPriority}`}
-          </p>
-        </div>
+        <h1 className={styles.title}>{data.team.name}</h1>
         <div className={styles.actions}>
           <button type="button" className={styles.btn} disabled={!editable || saving} onClick={() => autoSet("week")}>
             Auto set rest of week
@@ -333,29 +366,10 @@ export default function MyTeam() {
         </div>
       </div>
 
-      <div className={styles.summary}>
-        <div className={styles.summaryCard}>
-          <small>Starters playing {isToday ? "today" : shortDay(data.date)}</small>
-          <b>{playing} of {totalStarters}</b>
-          <span>
-            {playing === totalStarters
-              ? "Every starter has a game"
-              : `${totalStarters - playing} starting slot${totalStarters - playing > 1 ? "s" : ""} won't score`}
-          </span>
-        </div>
-        <div className={styles.summaryCard}>
-          <small>Lineup lock</small>
-          <b>{data.league.lineupLock === "game_time" ? "Tip-off" : "First game"}</b>
-          <span>
-            {data.league.lineupLock === "game_time"
-              ? "Each player locks when his game starts"
-              : "The whole lineup locks at the day's first tip-off"}
-          </span>
-        </div>
-      </div>
-
       <div className={styles.days} role="group" aria-label="Lineup day">
-        <span className={styles.daysLabel}>Lineup</span>
+        <span className={styles.daysLabel}>
+          {data.week ? `${data.week.isPlayoffs ? "Playoffs · " : ""}Week ${data.week.week}` : "Off week"}
+        </span>
         <button type="button" className={styles.weekNav} aria-label="Previous week" onClick={() => pickDay(addDays(data.days[0].date, -1), data.today)}>
           ‹
         </button>
@@ -363,12 +377,12 @@ export default function MyTeam() {
           <button
             key={d.date}
             type="button"
-            className={`${styles.day} ${d.date === data.date ? styles.dayOn : ""} ${d.date < data.today ? styles.dayPast : ""}`}
+            className={`${styles.day} ${d.date === data.date ? styles.dayOn : ""} ${d.date < data.today ? styles.dayPast : ""} ${d.date === data.today ? styles.dayToday : ""}`}
             aria-pressed={d.date === data.date}
+            aria-label={d.date === data.today ? `Today, ${longDay(d.date)}` : longDay(d.date)}
             onClick={() => pickDay(d.date, data.today)}
           >
-            {d.date === data.today ? "Today" : shortDay(d.date)}
-            <small>{d.date === data.today ? shortDay(d.date) : `${d.nbaGames} game${d.nbaGames === 1 ? "" : "s"}`}</small>
+            {shortDay(d.date)}
           </button>
         ))}
         <button type="button" className={styles.weekNav} aria-label="Next week" onClick={() => pickDay(addDays(data.days.at(-1)!.date, 1), data.today)}>
@@ -389,8 +403,7 @@ export default function MyTeam() {
       {sel?.player && (
         <div className={`${styles.note} ${styles.moving}`}>
           <p>
-            Moving <b>{fullName(sel.player)}</b>. Pick a highlighted slot. Greyed-out slots aren&apos;t open to him
-            (wrong position, or a locked player).
+            Moving <b>{fullName(sel.player)}</b>. Tap a highlighted slot: an open spot, the bench, or a player to swap with.
           </p>
           <button type="button" className={styles.btn} onClick={() => setSelected(null)}>Cancel</button>
         </div>
@@ -411,10 +424,19 @@ export default function MyTeam() {
           {["MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((h) => (
             <span key={h} className={styles.num}>{h}</span>
           ))}
-          <span />
         </div>
-        <Group label="Starters" hint={`${playing} of ${totalStarters} have a game`} />
+        <Group label="Starters" hint="Only starters count toward your matchup" />
         {starters.map(row)}
+        <div className={`${styles.grid} ${styles.row} ${styles.totalRow}`}>
+          <span />
+          <span className={styles.totalLabel}>
+            Starters total
+            <span className={styles.totalLabelGame}>{isToday ? "today" : shortDay(data.date)}</span>
+          </span>
+          <span className={styles.game} />
+          <span className={styles.weekCell} />
+          {statCells(starterLines.length > 0 ? totals : null, null, false)}
+        </div>
         <Group label="Bench" hint="Stats count only from starting slots" />
         {bench.map(row)}
         {injured.length > 0 && (
@@ -425,8 +447,8 @@ export default function MyTeam() {
         )}
       </div>
       <p className={styles.foot}>
-        Season per-game averages. Changes save right away. A change carries forward to later days
-        until a day you set separately.
+        Stats are each player&apos;s box score for the day; they fill in as games are played. Changes save
+        right away and carry forward to later days until a day you set separately.
       </p>
     </Shell>
   );

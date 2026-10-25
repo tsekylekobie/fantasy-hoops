@@ -18,6 +18,9 @@ export function defaultSortDir(key: SortKey): SortDir {
 /** Which games count: the whole season, or the 14 days ending at the season's latest game (or today). */
 export type StatRange = "season" | "last14";
 
+/** Which players GET /api/players?scope= lists: free agents (on no team in the season's league) or everyone. */
+export type PlayerScope = "fa" | "all";
+
 /** Position filter values for GET /api/players?pos=. "all" means no filter. */
 export type PositionFilter = "all" | "G" | "F" | "C";
 
@@ -64,8 +67,8 @@ export interface PlayerRow extends PlayerSummary {
 }
 
 /**
- * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&q=&pos=all&page=1&perPage=50
- * GP, stats, value and rank all cover `range`. Sorting uses the `mode`'s numbers;
+ * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&page=1&perPage=50
+ * GP, stats, value and rank all cover `range`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */
 export interface PlayersResponse {
@@ -77,6 +80,7 @@ export interface PlayersResponse {
   from: string | null;
   to: string | null;
   mode: StatMode;
+  scope: PlayerScope;
   page: number;
   perPage: number;
   total: number;
@@ -255,8 +259,11 @@ export interface LineupPlayer extends PlayerSummary {
   game: LineupGame | null;
   /** His NBA team's games in the lineup's week (see `days`): not yet tipped off, and in all. */
   weekGames: { remaining: number; total: number };
-  /** Season per-game averages; null before his first game. */
-  season: (CategoryLine & { gp: number; min: number }) | null;
+  /**
+   * His stat line for this date's game (live games update as the sync runs).
+   * Null when he has no game or no stat row yet; min 0 means he didn't play.
+   */
+  dayStats: (CategoryLine & { min: number }) | null;
 }
 
 /** GET /api/team/lineup?date=yyyy-mm-dd (default today), the signed-in user's team. */

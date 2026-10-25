@@ -21,7 +21,7 @@ import {
   type LineupSlot,
   type TeamLineupResponse,
 } from "../types";
-import { categoryLine, getSeasonValues } from "./players";
+import { getSeasonValues } from "./players";
 
 type Db = Pool | PoolClient;
 
@@ -107,6 +107,10 @@ interface DayPlayerRow {
   opp_abbr: string | null;
   home_score: number | null;
   visitor_score: number | null;
+  /** Null when there's no stat row for his game. */
+  s_min: number | null;
+  fgm: number; fga: number; ftm: number; fta: number; fg3m: number;
+  pts: number; reb: number; ast: number; stl: number; blk: number; tov: number;
 }
 
 // Whether game `g` has started: the provider says so, or the clock has passed
@@ -121,7 +125,12 @@ const DAY_PLAYERS_SQL = `
          g.status, g.status_state,
          ${started("g")} AS started,
          g.home_team_id = p.team_id AS home, opp.abbreviation AS opp_abbr,
-         g.home_team_score AS home_score, g.visitor_team_score AS visitor_score
+         g.home_team_score AS home_score, g.visitor_team_score AS visitor_score,
+         CASE WHEN s.id IS NOT NULL THEN coalesce(s.min, 0)::float8 END AS s_min,
+         coalesce(s.fgm, 0) AS fgm, coalesce(s.fga, 0) AS fga, coalesce(s.ftm, 0) AS ftm,
+         coalesce(s.fta, 0) AS fta, coalesce(s.fg3m, 0) AS fg3m, coalesce(s.pts, 0) AS pts,
+         coalesce(s.reb, 0) AS reb, coalesce(s.ast, 0) AS ast, coalesce(s.stl, 0) AS stl,
+         coalesce(s.blk, 0) AS blk, coalesce(s.turnover, 0) AS tov
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
     LEFT JOIN LATERAL (
@@ -133,7 +142,20 @@ const DAY_PLAYERS_SQL = `
        ORDER BY g.datetime LIMIT 1
     ) g ON true
     LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = p.team_id THEN g.visitor_team_id ELSE g.home_team_id END
+    LEFT JOIN player_game_stats s ON s.player_id = p.id AND s.game_id = g.id
    WHERE p.id = ANY($1)`;
+
+const pct = (makes: number, attempts: number) => (attempts > 0 ? Math.round((makes / attempts) * 1000) / 1000 : null);
+
+function toDayStats(r: DayPlayerRow): LineupPlayer["dayStats"] {
+  if (r.s_min === null) return null;
+  return {
+    min: Math.round(r.s_min * 10) / 10,
+    fgm: r.fgm, fga: r.fga, fgPct: pct(r.fgm, r.fga),
+    ftm: r.ftm, fta: r.fta, ftPct: pct(r.ftm, r.fta),
+    fg3m: r.fg3m, pts: r.pts, reb: r.reb, ast: r.ast, stl: r.stl, blk: r.blk, tov: r.tov,
+  };
+}
 
 function toGame(r: DayPlayerRow): LineupGame | null {
   if (r.game_id === null) return null;
@@ -205,7 +227,6 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
     if (isPast) lock = "past";
     else if (team.lineupLock === "first_game" && dayStarted) lock = "day";
     else if (r.started) lock = "game";
-    const totals = values.current.get(r.id)?.totals;
     return {
       id: r.id,
       firstName: r.first_name,
@@ -218,7 +239,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
       lock,
       injuryStatus: r.injury_status,
       game: toGame(r),
-      season: totals ? { gp: totals.gp, ...categoryLine(totals, "avg") } : null,
+      dayStats: toDayStats(r),
     };
   });
   // Display order: by slot, then best value first.

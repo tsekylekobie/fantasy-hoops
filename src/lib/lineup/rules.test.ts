@@ -66,14 +66,15 @@ test("auto: nothing changes when the lineup is already best", () => {
   assert.deepEqual([out.get(1), out.get(2)], ["C", "BN"]);
 });
 
-test("auto: an overfull bench may stay overfull, but doesn't grow", () => {
+test("auto: the bench takes whoever is displaced, past its listed size", () => {
   const players = [p(1, "G", "BN"), p(2, "G", "BN", { plays: false }), p(3, "G", "PG", { plays: false })];
   const out = autoLineup(players, { PG: 1, BN: 1 });
   assert.deepEqual([out.get(1), out.get(2), out.get(3)], ["PG", "BN", "BN"]);
 });
 
-test("auto: respects bench capacity (must start someone idle rather than overfill BN)", () => {
-  const players = [p(1, "C", "C", { plays: false }), p(2, "C", "C", { plays: false })];
-  const out = autoLineup(players, { C: 2, BN: 0 });
-  assert.deepEqual([out.get(1), out.get(2)], ["C", "C"]);
+test("validate: moving to a full bench is allowed (no swap needed); other slots stay capped", () => {
+  const players = [p(1, "C", "C"), p(2, "C", "BN"), p(3, "C", "BN")];
+  const names = new Map<number, string>();
+  assert.equal(validateLineup(players, new Map([[1, "BN"], [2, "BN"], [3, "BN"]]), { C: 1, BN: 2 }, names), null);
+  assert.match(validateLineup(players, new Map([[1, "C"], [2, "C"], [3, "BN"]]), { C: 1, BN: 2 }, names)!, /Only 1 C slot/);
 });

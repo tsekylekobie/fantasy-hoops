@@ -17,7 +17,7 @@
 
 .head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -29,15 +29,9 @@
   font-weight: 700;
   font-size: 48px;
   line-height: 1;
-  margin: 0 0 8px;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.01em;
-}
-
-.sub {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ink-muted);
 }
 
 .actions {
@@ -84,46 +78,9 @@
 .btn:focus-visible,
 .day:focus-visible,
 .weekNav:focus-visible,
-.moveBtn:focus-visible {
+.slot:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.summaryCard {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.summaryCard small {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.summaryCard b {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 34px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.summaryCard span {
-  font-size: 13px;
-  color: var(--ink-muted);
 }
 
 .days {
@@ -145,7 +102,7 @@
 
 .day {
   width: 72px;
-  height: 56px;
+  height: 48px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
@@ -160,10 +117,9 @@
   cursor: pointer;
 }
 
-.day small {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--ink-subtle);
+/* Today: an accent underline, so it stands out without a label. */
+.dayToday {
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .dayPast {
@@ -177,14 +133,10 @@
   color: var(--bg);
 }
 
-.day.dayOn small {
-  color: var(--bg);
-  opacity: 0.8;
-}
 
 .weekNav {
   width: 36px;
-  height: 56px;
+  height: 48px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
@@ -250,11 +202,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 60px minmax(220px, 1fr) 170px 56px repeat(10, 52px) 116px;
+  grid-template-columns: 60px minmax(220px, 1fr) 170px 56px repeat(10, 52px);
   column-gap: 6px;
   align-items: center;
   padding: 0 16px;
-  min-width: 1240px;
+  min-width: 1120px;
 }
 
 .header {
@@ -273,7 +225,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px 8px;
-  min-width: 1240px;
+  min-width: 1120px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 16px;
@@ -318,15 +270,33 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 28px;
-  border-radius: 6px;
+  width: 52px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
   background: var(--surface-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.slot:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.slot:disabled {
+  cursor: default;
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+/* Locked players: dashed badge, so it reads as "can't move" before you tap. */
+.slotLocked:disabled {
+  border-style: dashed;
+  color: var(--ink-subtle);
 }
 
 .row.sel .slot {
@@ -427,6 +397,42 @@
   text-align: right;
 }
 
+.shots {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-subtle);
+}
+
+.dnp {
+  color: var(--ink-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Starters' summed line for the day: what counts toward the matchup. */
+.totalRow {
+  background: var(--surface-muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+
+.totalLabel {
+  font-family: var(--font-display);
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.totalLabelGame {
+  margin-left: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
 /* Games left this week / games this week. */
 .weekCell {
   text-align: center;
@@ -449,40 +455,6 @@
 .games1 { background: var(--games-1-bg); color: var(--games-1-ink); }
 .games0 { background: var(--games-0-bg); color: var(--games-0-ink); }
 
-.moveBtn {
-  height: 44px;
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.moveBtn:hover:not(:disabled) {
-  border-color: var(--ink);
-}
-
-.moveBtn.go {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-ink);
-}
-
-.moveBtn.cancel {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--bg);
-}
-
-.moveBtn:disabled {
-  cursor: default;
-  color: var(--ink-subtle);
-  border-color: var(--border);
-}
-
 .foot {
   margin-top: 14px;
   font-size: 13px;
@@ -499,10 +471,6 @@
     font-size: 34px;
   }
 
-  .summary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .actions,
   .actions .btn {
     flex: 1 1 auto;
@@ -514,7 +482,8 @@
   }
 
   .daysLabel {
-    display: none;
+    flex-basis: 100%;
+    font-size: 18px;
   }
 
   .day {
@@ -530,20 +499,20 @@
     height: 48px;
   }
 
+  /* Stats stay (the day's line is the point); the table scrolls sideways. */
   .grid {
-    grid-template-columns: 40px minmax(0, 1fr) 44px 64px;
-    min-width: 0;
+    grid-template-columns: 48px minmax(140px, 1fr) 44px repeat(10, 44px);
+    min-width: 720px;
     padding: 0 12px;
     column-gap: 10px;
   }
 
   .group {
-    min-width: 0;
+    min-width: 720px;
     padding: 12px 12px 6px;
   }
 
-  .grid > .game,
-  .grid > .num {
+  .grid > .game {
     display: none;
   }
 
@@ -552,7 +521,7 @@
   }
 
   .slot {
-    width: 40px;
+    width: 44px;
   }
 
   .player {
@@ -560,14 +529,6 @@
   }
 
   .player > [aria-hidden="true"] {
-    display: none;
-  }
-
-  .moveBtn {
-    padding: 0 4px;
-  }
-
-  .day small {
     display: none;
   }
 

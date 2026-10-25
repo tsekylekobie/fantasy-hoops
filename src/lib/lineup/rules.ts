@@ -74,6 +74,7 @@ export function validateLineup(
     }
   }
   for (const [slot, n] of after) {
+    if (slot === "BN") continue; // the bench grows as needed; roster size is capped by adds, not lineups
     const limit = counts[slot] ?? 0;
     if (n > limit && n > (before.get(slot) ?? 0)) {
       return limit === 0 ? `This league has no ${slot} slot.` : `Only ${limit} ${slot} slot${limit > 1 ? "s" : ""}.`;
@@ -113,14 +114,11 @@ function weight(p: AutoPlayer, slot: LineupSlot): number {
 export function autoLineup(players: AutoPlayer[], counts: SlotCounts): Map<number, LineupSlot> {
   const out = new Map<number, LineupSlot>();
   const open = new Map<LineupSlot, number>(STARTING_SLOTS.map((s) => [s, counts[s] ?? 0]));
-  // An already overfull bench may stay that size (same rule as validateLineup).
-  let benchOpen = Math.max(counts.BN ?? 0, players.filter((p) => p.slot === "BN").length);
   const movable: AutoPlayer[] = [];
   for (const p of players) {
     if (p.locked || IL_SLOTS.includes(p.slot)) {
       out.set(p.id, p.slot);
       if (open.has(p.slot)) open.set(p.slot, open.get(p.slot)! - 1);
-      if (p.slot === "BN") benchOpen--;
     } else {
       movable.push(p);
     }
@@ -131,8 +129,8 @@ export function autoLineup(players: AutoPlayer[], counts: SlotCounts): Map<numbe
   const key = (v: number[]) => v.join(",");
 
   // layers[i]: state after deciding the first i movable players.
-  type Node = { caps: number[]; score: number; benched: number; prev: string | null; slot: LineupSlot | null };
-  let layer = new Map<string, Node>([[key(start), { caps: start, score: 0, benched: 0, prev: null, slot: null }]]);
+  type Node = { caps: number[]; score: number; prev: string | null; slot: LineupSlot | null };
+  let layer = new Map<string, Node>([[key(start), { caps: start, score: 0, prev: null, slot: null }]]);
   const layers: Map<string, Node>[] = [layer];
   for (const p of movable) {
     const nextLayer = new Map<string, Node>();
@@ -141,30 +139,21 @@ export function autoLineup(players: AutoPlayer[], counts: SlotCounts): Map<numbe
       if (!cur || n.score > cur.score) nextLayer.set(k, n);
     };
     for (const [k, node] of layer) {
-      offer(k, { caps: node.caps, score: node.score + weight(p, "BN"), benched: node.benched + 1, prev: k, slot: "BN" });
+      offer(k, { caps: node.caps, score: node.score + weight(p, "BN"), prev: k, slot: "BN" });
       types.forEach((t, i) => {
         if (node.caps[i] === 0 || !p.eligible.includes(t)) return;
         const caps = node.caps.slice();
         caps[i]--;
-        offer(key(caps), { caps, score: node.score + weight(p, t), benched: node.benched, prev: k, slot: t });
+        offer(key(caps), { caps, score: node.score + weight(p, t), prev: k, slot: t });
       });
     }
     layer = nextLayer;
     layers.push(layer);
   }
 
-  // Best end state that fits on the bench. (State keys collapse paths with the
-  // same open slots, which always have the same bench count, so this is exact.)
-  let best: [string, Node] | null = null;
-  for (const entry of layer) {
-    if (entry[1].benched > Math.max(benchOpen, 0)) continue;
-    if (!best || entry[1].score > best[1].score) best = entry;
-  }
-  if (!best) {
-    // Overfull roster: nothing fits, so leave the lineup as it is.
-    for (const p of movable) out.set(p.id, p.slot);
-    return out;
-  }
+  // Best end state. The bench has no fixed size, so every state is feasible.
+  let best: [string, Node] = [...layer][0];
+  for (const entry of layer) if (entry[1].score > best[1].score) best = entry;
   let k: string | null = best[0];
   for (let i = movable.length; i > 0; i--) {
     const node: Node = layers[i].get(k!)!;
