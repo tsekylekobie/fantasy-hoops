@@ -61,3 +61,20 @@ export function fullName(p: { firstName: string; lastName: string }): string {
 export function teamPos(team: string | null, pos: string | null): string {
   return [team, pos].filter(Boolean).join(" · ") || "Free agent";
 }
+
+/**
+ * A waiver run time in the league's time zone: "Sun 3:00 AM" (short),
+ * "Sun, Oct 27 · 3:00 AM ET" (long), or "Sunday at 3:00 AM ET" (sentence).
+ */
+export function fmtWaiverTime(iso: string, timeZone: string, style: "short" | "long" | "sentence" = "short"): string {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString("en-US", { weekday: style === "sentence" ? "long" : "short", timeZone });
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone });
+  const zone =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "shortGeneric" }).formatToParts(d).find((p) => p.type === "timeZoneName")
+      ?.value ?? "";
+  if (style === "short") return `${weekday} ${time}`;
+  if (style === "sentence") return `${weekday} at ${time} ${zone}`.trim();
+  return `${weekday}, ${date} · ${time} ${zone}`.trim();
+}

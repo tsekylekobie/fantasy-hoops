@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fmtValue, fullName, teamPos } from "./format";
+import { fmtAvg, fmtInt, fmtPct, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -32,7 +32,7 @@ interface Props {
   errorMessage: string | null;
   onRetry: () => void;
   onOpenPlayer: (id: number) => void;
-  /** Free agents get an Add button that calls this. */
+  /** Free agents get an Add button (Claim for players on waivers) that calls this. */
   onAddPlayer: (id: number) => void;
   /** The signed-in manager's team, whose players get a dark chip. */
   myTeamId: number | null;
@@ -102,7 +102,10 @@ export default function PlayersTable({
             </tr>
           ) : (
             rows.map((p) => (
-              <Row key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId} />
+              <Row
+                key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId}
+                timeZone={data?.timeZone ?? "America/New_York"}
+              />
             ))
           )}
         </tbody>
@@ -118,6 +121,7 @@ function Row({
   onOpen,
   onAdd,
   myTeamId,
+  timeZone,
 }: {
   p: PlayerRow;
   num: (v: number) => string;
@@ -125,6 +129,7 @@ function Row({
   onOpen: (id: number) => void;
   onAdd: (id: number) => void;
   myTeamId: number | null;
+  timeZone: string;
 }) {
   const s = p.stats;
   return (
@@ -158,7 +163,22 @@ function Row({
       <td className={styles.n}>{num(s.tov)}</td>
       <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
       <td className={`${styles.n} ${styles.own}`}>
-        {p.owner === null ? (
+        {p.owner === null && p.waiver ? (
+          <span className={styles.claimCell}>
+            <button
+              type="button"
+              className={`${styles.add} ${styles.claim}`}
+              aria-label={`Claim ${fullName(p)} (on waivers, clears ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")})`}
+              title={`On waivers until ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")}`}
+              onClick={() => onAdd(p.id)}
+            >
+              Claim
+            </button>
+            <span className={styles.clears}>
+              <b className={styles.wBadge}>W</b> Clears {fmtWaiverTime(p.waiver.clearsAt, timeZone)}
+            </span>
+          </span>
+        ) : p.owner === null ? (
           <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} onClick={() => onAdd(p.id)}>
             Add
           </button>

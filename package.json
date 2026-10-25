@@ -15,6 +15,7 @@
     "sync:players": "tsx scripts/sync-teams-players.ts",
     "backfill": "tsx scripts/backfill-stats.ts",
     "worker": "tsx scripts/worker.ts",
+    "waivers": "tsx scripts/waivers.ts",
     "fetch:samples": "node scripts/fetch-samples.mjs"
   },
   "dependencies": {

@@ -2,11 +2,12 @@
 
 // The add / claim sheet: docs/design/claim-player.mockup.html. Asks who to
 // drop when the roster is full, confirms, then shows the result. Free agents
-// join right away; waiver players (mode "waiver") will become a claim.
+// join right away; waiver players (mode "waiver") become a claim that the
+// waiver run processes (cancel or reorder it under My claims on My team).
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import { fetchJson, fmtAvg, fmtPct, fullName, teamPos } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtPct, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
 import type { CategoryLine, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
 
@@ -73,6 +74,8 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   // Dropping an IL player doesn't open a spot.
   const needsPick = full && (dropping === null || dropping.slot === "IL" || dropping.slot === "IL+");
   const claim = add?.mode === "waiver";
+  const clearsAt = add?.waiver?.clearsAt ?? null;
+  const tz = data?.timeZone ?? "America/New_York";
 
   async function submit() {
     if (!add || saving) return;
@@ -121,7 +124,12 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                 {claim && <span className={styles.chip}>On waivers</span>}
               </h2>
               <p className={styles.sub}>
-                {teamPos(add.teamAbbr, add.position)} · {add.owner ? `On ${add.owner.abbreviation}` : claim ? "Waivers" : "Free agent"}
+                {teamPos(add.teamAbbr, add.position)} ·{" "}
+                {add.owner
+                  ? `On ${add.owner.abbreviation}`
+                  : add.waiver
+                    ? `${add.waiver.reason === "game_started" ? "Game started" : add.waiver.droppedBy ? `Dropped by ${add.waiver.droppedBy.name}` : "Waivers"} · Clears ${fmtWaiverTime(add.waiver.clearsAt, tz, "long")}`
+                    : "Free agent"}
               </p>
             </div>
           </>
@@ -169,8 +177,11 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
             <div className={styles.body}>
               <h3 className={styles.h3}>Choose who to drop</h3>
               <p className={styles.lede}>
-                Your roster is full ({data.rosterCount} of {data.rosterLimit}, IL not counted). The dropped player goes back
-                to free agents.
+                Your roster is full ({data.rosterCount} of {data.rosterLimit}, IL not counted).{" "}
+                {data.dropsToWaivers
+                  ? `The dropped player goes on waivers for ${data.waiverDays} day${data.waiverDays === 1 ? "" : "s"}.`
+                  : "The dropped player goes back to free agents."}
+                {claim && " Nothing changes until the claim processes."}
               </p>
               <div className={styles.list} role="radiogroup" aria-label="Player to drop">
                 {/* Dropping an IL player wouldn't open a spot. */}
@@ -184,7 +195,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
               <h3 className={styles.h3}>Open roster spot</h3>
               <p className={styles.lede}>
                 You have {data.rosterLimit - data.rosterCount} open spot{data.rosterLimit - data.rosterCount > 1 ? "s" : ""} (
-                {data.rosterCount} of {data.rosterLimit}, IL not counted). {fullName(add)} joins your bench.
+                {data.rosterCount} of {data.rosterLimit}, IL not counted). {claim ? "If the claim goes through, " : ""}{fullName(add)} joins your bench.
               </p>
             </div>
           )}
@@ -203,7 +214,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
               )}
               <div className={styles.row}>
                 <span>Processes</span>
-                <b>{claim ? "At the next waiver run" : "Right away"}</b>
+                <b>{claim && clearsAt ? fmtWaiverTime(clearsAt, tz, "long") : claim ? "At the next waiver run" : "Right away"}</b>
               </div>
               {claim && data.team.waiverPriority !== null && (
                 <div className={styles.row}>
@@ -240,7 +251,11 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                 disabled={needsPick || saving || (dropping?.dropBlocked ?? null) !== null}
                 onClick={submit}
               >
-                {saving ? "Saving…" : claim ? "Place claim" : dropping ? "Add and drop" : "Add player"}
+                {saving
+                  ? "Saving…"
+                  : claim
+                    ? clearsAt ? `Claim (processes ${fmtWaiverTime(clearsAt, tz)})` : "Place claim"
+                    : dropping ? "Add and drop" : "Add player"}
               </button>
             )}
           </div>
@@ -295,6 +310,38 @@ function DropOption({ p, checked, onPick }: { p: RosterMoveOption; checked: bool
 function Done({ data, result, onClose }: { data: RosterMovesContext; result: RosterMoveResult; onClose: () => void }) {
   const added = result.added ? fullName(result.added) : "";
   const pending = result.status === "pending";
+  const [cancel, setCancel] = useState<"idle" | "saving" | "done">("idle");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const when = result.processAt ? fmtWaiverTime(result.processAt, data.timeZone, "sentence") : "at the next waiver run";
+  const droppedTo = data.dropsToWaivers ? "goes on waivers" : "is back in free agents";
+
+  async function cancelClaim() {
+    setCancel("saving");
+    setCancelError(null);
+    try {
+      const res = await fetch(`/api/team/claims/${result.transactionId}`, { method: "DELETE" });
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(body?.error ?? `Request failed (${res.status}).`);
+      setCancel("done");
+    } catch (err) {
+      setCancel("idle");
+      setCancelError(err instanceof Error ? err.message : "Something went wrong.");
+    }
+  }
+
+  if (cancel === "done") {
+    return (
+      <div className={styles.done} role="status">
+        <h3 className={styles.doneTitle}>Claim cancelled</h3>
+        <p>Your claim for {added} is withdrawn. Nothing on your roster changed.</p>
+        <div className={styles.doneFt}>
+          <button type="button" className={styles.btn} onClick={onClose}>
+            Back to players
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={styles.done} role="status">
       <div className={styles.ck} aria-hidden="true">
@@ -305,9 +352,14 @@ function Done({ data, result, onClose }: { data: RosterMovesContext; result: Ros
       <h3 className={styles.doneTitle}>{pending ? "Claim placed" : "Player added"}</h3>
       <p>
         {pending
-          ? `If it goes through, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}.`
-          : `${added} is on ${data.team.name}'s bench${result.dropped ? ` and ${fullName(result.dropped)} is back in free agents` : ""}. Set your lineup on My team.`}
+          ? `If it goes through ${when}, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}. You can cancel or reorder claims from My team until then.`
+          : `${added} is on ${data.team.name}'s bench${result.dropped ? ` and ${fullName(result.dropped)} ${droppedTo}` : ""}. Set your lineup on My team.`}
       </p>
+      {cancelError && (
+        <p className={styles.error} role="alert">
+          {cancelError}
+        </p>
+      )}
       <div className={styles.doneFt}>
         <Link className={`${styles.btn} ${styles.pri}`} href="/my-team">
           Go to my team
@@ -315,6 +367,11 @@ function Done({ data, result, onClose }: { data: RosterMovesContext; result: Ros
         <button type="button" className={styles.btn} onClick={onClose}>
           Back to players
         </button>
+        {pending && (
+          <button type="button" className={styles.btn} disabled={cancel === "saving"} onClick={cancelClaim}>
+            {cancel === "saving" ? "Cancelling…" : "Cancel claim"}
+          </button>
+        )}
       </div>
     </div>
   );

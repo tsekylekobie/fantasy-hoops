@@ -27,6 +27,7 @@ import type {
   TeamLineupResponse,
 } from "@/lib/types";
 import { LINEUP_SLOTS, STARTING_SLOTS } from "@/lib/types";
+import MyClaims from "@/components/waivers/MyClaims";
 import styles from "./MyTeam.module.css";
 
 /**
@@ -476,6 +477,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         {!readOnly && " Changes save right away and carry forward to later days until a day you set separately."}
       </p>
       {!readOnly && <TradesPanel scope="mine" />}
+      {!readOnly && <MyClaims />}
     </Shell>
   );
 }

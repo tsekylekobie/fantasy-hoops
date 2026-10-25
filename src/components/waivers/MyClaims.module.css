@@ -1,0 +1,211 @@
+/* My team: My claims. Card styles follow league/RecentTransactions.module.css. */
+
+.card {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 16px 20px 10px;
+}
+
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.card > h3 {
+  padding: 16px 20px 10px;
+}
+
+.sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.h4 {
+  margin: 0;
+  padding: 14px 20px 6px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-subtle);
+}
+
+.empty,
+.lede,
+.error {
+  margin: 0;
+  padding: 0 20px 14px;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.lede {
+  font-size: 13px;
+}
+
+.error {
+  color: var(--danger-ink);
+}
+
+.empty a {
+  color: var(--accent);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.claim {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 20px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 14px;
+}
+
+.rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.players small {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+.plus {
+  color: #166534;
+}
+
+:root[data-theme="dark"] .plus {
+  color: var(--ok-ink);
+}
+
+.minus {
+  color: var(--danger-ink);
+}
+
+.reason {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--danger-ink);
+}
+
+.when {
+  font-size: 12px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon,
+.btn {
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+
+.icon {
+  width: 32px;
+}
+
+.btn {
+  padding: 0 12px;
+}
+
+.icon:hover:not(:disabled),
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon:disabled,
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.status {
+  justify-self: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.won {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+}
+
+.failed {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.cancelled {
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+}
+
+@media (max-width: 640px) {
+  .claim {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    padding: 10px 16px;
+  }
+
+  .when {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .hd,
+  .card > h3,
+  .h4,
+  .empty,
+  .lede,
+  .error {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

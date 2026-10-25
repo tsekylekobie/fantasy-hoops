@@ -16,6 +16,10 @@
 //                fixed even if the roster changes later. Then processes trades whose
 //                review window has ended (they wait while a player is locked today).
 //                Database only, no API.
+//   waivers      At the league's waiver time (leagues.waiver_time in its time zone):
+//                processes due claims and clears waivers (queries/waivers.ts). Each
+//                daily run is recorded in waiver_runs, so it happens exactly once
+//                even across restarts; a worker that was down runs the missed one.
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
@@ -27,6 +31,7 @@ import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
 import { freezeSeasonLineups } from "../src/lib/queries/lineup";
 import { processDueTrades } from "../src/lib/queries/trades";
+import { processDueWaivers } from "../src/lib/queries/waivers";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -161,6 +166,19 @@ async function lineups(): Promise<Result> {
   };
 }
 
+/** The latest daily waiver run, if it hasn't happened; then sleeps until the next. */
+async function waivers(): Promise<Result> {
+  const { run, nextRunAt } = await processDueWaivers(db, season);
+  // Re-check at least every 15 min in case the league's waiver time changes.
+  const nextInMs = nextRunAt ? Math.min(15 * MIN, Math.max(5_000, nextRunAt.getTime() - Date.now() + 5_000)) : HOUR;
+  const summary = !nextRunAt
+    ? "no league"
+    : run
+      ? `${run.claims} claims, ${run.won} won, ${run.failed} failed, ${run.cleared} cleared${run.log.length ? ` (${run.log.join("; ")})` : ""}`
+      : "already ran";
+  return { summary, nextInMs };
+}
+
 interface Task {
   name: string;
   run: () => Promise<Result>;
@@ -186,6 +204,7 @@ const TASKS: Task[] = [
   },
   { name: "rosters", run: rosters, firstDue: (last) => (last ? last.getTime() + 12 * HOUR : now()), nextAt: 0 },
   { name: "lineups", run: lineups, firstDue: () => now(), nextAt: 0 },
+  { name: "waivers", run: waivers, firstDue: () => now(), nextAt: 0 },
 ];
 
 let stopping = false;
