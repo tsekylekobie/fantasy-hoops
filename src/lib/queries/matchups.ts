@@ -173,6 +173,22 @@ export function compareLines(a: CategoryLine, b: CategoryLine): { results: Recor
   return { results, score };
 }
 
+/** Each team's week totals for one league week, keyed by team id. Teams with no games are left out. */
+export async function weekLines(
+  db: Pool,
+  leagueId: number,
+  week: { startsOn: string; endsOn: string },
+  today: string,
+): Promise<Map<number, CategoryLine>> {
+  const { rows } = await db.query<PlayedRow>(PLAYED_SQL, [leagueId, week.startsOn, week.endsOn, today]);
+  const totals = new Map<number, Totals>();
+  for (const r of rows) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
+  return new Map([...totals].map(([id, t]) => [id, weekLine(t)]));
+}
+
+/** A team's week line, or all zeros when it has no games yet. */
+export const emptyLine = (): CategoryLine => weekLine(ZERO);
+
 interface TeamRow {
   id: number;
   name: string;

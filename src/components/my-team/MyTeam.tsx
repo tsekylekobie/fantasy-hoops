@@ -6,7 +6,9 @@
 // days and players whose game has tipped off are locked. Stats are the day's
 // box score, and the starters' total is what counts toward the matchup.
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
+// /team/[id] shows another manager's team with the same layout, read-only.
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
@@ -143,7 +145,9 @@ async function sendJson<T>(url: string, method: "PUT" | "POST", body: unknown): 
 
 type Note = { kind: "ok" | "error"; text: string } | null;
 
-export default function MyTeam() {
+/** With `teamId`, another manager's team, read-only (/team/[id]); without, the signed-in manager's. */
+export default function MyTeam({ teamId }: { teamId?: number } = {}) {
+  const readOnly = teamId !== undefined;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -160,13 +164,14 @@ export default function MyTeam() {
     const ctrl = new AbortController();
     setLoadError(null);
     setSelected(null);
-    fetchJson<TeamLineupResponse>(`/api/team/lineup${urlDate ? `?date=${encodeURIComponent(urlDate)}` : ""}`, ctrl.signal)
+    const base = readOnly ? `/api/teams/${teamId}/lineup` : "/api/team/lineup";
+    fetchJson<TeamLineupResponse>(`${base}${urlDate ? `?date=${encodeURIComponent(urlDate)}` : ""}`, ctrl.signal)
       .then(setData)
       .catch((err: unknown) => {
         if (!ctrl.signal.aborted) setLoadError(err instanceof Error ? err.message : "Something went wrong");
       });
     return () => ctrl.abort();
-  }, [urlDate, retryKey]);
+  }, [urlDate, retryKey, readOnly, teamId]);
 
   const pickDay = useCallback(
     (date: string, today: string) => {
@@ -195,13 +200,13 @@ export default function MyTeam() {
             )}
           </div>
         ) : (
-          <p className={styles.loading}>Loading your team…</p>
+          <p className={styles.loading}>Loading {readOnly ? "the" : "your"} team…</p>
         )}
       </Shell>
     );
   }
 
-  const editable = data.date >= data.today;
+  const editable = !readOnly && data.date >= data.today;
   // The selected spot's key is stable whether or not the open bench spot is shown.
   const selPlayer = selected ? buildSpots(data, false).find((s) => s.key === selected)?.player ?? null : null;
   const spots = buildSpots(data, selPlayer !== null && selPlayer.slot !== "BN");
@@ -356,6 +361,12 @@ export default function MyTeam() {
     <Shell>
       <div className={styles.head}>
         <h1 className={styles.title}>{data.team.name}</h1>
+        {readOnly ? (
+          <div className={styles.actions}>
+            <Link className={styles.btn} href="/league">League standings</Link>
+            <Link className={`${styles.btn} ${styles.primary}`} href={`/matchup?team=${data.team.id}`}>This week’s matchup</Link>
+          </div>
+        ) : (
         <div className={styles.actions}>
           <button type="button" className={styles.btn} disabled={!editable || saving} onClick={() => autoSet("week")}>
             Auto set rest of week
@@ -364,6 +375,7 @@ export default function MyTeam() {
             Auto set {isToday ? "today" : shortDay(data.date)}
           </button>
         </div>
+        )}
       </div>
 
       <div className={styles.days} role="group" aria-label="Lineup day">
@@ -395,7 +407,11 @@ export default function MyTeam() {
           <p>{note.text}</p>
         </div>
       )}
-      {!editable && (
+      {readOnly ? (
+        <div className={`${styles.note} ${styles.info}`}>
+          <p>You&apos;re viewing another manager&apos;s team. Only they can change its lineup.</p>
+        </div>
+      ) : !editable && (
         <div className={`${styles.note} ${styles.info}`}>
           <p>{longDay(data.date)} is in the past, so this lineup is locked.</p>
         </div>
@@ -425,7 +441,7 @@ export default function MyTeam() {
             <span key={h} className={styles.num}>{h}</span>
           ))}
         </div>
-        <Group label="Starters" hint="Only starters count toward your matchup" />
+        <Group label="Starters" hint={`Only starters count toward ${readOnly ? "the" : "your"} matchup`} />
         {starters.map(row)}
         <div className={`${styles.grid} ${styles.row} ${styles.totalRow}`}>
           <span />
@@ -447,8 +463,8 @@ export default function MyTeam() {
         )}
       </div>
       <p className={styles.foot}>
-        Stats are each player&apos;s box score for the day; they fill in as games are played. Changes save
-        right away and carry forward to later days until a day you set separately.
+        Stats are each player&apos;s box score for the day; they fill in as games are played.
+        {!readOnly && " Changes save right away and carry forward to later days until a day you set separately."}
       </p>
     </Shell>
   );

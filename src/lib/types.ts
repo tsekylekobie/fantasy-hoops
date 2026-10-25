@@ -236,6 +236,39 @@ export interface MatchupWeek {
   others: OtherMatchup[];
 }
 
+// League (/league)
+
+export interface StandingsRow extends FantasyTeamSummary {
+  rank: number;
+  /** Categories won, lost and tied, summed over every week counted. */
+  record: MatchupScore;
+  /** (W + T/2) / categories played; null before any. */
+  pct: number | null;
+  /** Games back of first: half the W and L gaps added together. 0 for the leader. */
+  gamesBack: number;
+  /** Adds this season (free agents and waiver claims). */
+  moves: number;
+  isMine: boolean;
+}
+
+/** The /league page: standings and this week's scoreboard. */
+export interface LeagueOverview {
+  season: number;
+  name: string;
+  teamCount: number;
+  playoffTeams: number;
+  /** Ranked; ties keep the same rank. */
+  standings: StandingsRow[];
+  /** Weeks in the standings: finished ones, plus this week's live score while it's being played. */
+  weeksCounted: number;
+  includesLiveWeek: boolean;
+  /** The week containing today (clamped to the season); null with no schedule. */
+  week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean; status: MatchupWeek["status"] } | null;
+  /** That week's pairings, the manager's first. */
+  matchups: OtherMatchup[];
+  myTeam: FantasyTeamSummary | null;
+}
+
 /** The signed-in user, as the UI sees it. */
 export interface SessionUser {
   id: number;

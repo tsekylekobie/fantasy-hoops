@@ -1,0 +1,255 @@
+/* League page: docs/design/league.mockup.html */
+
+.page {
+  min-height: 100vh;
+  padding: 12px 40px 48px;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.empty {
+  margin: 36px 0;
+  color: var(--ink-muted);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 32px 0 8px;
+}
+
+.sub {
+  color: var(--ink-muted);
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding: 16px 20px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.when {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+.foot {
+  font-size: 13px;
+  color: var(--ink-muted);
+  padding: 12px 20px 16px;
+  margin: 0;
+  border-top: 1px solid var(--row-divider);
+}
+
+/* Standings */
+
+.s {
+  display: grid;
+  grid-template-columns: 36px minmax(200px, 1fr) 96px 64px 48px 64px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  min-width: 600px;
+  height: 52px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.s.h {
+  height: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.s.mine {
+  background: var(--accent-soft);
+}
+
+:global(:root:not([data-theme="dark"])) .s.mine {
+  background: #fff4ec;
+}
+
+.s.cut {
+  border-top: 2px dashed var(--border-strong);
+}
+
+.n {
+  text-align: right;
+}
+
+.tn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.tn a {
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tn a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.tn a:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tn i,
+.side i {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.s.mine .tn i {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+/* Scoreboard */
+
+.m {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 20px;
+  min-height: 56px;
+  align-items: center;
+  border-top: 1px solid var(--row-divider);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.link {
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.link:focus-visible {
+  outline-offset: -2px;
+}
+
+.m.mine {
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 600;
+}
+
+.m b {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.side span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side.r {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 8px 16px 40px;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+
+  /* Phones: rank, team, record and pct; GB and moves drop off. */
+  .s {
+    grid-template-columns: 24px minmax(0, 1fr) 64px 40px;
+    min-width: 0;
+    padding: 0 14px;
+  }
+
+  .opt {
+    display: none;
+  }
+}
