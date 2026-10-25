@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
+import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import type {
   AutoLineupRequest,
@@ -319,10 +320,10 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         </span>
         <span className={styles.player}>
           {p ? (
-            <>
+            <PlayerButton playerId={p.id}>
               <Avatar player={p} size={38} />
               <span className={styles.who}>
-                <span className={styles.name}>
+                <span className={styles.name} data-player-name>
                   {fullName(p)}
                   {p.injuryStatus && (
                     <span className={`${styles.status} ${p.injuryStatus === "Out" ? styles.out : styles.dtd}`}>{p.injuryStatus}</span>
@@ -333,7 +334,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
                   <span className={`${styles.gameInline} ${gameCls}`}> · {p.game ? gameText(p.game) : "No game"}</span>
                 </span>
               </span>
-            </>
+            </PlayerButton>
           ) : (
             <>
               <span className={styles.emptyAvatar} aria-hidden="true" />
@@ -439,7 +440,9 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
       <div className={styles.table}>
         <div className={`${styles.grid} ${styles.header}`}>
           <span>Slot</span><span>Player</span><span className={styles.game}>{isToday ? "Today" : shortDay(data.date)}</span>
-          <span className={styles.weekCell} title="Games left / games this week">Week</span>
+          <span className={styles.weekCell}>
+            <abbr className={styles.abbr} title="Games Remaining">Gms Rem</abbr>
+          </span>
           {["MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((h) => (
             <span key={h} className={styles.num}>{h}</span>
           ))}
@@ -487,7 +490,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {children}
+        <PlayerModalHost>{children}</PlayerModalHost>
       </div>
     </div>
   );

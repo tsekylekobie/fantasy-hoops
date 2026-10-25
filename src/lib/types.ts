@@ -129,6 +129,24 @@ export interface PlayerDetailResponse {
   gameLog: GameLogRow[];
   /** Seasons before `season`, newest first. */
   pastSeasons: SeasonRow[];
+  /** His games in the league's current matchup week; null outside the schedule. */
+  thisWeek: PlayerWeek | null;
+}
+
+/** A player's NBA games in one matchup week. */
+export interface PlayerWeek {
+  week: number;
+  /** Inclusive ISO dates (yyyy-mm-dd). */
+  startsOn: string;
+  endsOn: string;
+  isPlayoffs: boolean;
+  /** The league's IANA time zone, for tip-off times. */
+  timeZone: string;
+  /** In tip-off order. A game is done once it's tipped off (state live or final). */
+  games: (LineupGame & { gameId: number; date: string })[];
+  /** Games not yet tipped off, and in all: the same counts as LineupPlayer.weekGames. */
+  remaining: number;
+  total: number;
 }
 
 export const CURRENT_SEASON = 2026;

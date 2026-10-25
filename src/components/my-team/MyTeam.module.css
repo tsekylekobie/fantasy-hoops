@@ -658,3 +658,9 @@
     font-size: 12px;
   }
 }
+
+/* The Games Remaining header: abbreviated to fit, full label on hover. */
+.abbr {
+  text-decoration: none;
+  cursor: help;
+}

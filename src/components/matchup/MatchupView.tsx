@@ -15,6 +15,7 @@ import type {
 import { CATEGORY_KEYS, STARTING_SLOTS } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import Avatar from "@/components/Avatar";
+import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import styles from "./MatchupView.module.css";
 
@@ -98,9 +99,11 @@ export default function MatchupView({ data, signedIn }: { data: MatchupWeek | nu
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {data ? <Week data={data} signedIn={signedIn} /> : (
-          <p className={styles.empty}>No league schedule for this season yet.</p>
-        )}
+        <PlayerModalHost>
+          {data ? <Week data={data} signedIn={signedIn} /> : (
+            <p className={styles.empty}>No league schedule for this season yet.</p>
+          )}
+        </PlayerModalHost>
       </div>
     </div>
   );
@@ -362,11 +365,13 @@ function PlayerRow({ p, day, timeZone }: { p: MatchupPlayer; day: boolean; timeZ
     <div className={`${styles.g} ${styles.gRow} ${dim ? styles.dim : ""}`} role="row">
       <span role="cell"><span className={styles.slot}>{p.slot ?? "—"}</span></span>
       <span role="cell" className={styles.pl}>
-        <Avatar player={p} size={28} />
-        <span className={styles.plText}>
-          <b>{fullName(p)}</b>
-          <span className={idle ? styles.idle : undefined}>{teamPos(p.teamAbbr, p.position)} · {sub}</span>
-        </span>
+        <PlayerButton playerId={p.id}>
+          <Avatar player={p} size={28} />
+          <span className={styles.plText}>
+            <b data-player-name>{fullName(p)}</b>
+            <span className={idle ? styles.idle : undefined}>{teamPos(p.teamAbbr, p.position)} · {sub}</span>
+          </span>
+        </PlayerButton>
       </span>
       {dnp ? (
         <span role="cell" className={styles.dnp}>DNP</span>
