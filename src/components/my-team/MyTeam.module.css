@@ -462,10 +462,17 @@
   color: var(--ink-muted);
 }
 
-/* Phone: drop the stat columns and show the game under the name. */
+/* Phone: docs/design/my-team-phone.mockup.html. The list runs edge to edge,
+   the game moves under the name, and the day's stats scroll sideways behind
+   the sticky slot and player columns. */
 @media (max-width: 760px) {
   .page {
-    padding: 8px 16px 40px;
+    padding: 8px 16px 24px;
+  }
+
+  .head {
+    margin: 20px 0 14px;
+    gap: 12px;
   }
 
   .title {
@@ -479,38 +486,112 @@
   }
 
   .days {
-    gap: 6px;
+    gap: 4px;
+    margin: 16px 0 10px;
   }
 
   .daysLabel {
     flex-basis: 100%;
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .day {
     flex: 1 1 0;
     width: auto;
     min-width: 0;
-    height: 48px;
+    height: 44px;
+    padding: 0 2px;
     font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    border-radius: 8px;
   }
 
   .weekNav {
     width: 28px;
-    height: 48px;
+    height: 44px;
+    border-radius: 8px;
   }
 
-  /* Stats stay (the day's line is the point); the table scrolls sideways. */
-  .grid {
-    grid-template-columns: 48px minmax(140px, 1fr) 44px repeat(10, 44px);
-    min-width: 720px;
+  .note {
+    flex-wrap: nowrap;
+    font-size: 13px;
+    padding: 8px 8px 8px 12px;
+    margin-bottom: 10px;
+  }
+
+  .note p {
+    flex: 1 1 0;
+  }
+
+  .note .btn {
+    height: 36px;
     padding: 0 12px;
-    column-gap: 10px;
+    font-size: 12px;
+  }
+
+  .table {
+    margin: 0 -16px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .grid {
+    grid-template-columns: 56px 150px 52px repeat(10, 46px);
+    min-width: 730px;
+    padding: 0 12px 0 0;
+    column-gap: 0;
+  }
+
+  /* Slot and player stay put while the stats scroll. */
+  .grid > :nth-child(1),
+  .grid > :nth-child(2) {
+    position: sticky;
+    z-index: 1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+  }
+
+  .grid > :nth-child(1) {
+    left: 0;
+    padding-left: 12px;
+  }
+
+  .grid > :nth-child(2) {
+    left: 56px;
+    padding-right: 8px;
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  .header > :nth-child(-n + 2),
+  .totalRow > :nth-child(-n + 2),
+  .row.target > :nth-child(-n + 2) {
+    background: var(--surface-muted);
+  }
+
+  .row.sel > :nth-child(-n + 2) {
+    background: var(--accent-soft);
+  }
+
+  .row {
+    height: 58px;
   }
 
   .group {
-    min-width: 720px;
-    padding: 12px 12px 6px;
+    position: sticky;
+    left: 0;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    padding: 10px 16px 6px;
+    font-size: 14px;
+    color: var(--ink-muted);
+    background: var(--surface-muted);
+    border-bottom-color: var(--row-divider);
   }
 
   .grid > .game {
@@ -522,7 +603,10 @@
   }
 
   .slot {
-    width: 44px;
+    width: 40px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 13px;
   }
 
   .player {
@@ -533,9 +617,38 @@
     display: none;
   }
 
-  .day {
-    padding: 0 2px;
-    text-align: center;
-    line-height: 1.2;
+  .who {
+    gap: 2px;
+  }
+
+  .name {
+    font-size: 14px;
+  }
+
+  .meta {
+    margin-top: 0;
+  }
+
+  .status {
+    margin-left: 4px;
+    padding: 1px 6px;
+  }
+
+  .games {
+    min-width: 36px;
+    padding: 3px 6px;
+  }
+
+  .totalLabel {
+    font-size: 14px;
+    flex-wrap: wrap;
+  }
+
+  .totalLabelGame {
+    margin-left: 6px;
+  }
+
+  .foot {
+    font-size: 12px;
   }
 }
