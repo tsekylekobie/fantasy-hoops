@@ -3,7 +3,9 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { BadRequest, parsePlayerId, parseSeason } from "@/lib/queries/params";
+import { getPlayerWeek } from "@/lib/queries/lineup";
 import { getPlayerDetail } from "@/lib/queries/players";
+import type { PlayerDetailResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +20,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     throw err;
   }
   try {
-    const detail = await getPlayerDetail(pool, id, season);
+    const [detail, thisWeek] = await Promise.all([getPlayerDetail(pool, id, season), getPlayerWeek(pool, id, season)]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
-    return NextResponse.json(detail, { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=60" } });
+    const body: PlayerDetailResponse = { ...detail, thisWeek };
+    return NextResponse.json(body, { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=60" } });
   } catch (err) {
     console.error(`GET /api/players/${id} failed`, err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

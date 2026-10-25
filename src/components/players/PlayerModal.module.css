@@ -238,6 +238,94 @@
   color: var(--ink-muted);
 }
 
+/* This week */
+.weekHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.weekHead .h3 {
+  margin: 0;
+}
+
+.weekRange {
+  margin-left: 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+
+.weekSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.gamesPill {
+  display: inline-block;
+  min-width: 40px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.games4 { background: var(--games-4-bg); color: var(--games-4-ink); }
+.games3 { background: var(--games-3-bg); color: var(--games-3-ink); }
+.games2 { background: var(--games-2-bg); color: var(--games-2-ink); }
+.games1 { background: var(--games-1-bg); color: var(--games-1-ink); }
+.games0 { background: var(--games-0-bg); color: var(--games-0-ink); }
+
+.weekTable {
+  min-width: 440px;
+}
+
+.cState {
+  width: 110px;
+}
+
+.weekTable .done td {
+  color: var(--ink-muted);
+}
+
+.gameState {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gameScheduled {
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+
+.gameLive {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.gameFinal {
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+}
+
 /* Loading / error */
 .state {
   display: flex;
@@ -304,6 +392,23 @@
 
   .seasonTable {
     min-width: 600px;
+  }
+
+  .weekTable {
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .weekTable .cDate {
+    width: 80px;
+  }
+
+  .weekTable .cOpp {
+    width: 56px;
+  }
+
+  .cState {
+    width: 90px;
   }
 
   .cSeason {

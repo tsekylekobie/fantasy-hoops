@@ -23,6 +23,7 @@ import {
   type LineupLock,
   type LineupPlayer,
   type LineupSlot,
+  type PlayerWeek,
   type TeamLineupResponse,
 } from "../types";
 import { getSeasonValues } from "./players";
@@ -161,7 +162,12 @@ function toDayStats(r: DayPlayerRow): LineupPlayer["dayStats"] {
   };
 }
 
-function toGame(r: DayPlayerRow): LineupGame | null {
+type GameRow = Pick<
+  DayPlayerRow,
+  "game_id" | "tipoff" | "status" | "status_state" | "started" | "home" | "opp_abbr" | "home_score" | "visitor_score"
+>;
+
+function toGame(r: GameRow): LineupGame | null {
   if (r.game_id === null) return null;
   const state = r.status_state === "final" ? "final" : r.started ? "live" : "scheduled";
   const [team, opp] = r.home ? [r.home_score, r.visitor_score] : [r.visitor_score, r.home_score];
@@ -421,6 +427,70 @@ export async function remainingWeekDays(db: Db, team: TeamContext, date: string)
   return out;
 }
 
+type WeekGames = LineupPlayer["weekGames"];
+
+/**
+ * Each player's NBA team's games from `start` to `end` (inclusive): those not
+ * yet tipped off, and in all. A game counts as played once it has started.
+ */
+export async function getWeekGames(db: Db, ids: number[], start: string, end: string): Promise<Map<number, WeekGames>> {
+  const { rows } = await db.query<{ id: number; total: number; remaining: number }>(
+    `SELECT p.id, count(g.id)::int AS total, count(g.id) FILTER (WHERE NOT ${started("g")})::int AS remaining
+       FROM players p
+       LEFT JOIN games g ON g.date BETWEEN $2 AND $3 AND NOT g.postponed
+                        AND p.team_id IN (g.home_team_id, g.visitor_team_id)
+      WHERE p.id = ANY($1)
+      GROUP BY p.id`,
+    [ids, start, end],
+  );
+  return new Map(rows.map((r) => [r.id, { remaining: r.remaining, total: r.total }]));
+}
+
+/**
+ * A player's games in `season`'s league's current matchup week (the one
+ * containing the league's today), for the player modal. Null outside the schedule.
+ */
+export async function getPlayerWeek(db: Db, playerId: number, season: number): Promise<PlayerWeek | null> {
+  const { rows: [w] } = await db.query<{
+    week: number; starts_on: string; ends_on: string; is_playoffs: boolean; time_zone: string;
+  }>(
+    `SELECT lw.week, to_char(lw.starts_on, 'YYYY-MM-DD') AS starts_on, to_char(lw.ends_on, 'YYYY-MM-DD') AS ends_on,
+            lw.is_playoffs, l.time_zone
+       FROM leagues l JOIN league_weeks lw ON lw.league_id = l.id
+      WHERE l.season = $1 AND (now() AT TIME ZONE l.time_zone)::date BETWEEN lw.starts_on AND lw.ends_on
+      ORDER BY l.id DESC
+      LIMIT 1`,
+    [season],
+  );
+  if (!w) return null;
+  const [gamesRes, counts] = await Promise.all([
+    db.query<GameRow & { date: string }>(
+      `SELECT g.id AS game_id, to_char(g.date, 'YYYY-MM-DD') AS date,
+              to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff,
+              g.status, g.status_state, ${started("g")} AS started,
+              g.home_team_id = p.team_id AS home, opp.abbreviation AS opp_abbr,
+              g.home_team_score AS home_score, g.visitor_team_score AS visitor_score
+         FROM players p
+         JOIN games g ON g.date BETWEEN $2 AND $3 AND NOT g.postponed
+                     AND p.team_id IN (g.home_team_id, g.visitor_team_id)
+         LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = p.team_id THEN g.visitor_team_id ELSE g.home_team_id END
+        WHERE p.id = $1
+        ORDER BY g.datetime, g.id`,
+      [playerId, w.starts_on, w.ends_on],
+    ),
+    getWeekGames(db, [playerId], w.starts_on, w.ends_on),
+  ]);
+  return {
+    week: w.week,
+    startsOn: w.starts_on,
+    endsOn: w.ends_on,
+    isPlayoffs: w.is_playoffs,
+    timeZone: w.time_zone,
+    games: gamesRes.rows.map((r) => ({ gameId: r.game_id!, date: r.date, ...toGame(r)! })),
+    ...(counts.get(playerId) ?? { remaining: 0, total: 0 }),
+  };
+}
+
 /** The full response for one date. */
 export async function getTeamLineup(pool: Pool, team: TeamContext, date: string, values: Values): Promise<TeamLineupResponse> {
   await withTeamLock(pool, team.teamId, (db) => freezeLineups(db, team.teamId));
@@ -439,16 +509,7 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
     [start, end],
   );
   const byDate = new Map(counts.map((c) => [c.date, c.n]));
-  const { rows: weekGames } = await pool.query<{ id: number; total: number; remaining: number }>(
-    `SELECT p.id, count(g.id)::int AS total, count(g.id) FILTER (WHERE NOT ${started("g")})::int AS remaining
-       FROM players p
-       LEFT JOIN games g ON g.date BETWEEN $2 AND $3 AND NOT g.postponed
-                        AND p.team_id IN (g.home_team_id, g.visitor_team_id)
-      WHERE p.id = ANY($1)
-      GROUP BY p.id`,
-    [day.players.map((p) => p.id), start, end],
-  );
-  const gamesById = new Map(weekGames.map((r) => [r.id, { remaining: r.remaining, total: r.total }]));
+  const gamesById = await getWeekGames(pool, day.players.map((p) => p.id), start, end);
   const days: TeamLineupResponse["days"] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) days.push({ date: d, nbaGames: byDate.get(d) ?? 0 });
 

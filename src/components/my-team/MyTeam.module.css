@@ -539,3 +539,9 @@
     line-height: 1.2;
   }
 }
+
+/* The Games Remaining header: abbreviated to fit, full label on hover. */
+.abbr {
+  text-decoration: none;
+  cursor: help;
+}

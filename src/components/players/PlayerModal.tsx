@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerDetailResponse, SeasonRow } from "@/lib/types";
+import type { PlayerDetailResponse, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
@@ -199,6 +199,8 @@ function Detail({ data }: { data: PlayerDetailResponse }) {
         ))}
       </dl>
 
+      {data.thisWeek && <ThisWeek week={data.thisWeek} />}
+
       <section className={styles.section} aria-labelledby="game-log-heading">
         <h3 id="game-log-heading" className={styles.h3}>
           Game log · {label}
@@ -283,6 +285,87 @@ function Detail({ data }: { data: PlayerDetailResponse }) {
       </section>
     </>
   );
+}
+
+const GAME_STATE = { scheduled: styles.gameScheduled, live: styles.gameLive, final: styles.gameFinal };
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** The player's games in the current matchup week, with games remaining / games this week. */
+function ThisWeek({ week }: { week: PlayerWeek }) {
+  const range = `${fmtGameDate(week.startsOn)} – ${fmtGameDate(week.endsOn)}`;
+  return (
+    <section className={styles.section} aria-labelledby="this-week-heading">
+      <div className={styles.weekHead}>
+        <h3 id="this-week-heading" className={styles.h3}>
+          This week · {week.isPlayoffs ? "Playoffs · " : ""}Week {week.week}
+          <span className={styles.weekRange}>{range}</span>
+        </h3>
+        <span className={styles.weekSummary}>
+          Games Remaining
+          <span
+            className={`${styles.gamesPill} ${styles[`games${Math.min(week.remaining, 4)}`]}`}
+            title={`${week.remaining} game${week.remaining === 1 ? "" : "s"} left of ${week.total} this week`}
+          >
+            {week.remaining}/{week.total}
+          </span>
+        </span>
+      </div>
+      {week.games.length === 0 ? (
+        <p className={styles.empty}>No games this week.</p>
+      ) : (
+        <div className={styles.scroll}>
+          <table className={`${styles.table} ${styles.weekTable}`}>
+            <colgroup>
+              <col className={styles.cDate} />
+              <col className={styles.cOpp} />
+              <col />
+              <col className={styles.cState} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Opp</th>
+                <th scope="col">Time / result</th>
+                <th scope="col" className={styles.n}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {week.games.map((g) => {
+                const done = g.state !== "scheduled";
+                return (
+                  <tr key={g.gameId} className={done ? styles.done : undefined}>
+                    <td>
+                      {WEEKDAYS[new Date(`${g.date}T00:00:00Z`).getUTCDay()]} {fmtGameDate(g.date)}
+                    </td>
+                    <td>{g.home ? "vs" : "@"} {g.opponentAbbr}</td>
+                    <td>{weekGameText(g, week.timeZone)}</td>
+                    <td className={styles.n}>
+                      <span className={`${styles.gameState} ${GAME_STATE[g.state]}`}>
+                        {g.state === "final" ? "Done" : g.state === "live" ? "Live" : "Remaining"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Tip-off time in the league's time zone, the live status and score, or "W 112–104". */
+function weekGameText(g: PlayerWeek["games"][number], timeZone: string): string {
+  const score = g.teamScore !== null && g.opponentScore !== null ? `${g.teamScore}–${g.opponentScore}` : "";
+  if (g.state === "scheduled") {
+    return g.tipoff ? new Date(g.tipoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }) : "TBD";
+  }
+  if (g.state === "live") return `${g.statusText ?? "Live"}${score ? ` · ${score}` : ""}`;
+  const result = g.teamScore !== null && g.opponentScore !== null && g.teamScore !== g.opponentScore
+    ? (g.teamScore > g.opponentScore ? "W " : "L ") : "";
+  return `${result}${score || "Final"}`;
 }
 
 function SeasonLine({ s }: { s: SeasonRow }) {
