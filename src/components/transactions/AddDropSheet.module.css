@@ -153,6 +153,24 @@
   margin: 16px 24px 0;
 }
 
+/* Illegal roster: one paragraph per problem, then what to do. */
+.blocked p {
+  margin: 0;
+}
+
+.blocked p + p {
+  margin-top: 6px;
+}
+
+.blocked + .lede {
+  margin-top: 12px;
+}
+
+.lede a {
+  color: inherit;
+  font-weight: 600;
+}
+
 .list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

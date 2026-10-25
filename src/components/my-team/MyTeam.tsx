@@ -5,6 +5,9 @@
 // the bench, or another player to swap with). Changes save right away. Past
 // days and players whose game has tipped off are locked. Stats are the day's
 // box score, and the starters' total is what counts toward the matchup.
+// IL: who may move in is the league's IL rule (lineup/rules.ts ilEligibility).
+// A player who stops qualifying stays on IL but makes the roster illegal:
+// a banner explains it, and add/drop refuses adds until it's fixed.
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
@@ -16,6 +19,7 @@ import SiteHeader from "@/components/SiteHeader";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import TradesPanel from "@/components/trades/TradesPanel";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
+import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
   AutoLineupRequest,
   AutoLineupResponse,
@@ -56,17 +60,34 @@ function buildSpots(data: TeamLineupResponse, openBench: boolean): Spot[] {
   return spots;
 }
 
-/** Whether the player in `from` can move to `to`: into it if it's open, else swapping with whoever is there. */
-function canMove(from: Spot, to: Spot): boolean {
+/** Players outside IL, and how many the league allows. */
+function activeCount(data: TeamLineupResponse) {
+  const limit = activeRosterLimit(Object.fromEntries(data.league.slots.map((s) => [s.slot, s.count])));
+  return { count: data.players.filter((p) => !isIlSlot(p.slot)).length, limit };
+}
+
+/**
+ * Whether the player in `from` can move to `to`: into it if it's open, else
+ * swapping with whoever is there. `roomOffIl`: an IL player can move to an
+ * open active spot only while the active roster has room.
+ */
+function canMove(from: Spot, to: Spot, roomOffIl: boolean): boolean {
   const a = from.player;
   const b = to.player;
   if (!a || a.lock || from.key === to.key || from.slot === to.slot) return false;
   if (!a.eligible.includes(to.slot)) return false;
+  if (!b && isIlSlot(from.slot) && !isIlSlot(to.slot) && !roomOffIl) return false;
   return !b || (!b.lock && b.eligible.includes(from.slot));
 }
 
+/** On IL but no longer meets the league's IL rule. */
+const ilIneligible = (p: LineupPlayer) => isIlSlot(p.slot) && !p.eligible.includes(p.slot);
+/** IL slots the league has that he could move to; empty if he's on IL already. */
+const ilOpenTo = (p: LineupPlayer, leagueIl: LineupSlot[]) =>
+  isIlSlot(p.slot) ? [] : p.eligible.filter((s) => leagueIl.includes(s));
+
 const isStarter = (slot: LineupSlot) => STARTING_SLOTS.includes(slot);
-const where = (slot: LineupSlot) => (slot === "BN" ? "the bench" : slot === "IL" || slot === "IL+" ? `the ${slot}` : slot);
+const where = (slot: LineupSlot) => (slot === "BN" ? "the bench" : isIlSlot(slot) ? `the ${slot}` : slot);
 const plays = (p: LineupPlayer) => p.game !== null && p.injuryStatus !== "Out";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -217,7 +238,12 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
   const sel = spots.find((s) => s.key === selected) ?? null;
   const starters = spots.filter((s) => isStarter(s.slot));
   const bench = spots.filter((s) => s.slot === "BN");
-  const injured = spots.filter((s) => s.slot === "IL" || s.slot === "IL+");
+  const injured = spots.filter((s) => isIlSlot(s.slot));
+  const active = activeCount(data);
+  const roomOffIl = active.count < active.limit;
+  const leagueIl = data.league.slots.map((s) => s.slot).filter(isIlSlot);
+  // Eligibility is evaluated per date; past days are a record, so no IL chips there.
+  const current = data.date >= data.today;
   const isToday = data.date === data.today;
   const dayName = isToday ? "today" : longDay(data.date);
   const idleFixable =
@@ -258,7 +284,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
       return;
     }
     if (spot.key === sel.key) return setSelected(null);
-    if (!canMove(sel, spot)) return;
+    if (!canMove(sel, spot, roomOffIl)) return;
     const a = sel.player!;
     const b = spot.player;
     const players = data.players.map((p) =>
@@ -294,7 +320,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
   function row(spot: Spot) {
     const p = spot.player;
     let mode: "idle" | "sel" | "target" | "off" = "idle";
-    if (sel) mode = spot.key === sel.key ? "sel" : canMove(sel, spot) ? "target" : "off";
+    if (sel) mode = spot.key === sel.key ? "sel" : canMove(sel, spot, roomOffIl) ? "target" : "off";
     // The slot badge is the move control: pick a player, then a target.
     const tappable = !saving && (mode === "sel" || mode === "target" || (mode === "idle" && !!p && !p.lock && editable));
     let slotLabel = "";
@@ -307,7 +333,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
     // Final game but no minutes (or no stat row at all, e.g. listed Out).
     const dnp = p?.game?.state === "final" && (day === null || day.min === 0);
     return (
-      <div key={spot.key} className={`${styles.grid} ${styles.row} ${styles[mode]}`}>
+      <div key={spot.key} className={`${styles.grid} ${styles.row} ${styles[mode]} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}>
         <span>
           <button
             type="button"
@@ -330,6 +356,20 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
                   {fullName(p)}
                   {p.injuryStatus && (
                     <span className={`${styles.status} ${p.injuryStatus === "Out" ? styles.out : styles.dtd}`}>{p.injuryStatus}</span>
+                  )}
+                  {current && ilIneligible(p) && (
+                    <span className={`${styles.status} ${styles.ilBad}`} title={`No longer meets the league's ${p.slot} rule`}>
+                      Not {p.slot} eligible
+                    </span>
+                  )}
+                  {current && ilOpenTo(p, leagueIl).length > 0 && (
+                    <span
+                      className={`${styles.status} ${styles.ilOk}`}
+                      title={`${ilOpenTo(p, leagueIl).join("/")} eligible: can move to IL to free a roster spot`}
+                      aria-label={`${ilOpenTo(p, leagueIl).join("/")} eligible`}
+                    >
+                      → {ilOpenTo(p, leagueIl).join("/")}
+                    </span>
                   )}
                 </span>
                 <span className={styles.meta}>
@@ -424,10 +464,24 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
           <p>{longDay(data.date)} is in the past, so this lineup is locked.</p>
         </div>
       )}
+      {current && data.rosterProblems.length > 0 && (
+        <div className={`${styles.note} ${styles.error} ${styles.illegal}`} role="alert">
+          <div className={styles.illegalText}>
+            <b>Illegal roster.</b>{" "}
+            {readOnly
+              ? "This team can't add players or place waiver claims until it's fixed."
+              : "You can't add players or place waiver claims until it's fixed."}
+            <ul>
+              {data.rosterProblems.map((m) => <li key={m}>{m}</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
       {sel?.player && (
         <div className={`${styles.note} ${styles.moving}`}>
           <p>
             Moving <b>{fullName(sel.player)}</b>. Tap a highlighted slot: an open spot, the bench, or a player to swap with.
+            {isIlSlot(sel.slot) && !roomOffIl && ` Your roster is full (${active.limit} not counting IL), so he can only swap with an IL-eligible player, or drop someone first.`}
           </p>
           <button type="button" className={styles.btn} onClick={() => setSelected(null)}>Cancel</button>
         </div>
@@ -467,7 +521,10 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
         {bench.map(row)}
         {injured.length > 0 && (
           <>
-            <Group label="Injured list" hint="Frees a roster spot · eligibility is a league setting" />
+            <Group
+              label="Injured list"
+              hint={`Doesn't count toward the ${active.limit}-player limit · ${data.league.ilRules.map((r) => `${r.slot}: ${r.text}`).join(" · ")}`}
+            />
             {injured.map(row)}
           </>
         )}

@@ -70,9 +70,16 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   const data = load?.status === "ready" && load.id === playerId ? load.data : null;
   const add = data?.add ?? null;
   const full = data !== null && data.rosterCount >= data.rosterLimit;
+  // An illegal roster (a healthy player on IL, or too many active) can only
+  // add with a drop that fixes it.
+  const illegal = data !== null && data.rosterProblems.length > 0;
+  const fixes = data?.roster.filter((p) => p.fixesIllegalRoster) ?? [];
   const dropping = data?.roster.find((p) => p.id === pick) ?? null;
   // Dropping an IL player doesn't open a spot.
-  const needsPick = full && (dropping === null || dropping.slot === "IL" || dropping.slot === "IL+");
+  const needsPick = illegal
+    ? !dropping?.fixesIllegalRoster
+    : full && (dropping === null || dropping.slot === "IL" || dropping.slot === "IL+");
+  const blocked = add?.addBlocked ?? (illegal && fixes.length === 0 ? "illegal" : null);
   const claim = add?.mode === "waiver";
   const clearsAt = add?.waiver?.clearsAt ?? null;
   const tz = data?.timeZone ?? "America/New_York";
@@ -173,6 +180,29 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
             <div className={styles.body}>
               <p className={styles.blocked} role="alert">{add.addBlocked}</p>
             </div>
+          ) : illegal ? (
+            <div className={styles.body}>
+              <h3 className={styles.h3}>Your roster is illegal</h3>
+              <div className={styles.blocked} role="alert">
+                {data.rosterProblems.map((m) => <p key={m}>{m}</p>)}
+              </div>
+              {fixes.length > 0 ? (
+                <>
+                  <p className={styles.lede}>
+                    You can&apos;t add players until it&apos;s fixed. Dropping one of these fixes it and makes room for {fullName(add)}:
+                  </p>
+                  <div className={styles.list} role="radiogroup" aria-label="Player to drop">
+                    {fixes.map((p) => (
+                      <DropOption key={p.id} p={p} checked={pick === p.id} onPick={() => setPick(p.id)} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className={styles.lede}>
+                  You can&apos;t add players or place claims until it&apos;s fixed. <Link href="/my-team">Fix it on My team</Link>.
+                </p>
+              )}
+            </div>
           ) : full ? (
             <div className={styles.body}>
               <h3 className={styles.h3}>Choose who to drop</h3>
@@ -200,13 +230,13 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
             </div>
           )}
 
-          {!add.addBlocked && (
+          {!blocked && (
             <div className={styles.sum}>
               <div className={styles.row}>
                 <span>Add</span>
                 <b className={styles.plus}>{fullName(add)}</b>
               </div>
-              {full && (
+              {(full || illegal) && (
                 <div className={styles.row}>
                   <span>Drop</span>
                   <b className={styles.minus}>{dropping ? fullName(dropping) : "Pick a player"}</b>
@@ -244,7 +274,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
             <button type="button" className={styles.btn} onClick={() => onCloseRef.current()}>
               Cancel
             </button>
-            {!add.addBlocked && (
+            {!blocked && (
               <button
                 type="button"
                 className={`${styles.btn} ${styles.pri}`}

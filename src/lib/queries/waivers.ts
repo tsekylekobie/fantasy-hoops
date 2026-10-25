@@ -46,11 +46,12 @@ async function getTeamContext(db: Db, teamId: number): Promise<TeamContext | nul
   const { rows: [r] } = await db.query<{
     team_name: string; manager_name: string | null; abbreviation: string; waiver_priority: number | null;
     league_id: string; league_name: string; season: number; roster_slots: SlotCounts;
-    lineup_lock: "game_time" | "first_game"; il_statuses: string[]; il_plus_statuses: string[]; today: string;
+    lineup_lock: "game_time" | "first_game"; il_statuses: string[]; il_plus_statuses: string[];
+    il_min_days: number; il_plus_min_days: number; today: string;
   }>(
     `SELECT ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.waiver_priority,
             l.id AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
-            l.il_statuses, l.il_plus_statuses,
+            l.il_statuses, l.il_plus_statuses, l.il_min_days, l.il_plus_min_days,
             to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
        LEFT JOIN users u ON u.id = ft.owner_user_id
@@ -62,7 +63,8 @@ async function getTeamContext(db: Db, teamId: number): Promise<TeamContext | nul
     teamId, teamName: r.team_name, managerName: r.manager_name, abbreviation: r.abbreviation,
     waiverPriority: r.waiver_priority, leagueId: Number(r.league_id), leagueName: r.league_name,
     season: r.season, rosterSlots: r.roster_slots, lineupLock: r.lineup_lock,
-    ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, today: r.today,
+    ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, ilMinDays: r.il_min_days,
+    ilPlusMinDays: r.il_plus_min_days, today: r.today,
   };
 }
 

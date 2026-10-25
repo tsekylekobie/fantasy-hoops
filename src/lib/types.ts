@@ -374,7 +374,11 @@ export type LineupLock = "past" | "game" | "day";
 
 export interface LineupPlayer extends PlayerSummary {
   slot: LineupSlot;
-  /** Slots he may hold on this date: position slots, UTIL, BN, and IL/IL+ if his injury status allows. */
+  /**
+   * Slots he may hold on this date: position slots, UTIL, BN, and IL/IL+ if
+   * the league's IL rule allows (rules.ilEligibility). A player on IL whose
+   * slot isn't listed here no longer qualifies.
+   */
   eligible: LineupSlot[];
   lock: LineupLock | null;
   /** Latest injury report status ("Out", "Day-To-Day", ...); null when healthy. */
@@ -400,7 +404,15 @@ export interface TeamLineupResponse {
     lineupLock: "game_time" | "first_game";
     /** Slot counts in display order; slots with 0 are left out. */
     slots: { slot: LineupSlot; count: number }[];
+    /** Who may use each IL slot the league has, e.g. "Out, 3+ days on the injury report". */
+    ilRules: { slot: LineupSlot; text: string }[];
   };
+  /**
+   * Why the roster is illegal on this date: a player on IL who no longer
+   * qualifies, or too many active players. Empty when legal (and for past
+   * days). While illegal the team can't add players or place claims.
+   */
+  rosterProblems: string[];
   /** The lineup's date and the league's today (league time zone), yyyy-mm-dd. */
   date: string;
   today: string;
@@ -463,6 +475,8 @@ export interface RosterMoveOption extends PlayerSummary {
   value: number;
   /** Why he can't be dropped right now (e.g. locked in today's lineup); null when he can. */
   dropBlocked: string | null;
+  /** The roster is illegal and dropping him (with an add) would make it legal and leave room. */
+  fixesIllegalRoster: boolean;
 }
 
 /** The player being added, as the add sheet shows him. */
@@ -494,6 +508,11 @@ export interface RosterMovesContext {
   /** Players counted against the limit (everyone not on IL/IL+ today), and the limit (non-IL slots). */
   rosterCount: number;
   rosterLimit: number;
+  /**
+   * Why the roster is illegal today (see TeamLineupResponse.rosterProblems).
+   * While it's non-empty, adds are refused unless the drop fixes it.
+   */
+  rosterProblems: string[];
   /** Adds (free agents and waiver claims) this matchup week and season; null limit = unlimited. */
   addsThisWeek: number;
   maxAddsPerWeek: number | null;
