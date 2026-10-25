@@ -49,7 +49,7 @@ const SEASON_TOTALS_SQL = `
   JOIN players p ON p.id = t.player_id
   LEFT JOIN teams tm ON tm.id = p.team_id`;
 
-interface TotalsRow {
+export interface TotalsRow {
   player_id: number;
   gp: number;
   min: number;
@@ -127,6 +127,16 @@ export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) =
     default:
       return (r) => per(r[sort], r.gp);
   }
+}
+
+/** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */
+export async function getSeasonValues(
+  db: Pool,
+  season: number,
+): Promise<Map<number, { totals: TotalsRow; value: number }>> {
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null]);
+  const values = valuePlayers(rows.map(toTotals));
+  return new Map(rows.map((r) => [r.player_id, { totals: r, value: values.get(r.player_id)!.value }]));
 }
 
 export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResponse> {

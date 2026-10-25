@@ -18,6 +18,20 @@
   --warn-ink: #78350f;
   --danger-soft: #fee2e2;
   --danger-ink: #991b1b;
+  --ok-soft: #e8f0e6;
+  --ok-border: #b9cfb3;
+  --ok-ink: #1f3a1b;
+  /* Games left this week: 4+ dark green, 3 green, 2 yellow, 1 red, 0 dark red. */
+  --games-4-bg: #14532d;
+  --games-4-ink: #ffffff;
+  --games-3-bg: #22c55e;
+  --games-3-ink: #052e16;
+  --games-2-bg: #facc15;
+  --games-2-ink: #422006;
+  --games-1-bg: #dc2626;
+  --games-1-ink: #ffffff;
+  --games-0-bg: #7f1d1d;
+  --games-0-ink: #ffffff;
   --on-ink: #ffffff;
   --backdrop: rgba(22, 24, 29, 0.55);
   color-scheme: light;
@@ -48,6 +62,11 @@
   --warn-ink: #fde68a;
   --danger-soft: #3b1a1a;
   --danger-ink: #fecaca;
+  --ok-soft: #16261a;
+  --ok-border: #2c4a31;
+  --ok-ink: #bbf7d0;
+  --games-4-bg: #166534;
+  --games-0-bg: #991b1b;
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
   color-scheme: dark;

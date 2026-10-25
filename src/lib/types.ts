@@ -218,3 +218,84 @@ export interface SessionResponse {
   /** True when sign-in goes to the local mock page instead of Google. */
   mock: boolean;
 }
+
+// Team lineup (/my-team)
+
+/** Lineup slots, in display order. BN, IL and IL+ don't score. */
+export const LINEUP_SLOTS = ["PG", "SG", "G", "SF", "PF", "F", "C", "UTIL", "BN", "IL", "IL+"] as const;
+export type LineupSlot = (typeof LINEUP_SLOTS)[number];
+export const STARTING_SLOTS: readonly LineupSlot[] = ["PG", "SG", "G", "SF", "PF", "F", "C", "UTIL"];
+
+/** A player's NBA game on the lineup's date, from his team's point of view. */
+export interface LineupGame {
+  opponentAbbr: string;
+  home: boolean;
+  /** Tip-off as an ISO timestamp; null if the schedule has no time. */
+  tipoff: string | null;
+  state: "scheduled" | "live" | "final";
+  /** Provider status for live games, e.g. "2nd Qtr"; null otherwise. */
+  statusText: string | null;
+  teamScore: number | null;
+  opponentScore: number | null;
+}
+
+/**
+ * Why a player can't be moved: the date is past, his game has tipped off, or
+ * (leagues that lock by day) the day's first game has tipped off.
+ */
+export type LineupLock = "past" | "game" | "day";
+
+export interface LineupPlayer extends PlayerSummary {
+  slot: LineupSlot;
+  /** Slots he may hold on this date: position slots, UTIL, BN, and IL/IL+ if his injury status allows. */
+  eligible: LineupSlot[];
+  lock: LineupLock | null;
+  /** Latest injury report status ("Out", "Day-To-Day", ...); null when healthy. */
+  injuryStatus: string | null;
+  game: LineupGame | null;
+  /** His NBA team's games in the lineup's week (see `days`): not yet tipped off, and in all. */
+  weekGames: { remaining: number; total: number };
+  /** Season per-game averages; null before his first game. */
+  season: (CategoryLine & { gp: number; min: number }) | null;
+}
+
+/** GET /api/team/lineup?date=yyyy-mm-dd (default today), the signed-in user's team. */
+export interface TeamLineupResponse {
+  team: { id: number; name: string; abbreviation: string; waiverPriority: number | null };
+  league: {
+    id: number;
+    name: string;
+    season: number;
+    lineupLock: "game_time" | "first_game";
+    /** Slot counts in display order; slots with 0 are left out. */
+    slots: { slot: LineupSlot; count: number }[];
+  };
+  /** The lineup's date and the league's today (league time zone), yyyy-mm-dd. */
+  date: string;
+  today: string;
+  /** The matchup week containing `date`; null outside the schedule. */
+  week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean } | null;
+  /** Each day of that week (or the Mon–Sun around `date`) with its NBA game count. */
+  days: { date: string; nbaGames: number }[];
+  players: LineupPlayer[];
+}
+
+/** PUT /api/team/lineup: the whole lineup for one day (today or later). Responds with TeamLineupResponse. */
+export interface LineupUpdateRequest {
+  date: string;
+  slots: { playerId: number; slot: LineupSlot }[];
+}
+
+/**
+ * POST /api/team/lineup/auto: best lineup for `date`, or for every day from
+ * `date` (today or later) to the end of its week.
+ */
+export interface AutoLineupRequest {
+  date: string;
+  scope: "day" | "week";
+}
+
+export interface AutoLineupResponse extends TeamLineupResponse {
+  /** Days whose lineup changed, yyyy-mm-dd. */
+  changed: string[];
+}
