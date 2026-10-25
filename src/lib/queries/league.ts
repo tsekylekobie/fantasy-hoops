@@ -4,7 +4,16 @@
 // the finished weeks plus the current one's live score. Each week is scored
 // the same way as /matchup (queries/matchups.ts), on read.
 import type { Pool } from "pg";
-import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup, StandingsRow } from "../types";
+import type {
+  FantasyTeamSummary,
+  LeagueOverview,
+  LeagueTransaction,
+  MatchupScore,
+  OtherMatchup,
+  RecentTransactions,
+  StandingsRow,
+  TransactionMove,
+} from "../types";
 import { compareLines, emptyLine, weekLines } from "./matchups";
 
 interface WeekRow {
@@ -128,4 +137,68 @@ export async function getLeagueOverview(db: Pool, season: number, userId: number
     matchups,
     myTeam: mine ? summary(mine.id) : null,
   };
+}
+
+/**
+ * The season league's latest completed transactions, newest first, any type
+ * (add/drop, waiver claims, trades, commissioner moves). Null when there is no league.
+ */
+export async function getRecentTransactions(db: Pool, season: number, limit = 25): Promise<RecentTransactions | null> {
+  const { rows: [league] } = await db.query<{ id: number; time_zone: string }>(
+    `SELECT id::int, time_zone FROM leagues WHERE season = $1 ORDER BY id LIMIT 1`,
+    [season],
+  );
+  if (!league) return null;
+  const { rows } = await db.query<{
+    id: number; type: LeagueTransaction["type"]; at: string;
+    team_id: number | null; trade_team_id: number | null;
+    player_id: number | null; first_name: string | null; last_name: string | null; position: string | null;
+    nba_person_id: number | null; team_abbr: string | null; from_team_id: number | null; to_team_id: number | null;
+  }>(
+    `WITH t AS (
+       SELECT id, type, team_id, trade_team_id, coalesce(processed_at, created_at) AS at
+       FROM transactions
+       WHERE league_id = $1 AND status = 'completed'
+       ORDER BY coalesce(processed_at, created_at) DESC, id DESC
+       LIMIT $2
+     )
+     SELECT t.id::int, t.type, to_char(t.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
+            t.team_id::int, t.trade_team_id::int,
+            tp.player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
+            nt.abbreviation AS team_abbr, tp.from_team_id::int, tp.to_team_id::int
+     FROM t
+     LEFT JOIN transaction_players tp ON tp.transaction_id = t.id
+     LEFT JOIN players p ON p.id = tp.player_id
+     LEFT JOIN teams nt ON nt.id = p.team_id
+     ORDER BY t.at DESC, t.id DESC, p.last_name, p.first_name`,
+    [league.id, limit],
+  );
+  const { rows: teams } = await db.query<FantasyTeamSummary>(
+    `SELECT id::int, name, abbreviation FROM fantasy_teams WHERE league_id = $1`,
+    [league.id],
+  );
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+  const team = (id: number | null) => (id === null ? null : teamById.get(id) ?? null);
+
+  const byId = new Map<number, LeagueTransaction>();
+  for (const r of rows) {
+    let tx = byId.get(r.id);
+    if (!tx) {
+      tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [] };
+      byId.set(r.id, tx);
+    }
+    if (r.player_id === null) continue;
+    tx.moves.push({
+      player: {
+        id: r.player_id, firstName: r.first_name ?? "", lastName: r.last_name ?? "", teamAbbr: r.team_abbr,
+        position: r.position, nbaPersonId: r.nba_person_id,
+      },
+      from: team(r.from_team_id),
+      to: team(r.to_team_id),
+    });
+  }
+  // Adds, then players changing teams, then drops.
+  const rank = (m: TransactionMove) => (m.from === null ? 0 : m.to === null ? 2 : 1);
+  for (const tx of byId.values()) tx.moves.sort((a, b) => rank(a) - rank(b));
+  return { timeZone: league.time_zone, transactions: [...byId.values()] };
 }

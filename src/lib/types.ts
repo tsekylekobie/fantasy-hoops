@@ -273,6 +273,36 @@ export interface LeagueOverview {
   myTeam: FantasyTeamSummary | null;
 }
 
+/** transactions.type: every kind of roster move the league records. */
+export type TransactionType = "add" | "drop" | "add_drop" | "waiver_claim" | "trade" | "commissioner";
+
+/** One player moved by a transaction. from null = from free agents or waivers; to null = dropped. */
+export interface TransactionMove {
+  player: PlayerSummary;
+  from: FantasyTeamSummary | null;
+  to: FantasyTeamSummary | null;
+}
+
+/** A completed transaction, for the League page's Recent transactions list. */
+export interface LeagueTransaction {
+  id: number;
+  type: TransactionType;
+  /** When rosters changed (processed_at, else created_at), ISO timestamp. */
+  at: string;
+  /** Who made the move (trades: the proposer). */
+  team: FantasyTeamSummary | null;
+  /** Trades: the other side. */
+  tradeTeam: FantasyTeamSummary | null;
+  /** Adds first, then moves between teams, then drops. */
+  moves: TransactionMove[];
+}
+
+/** The League page's Recent transactions: newest first, and the league's time zone for times. */
+export interface RecentTransactions {
+  timeZone: string;
+  transactions: LeagueTransaction[];
+}
+
 /** The signed-in user, as the UI sees it. */
 export interface SessionUser {
   id: number;

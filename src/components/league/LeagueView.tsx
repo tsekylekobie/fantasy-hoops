@@ -2,6 +2,7 @@
 // week's scoreboard. Team names open that team's roster (yours is /my-team);
 // a score opens that matchup.
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import { fmtGameDate } from "@/components/players/format";
@@ -23,12 +24,13 @@ function fmtRange(from: string, to: string): string {
 const teamHref = (t: FantasyTeamSummary, myTeam: FantasyTeamSummary | null) =>
   t.id === myTeam?.id ? "/my-team" : `/team/${t.id}`;
 
-export default function LeagueView({ data }: { data: LeagueOverview | null }) {
+/** `children` render below standings and the scoreboard (Recent transactions). */
+export default function LeagueView({ data, children }: { data: LeagueOverview | null; children?: ReactNode }) {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {data ? <Overview data={data} /> : <p className={styles.empty}>No league for this season yet.</p>}
+        {data ? <><Overview data={data} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
       </div>
     </div>
   );
