@@ -175,6 +175,8 @@ export interface MatchupPlayer extends PlayerSummary {
 }
 
 export interface MatchupSide extends FantasyTeamSummary {
+  /** The owner's name; null for an unowned team. */
+  managerName: string | null;
   /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
   stats: CategoryLine;
   /** Starter games played so far this week. */
@@ -329,7 +331,8 @@ export interface LineupPlayer extends PlayerSummary {
 
 /** GET /api/team/lineup?date=yyyy-mm-dd (default today), the signed-in user's team. */
 export interface TeamLineupResponse {
-  team: { id: number; name: string; abbreviation: string; waiverPriority: number | null };
+  /** managerName: the owner's name; null for an unowned team. */
+  team: { id: number; name: string; managerName: string | null; abbreviation: string; waiverPriority: number | null };
   league: {
     id: number;
     name: string;

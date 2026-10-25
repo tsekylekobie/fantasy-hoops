@@ -192,6 +192,7 @@ export const emptyLine = (): CategoryLine => weekLine(ZERO);
 interface TeamRow {
   id: number;
   name: string;
+  manager_name: string | null;
   abbreviation: string;
   owner_user_id: number | null;
 }
@@ -346,7 +347,8 @@ export async function getMatchupWeek(
     weeks[weeks.length - 1];
 
   const { rows: teams } = await db.query<TeamRow>(
-    `SELECT id::int, name, abbreviation, owner_user_id::int FROM fantasy_teams WHERE league_id = $1`,
+    `SELECT ft.id::int, ft.name, u.name AS manager_name, ft.abbreviation, ft.owner_user_id::int
+     FROM fantasy_teams ft LEFT JOIN users u ON u.id = ft.owner_user_id WHERE ft.league_id = $1`,
     [league.id],
   );
   const teamById = new Map(teams.map((t) => [t.id, t]));
@@ -391,7 +393,7 @@ export async function getMatchupWeek(
     const rightId = shown.team_a_id === leftId ? shown.team_b_id : shown.team_a_id;
     const players = await loadPlayers(db, params, [leftId, rightId], statsDate, refDate, played.rows);
     const side = (id: number): MatchupSide => ({
-      ...summary(id), stats: line(id), gamesPlayed: totals.get(id)?.gp ?? 0,
+      ...summary(id), managerName: teamById.get(id)!.manager_name, stats: line(id), gamesPlayed: totals.get(id)?.gp ?? 0,
       gamesLeft: gamesLeft.get(id) ?? 0, players: players.get(id) ?? [],
     });
     const team = side(leftId);

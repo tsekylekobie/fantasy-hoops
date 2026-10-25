@@ -39,6 +39,8 @@ export class LineupError extends Error {
 export interface TeamContext {
   teamId: number;
   teamName: string;
+  /** The owner's name; null for an unowned team. */
+  managerName: string | null;
   abbreviation: string;
   waiverPriority: number | null;
   leagueId: number;
@@ -55,15 +57,16 @@ export interface TeamContext {
 /** The signed-in user's team in `season`'s league; null if they don't have one. */
 export async function getUserTeam(db: Db, userId: number, season: number): Promise<TeamContext | null> {
   const { rows } = await db.query<{
-    team_id: string; team_name: string; abbreviation: string; waiver_priority: number | null;
+    team_id: string; team_name: string; manager_name: string | null; abbreviation: string; waiver_priority: number | null;
     league_id: string; league_name: string; season: number; roster_slots: SlotCounts;
     lineup_lock: "game_time" | "first_game"; il_statuses: string[]; il_plus_statuses: string[]; today: string;
   }>(
-    `SELECT ft.id AS team_id, ft.name AS team_name, ft.abbreviation, ft.waiver_priority,
+    `SELECT ft.id AS team_id, ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.waiver_priority,
             l.id AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
             l.il_statuses, l.il_plus_statuses,
             to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
+       LEFT JOIN users u ON u.id = ft.owner_user_id
       WHERE ft.owner_user_id = $1 AND l.season = $2
       ORDER BY l.id DESC
       LIMIT 1`,
@@ -72,7 +75,7 @@ export async function getUserTeam(db: Db, userId: number, season: number): Promi
   const r = rows[0];
   if (!r) return null;
   return {
-    teamId: Number(r.team_id), teamName: r.team_name, abbreviation: r.abbreviation,
+    teamId: Number(r.team_id), teamName: r.team_name, managerName: r.manager_name, abbreviation: r.abbreviation,
     waiverPriority: r.waiver_priority, leagueId: Number(r.league_id), leagueName: r.league_name,
     season: r.season, rosterSlots: r.roster_slots, lineupLock: r.lineup_lock,
     ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, today: r.today,
@@ -453,7 +456,7 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
   for (let d = start; d <= end; d = addDays(d, 1)) days.push({ date: d, nbaGames: byDate.get(d) ?? 0 });
 
   return {
-    team: { id: team.teamId, name: team.teamName, abbreviation: team.abbreviation, waiverPriority: team.waiverPriority },
+    team: { id: team.teamId, name: team.teamName, managerName: team.managerName, abbreviation: team.abbreviation, waiverPriority: team.waiverPriority },
     league: {
       id: team.leagueId,
       name: team.leagueName,

@@ -360,7 +360,10 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
   return (
     <Shell>
       <div className={styles.head}>
-        <h1 className={styles.title}>{data.team.name}</h1>
+        <div>
+          <h1 className={styles.title}>{data.team.name}</h1>
+          {data.team.managerName && <p className={styles.manager}>{data.team.managerName}</p>}
+        </div>
         {readOnly ? (
           <div className={styles.actions}>
             <Link className={styles.btn} href="/league">League standings</Link>

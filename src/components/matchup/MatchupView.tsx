@@ -166,7 +166,8 @@ function PagerLink({ href, disabled, children }: { href: string; disabled: boole
 }
 
 function Scoreboard({ m }: { m: Matchup }) {
-  const sub = (s: MatchupSide) => `${s.gamesPlayed}/${s.gamesPlayed + s.gamesLeft} games played`;
+  const sub = (s: MatchupSide) =>
+    `${s.managerName ? `${s.managerName} · ` : ""}${s.gamesPlayed}/${s.gamesPlayed + s.gamesLeft} games played`;
   return (
     <section className={styles.board} aria-label="Score">
       <div className={styles.side}>

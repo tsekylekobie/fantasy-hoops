@@ -9,9 +9,9 @@ import UserMenu from "./UserMenu";
 import styles from "./SiteHeader.module.css";
 
 const TABS = [
+  { href: "/league", label: "League", also: "/team/" },
   { href: "/my-team", label: "My team" },
   { href: "/matchup", label: "Matchup" },
-  { href: "/league", label: "League", also: "/team/" },
   { href: "/players", label: "Players" },
 ];
 
