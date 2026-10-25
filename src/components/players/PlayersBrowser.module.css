@@ -2,40 +2,12 @@
 
 .page {
   min-height: 100vh;
-  padding: 28px 40px 48px;
+  padding: 12px 40px 48px;
 }
 
 .inner {
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.topActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.logo {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 26px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.logo b {
-  color: var(--accent);
 }
 
 .title {

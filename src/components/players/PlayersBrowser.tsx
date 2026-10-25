@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange } from "@/lib/types";
 import { CURRENT_SEASON, SORT_KEYS, defaultSortDir, seasonLabel } from "@/lib/types";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
-import ThemeToggle from "@/components/ThemeToggle";
-import UserMenu from "@/components/UserMenu";
+import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
@@ -186,15 +184,7 @@ export default function PlayersBrowser() {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
-        <header className={styles.top}>
-          <Link href="/" className={styles.logo}>
-            Fantasy <b>Hoops</b>
-          </Link>
-          <div className={styles.topActions}>
-            <ThemeToggle />
-            <UserMenu />
-          </div>
-        </header>
+        <SiteHeader />
 
         <h1 className={styles.title}>{range === "last14" ? "Last 14 days" : "Season averages"}</h1>
         <p className={styles.sub}>

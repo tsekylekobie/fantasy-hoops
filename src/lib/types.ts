@@ -134,6 +134,76 @@ export function seasonLabel(season: number): string {
   return `${season}–${String((season + 1) % 100).padStart(2, "0")}`;
 }
 
+// Matchup (/matchup)
+
+/** The nine scored categories, in display order. */
+export const CATEGORY_KEYS = ["fgPct", "ftPct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
+export type CategoryKey = (typeof CATEGORY_KEYS)[number];
+
+/** A category's outcome for one side. */
+export type CategoryResult = "win" | "loss" | "tie";
+
+/** Categories won, lost and tied. */
+export interface MatchupScore {
+  wins: number;
+  losses: number;
+  ties: number;
+}
+
+export interface FantasyTeamSummary {
+  id: number;
+  name: string;
+  abbreviation: string;
+}
+
+export interface MatchupSide extends FantasyTeamSummary {
+  /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
+  stats: CategoryLine;
+  /** Starter games played so far this week. */
+  gamesPlayed: number;
+  /** Starter games still to tip off this week (current lineup and NBA teams). */
+  gamesLeft: number;
+}
+
+export interface Matchup {
+  /** The signed-in manager's team. */
+  team: MatchupSide;
+  opponent: MatchupSide;
+  /** Outcome of each category for `team`. */
+  results: Record<CategoryKey, CategoryResult>;
+  score: MatchupScore;
+}
+
+/** Another pairing this week, scored for teamA. teamB null = playoff bye. */
+export interface OtherMatchup {
+  teamA: FantasyTeamSummary;
+  teamB: FantasyTeamSummary | null;
+  score: MatchupScore;
+}
+
+/** The /matchup page: one league week from the signed-in manager's side. */
+export interface MatchupWeek {
+  season: number;
+  week: number;
+  weekCount: number;
+  /** Inclusive ISO dates (yyyy-mm-dd). */
+  startsOn: string;
+  endsOn: string;
+  isPlayoffs: boolean;
+  status: "upcoming" | "live" | "final";
+  /** 1-based day of the week while live, else null. */
+  day: number | null;
+  days: number;
+  /** null when signed out, without a team, or the team has no game (bye). */
+  matchup: Matchup | null;
+  /** The manager's team, when signed in and in the league. */
+  myTeam: FantasyTeamSummary | null;
+  /** The manager's starters whose NBA team doesn't play today (live weeks only). */
+  idleStarters: PlayerSummary[];
+  /** Every other pairing this week. */
+  others: OtherMatchup[];
+}
+
 /** The signed-in user, as the UI sees it. */
 export interface SessionUser {
   id: number;
