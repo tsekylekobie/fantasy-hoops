@@ -30,7 +30,7 @@
 
 .segment[aria-pressed="true"] {
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   cursor: default;
 }
 

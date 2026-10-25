@@ -20,7 +20,7 @@
 }
 
 .dialog::backdrop {
-  background: rgba(22, 24, 29, 0.55);
+  background: var(--backdrop);
 }
 
 .panel {

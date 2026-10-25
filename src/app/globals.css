@@ -18,10 +18,39 @@
   --warn-ink: #78350f;
   --danger-soft: #fee2e2;
   --danger-ink: #991b1b;
+  --on-ink: #ffffff;
+  --backdrop: rgba(22, 24, 29, 0.55);
+  color-scheme: light;
   --radius: 10px;
   --radius-card: 12px;
   --font-display: var(--font-barlow), "Barlow Condensed", sans-serif;
   --font-body: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+/* Dark theme. The inline script in layout.tsx sets data-theme on <html> before
+   first paint, from the saved choice or the OS preference. */
+:root[data-theme="dark"] {
+  --bg: #121316;
+  --surface: #1b1d21;
+  --surface-muted: #23262b;
+  --ink: #ece9e2;
+  --ink-muted: #b4b0a8;
+  --ink-subtle: #9a968e;
+  --border: #2f3237;
+  --border-strong: #42464c;
+  --row-divider: #26292d;
+  --accent: #f97316;
+  --accent-soft: #3d2416;
+  --accent-ink: #fdba74;
+  --info-soft: #1e2a44;
+  --info-ink: #bfdbfe;
+  --warn-soft: #3a2e12;
+  --warn-ink: #fde68a;
+  --danger-soft: #3b1a1a;
+  --danger-ink: #fecaca;
+  --on-ink: #121316;
+  --backdrop: rgba(0, 0, 0, 0.65);
+  color-scheme: dark;
 }
 
 *,
