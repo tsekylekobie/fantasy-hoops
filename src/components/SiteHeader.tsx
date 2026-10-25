@@ -9,9 +9,9 @@ import UserMenu from "./UserMenu";
 import styles from "./SiteHeader.module.css";
 
 const TABS = [
-  { href: "/", label: "Players" },
   { href: "/my-team", label: "My team" },
   { href: "/matchup", label: "Matchup" },
+  { href: "/players", label: "Players" },
 ];
 
 export default function SiteHeader() {
@@ -23,7 +23,7 @@ export default function SiteHeader() {
       </Link>
       <nav className={styles.tabs} aria-label="Main">
         {TABS.map((t) => {
-          const on = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
+          const on = pathname.startsWith(t.href);
           return (
             <Link key={t.href} href={t.href} className={on ? styles.on : undefined} aria-current={on ? "page" : undefined}>
               {t.label}

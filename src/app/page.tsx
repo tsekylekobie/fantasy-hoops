@@ -1,12 +1,6 @@
-import { Suspense } from "react";
-import PlayersBrowser from "@/components/players/PlayersBrowser";
+import { redirect } from "next/navigation";
 
-// The players table and modal are client-side and keep their state
-// (search, position, mode, page, open player) in the URL query string.
+// My team is the first tab, so the root goes there.
 export default function Home() {
-  return (
-    <Suspense fallback={null}>
-      <PlayersBrowser />
-    </Suspense>
-  );
+  redirect("/my-team");
 }

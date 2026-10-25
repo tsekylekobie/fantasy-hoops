@@ -110,6 +110,12 @@ const LAST14_WINDOW_SQL = `
   ) x
   WHERE d IS NOT NULL`;
 
+// Players on a team in the season's league (one league per season; the newest wins).
+const ROSTERED_SQL = `
+  SELECT rp.player_id
+  FROM roster_players rp
+  WHERE rp.league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)`;
+
 /** Sort key for a column (not "value"), from unrounded numbers in the requested mode. */
 export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) => number | string | null {
   const per = (x: number, gp: number) => (mode === "avg" && gp > 0 ? x / gp : x);
@@ -146,13 +152,19 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]);
-  // Value and rank over every player with a game in the range, before q/pos.
+  const [{ rows }, rostered] = await Promise.all([
+    db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
+    q.scope === "fa"
+      ? db.query<{ player_id: number }>(ROSTERED_SQL, [q.season]).then((res) => new Set(res.rows.map((r) => r.player_id)))
+      : null,
+  ]);
+  // Value and rank over every player with a game in the range, before scope/q/pos.
   const values = valuePlayers(rows.map(toTotals));
 
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
+    .filter((r) => !rostered?.has(r.player_id))
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
     .map((r) => {
       const v = values.get(r.player_id)!;
@@ -191,6 +203,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     from: window?.from ?? null,
     to: window?.to ?? null,
     mode: q.mode,
+    scope: q.scope,
     page: q.page,
     perPage: q.perPage,
     total: matching.length,

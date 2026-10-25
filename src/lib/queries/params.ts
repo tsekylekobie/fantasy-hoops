@@ -3,6 +3,7 @@ import {
   CURRENT_SEASON,
   SORT_KEYS,
   defaultSortDir,
+  type PlayerScope,
   type PositionFilter,
   type SortDir,
   type SortKey,
@@ -18,6 +19,7 @@ export interface PlayersQuery {
   sort: SortKey;
   dir: SortDir;
   mode: StatMode;
+  scope: PlayerScope;
   q: string;
   pos: PositionFilter;
   page: number;
@@ -49,6 +51,8 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   if (!SORT_KEYS.includes(sort)) throw new BadRequest(`sort must be one of ${SORT_KEYS.join(", ")}`);
   const dir = params.get("dir")?.trim() || defaultSortDir(sort);
   if (dir !== "asc" && dir !== "desc") throw new BadRequest("dir must be asc or desc");
+  const scope = params.get("scope")?.trim() || "all";
+  if (scope !== "fa" && scope !== "all") throw new BadRequest("scope must be fa or all");
   const pos = params.get("pos")?.trim().toUpperCase() || "ALL";
   if (!["ALL", "G", "F", "C"].includes(pos)) throw new BadRequest("pos must be all, G, F or C");
   return {
@@ -57,6 +61,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     sort,
     dir,
     mode,
+    scope,
     q: (params.get("q") ?? "").trim().slice(0, 100),
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,
     page: intParam(params, "page", 1, 1, 100000),

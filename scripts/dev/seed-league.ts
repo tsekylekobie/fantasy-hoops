@@ -166,7 +166,7 @@ async function main() {
     for (let page = 1; board.length < MANAGERS.length * rosterSize * 2; page++) {
       const res = await getPlayers(db, {
         season: CURRENT_SEASON - 1, range: "season", sort: "value", dir: "desc",
-        mode: "avg", q: "", pos: "all", page, perPage: 100,
+        mode: "avg", scope: "all", q: "", pos: "all", page, perPage: 100,
       });
       if (res.players.length === 0) break;
       board.push(...res.players.map((p) => ({ id: p.id, position: p.position })));

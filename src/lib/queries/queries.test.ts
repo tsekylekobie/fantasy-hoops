@@ -92,10 +92,10 @@ test("position filter matches any letter in a combined position", () => {
 
 test("parsePlayersQuery: defaults and validation", () => {
   const d = parsePlayersQuery(new URLSearchParams(""));
-  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", q: "", pos: "all", page: 1, perPage: 50 });
-  const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&pos=g&page=3&perPage=100&q=%20jo%20"));
-  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", q: "jo", pos: "G", page: 3, perPage: 100 });
-  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5"]) {
+  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", page: 1, perPage: 50 });
+  const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20"));
+  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", page: 3, perPage: 100 });
+  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5"]) {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }
 });

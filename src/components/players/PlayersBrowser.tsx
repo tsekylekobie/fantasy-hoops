@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange } from "@/lib/types";
-import { CURRENT_SEASON, SORT_KEYS, defaultSortDir, seasonLabel } from "@/lib/types";
+import type { PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange } from "@/lib/types";
+import { CURRENT_SEASON, SORT_KEYS, defaultSortDir } from "@/lib/types";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
@@ -13,6 +13,11 @@ import styles from "./PlayersBrowser.module.css";
 
 const PER_PAGE = 50;
 const SEARCH_DEBOUNCE_MS = 250;
+
+const SCOPES: SegmentedOption<PlayerScope>[] = [
+  { value: "fa", label: "Free agents" },
+  { value: "all", label: "All players" },
+];
 
 const POSITIONS: SegmentedOption<PositionFilter>[] = [
   { value: "all", label: "All positions" },
@@ -33,6 +38,7 @@ const MODES: SegmentedOption<StatMode>[] = [
 
 interface UrlState {
   q: string;
+  scope: PlayerScope;
   pos: PositionFilter;
   range: StatRange;
   mode: StatMode;
@@ -51,6 +57,7 @@ function readUrlState(params: URLSearchParams): UrlState {
   const player = Number(params.get("player"));
   return {
     q: params.get("q") ?? "",
+    scope: params.get("scope") === "all" ? "all" : "fa",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
     range: params.get("range") === "last14" ? "last14" : "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
@@ -65,6 +72,7 @@ function readUrlState(params: URLSearchParams): UrlState {
 function toQueryString(s: UrlState): string {
   const p = new URLSearchParams();
   if (s.q) p.set("q", s.q);
+  if (s.scope !== "fa") p.set("scope", s.scope);
   if (s.pos !== "all") p.set("pos", s.pos);
   if (s.range !== "season") p.set("range", s.range);
   if (s.mode !== "avg") p.set("mode", s.mode);
@@ -86,7 +94,7 @@ export default function PlayersBrowser() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readUrlState(new URLSearchParams(searchParams.toString()));
-  const { q, pos, range, mode, sort, dir, page, player } = state;
+  const { q, scope, pos, range, mode, sort, dir, page, player } = state;
 
   const navigate = useCallback(
     (patch: Partial<UrlState>, how: "push" | "replace" = "push") => {
@@ -130,6 +138,7 @@ export default function PlayersBrowser() {
       mode,
       sort,
       dir,
+      scope,
       q,
       pos,
       page: String(page),
@@ -146,7 +155,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, pos, range, mode, sort, dir, page, retryKey]);
+  }, [q, scope, pos, range, mode, sort, dir, page, retryKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -175,11 +184,10 @@ export default function PlayersBrowser() {
   const hasNext = page * PER_PAGE < total;
   let summary = " ";
   if (data) {
-    if (total === 0) summary = "No players";
+    if (total === 0) summary = scope === "fa" ? "No free agents" : "No players";
     else if (shown === 0) summary = `No players on this page · ${total.toLocaleString("en-US")} total`;
-    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} players`;
+    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${scope === "fa" ? "free agents" : "players"}`;
   }
-  const season = data?.season ?? CURRENT_SEASON;
 
   return (
     <div className={styles.page}>
@@ -187,12 +195,11 @@ export default function PlayersBrowser() {
         <SiteHeader />
 
         <h1 className={styles.title}>{range === "last14" ? "Last 14 days" : "Season averages"}</h1>
-        <p className={styles.sub}>
-          {seasonLabel(season)}
-          {data?.range === "last14" && data.from && data.to && ` · ${fmtGameDate(data.from)} – ${fmtGameDate(data.to)}`}
-          {" · "}
-          {mode === "total" ? "totals" : "per game"} · 9-category
-        </p>
+        {data?.range === "last14" && data.from && data.to && (
+          <p className={styles.sub}>
+            {fmtGameDate(data.from)} – {fmtGameDate(data.to)}
+          </p>
+        )}
 
         <div className={styles.bar}>
           <input
@@ -203,6 +210,7 @@ export default function PlayersBrowser() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <SegmentedToggle label="Players" options={SCOPES} value={scope} onChange={(v) => navigate({ scope: v, page: 1 })} />
           <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
           <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
