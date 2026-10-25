@@ -13,7 +13,9 @@
 //   rosters      Every 12 h: teams, players, and the season's schedule.
 //   lineups      Every 15 min and just after midnight (league time): saves each
 //                team's lineup for every day through today, so past days stay
-//                fixed even if the roster changes later. Database only, no API.
+//                fixed even if the roster changes later. Then processes trades whose
+//                review window has ended (they wait while a player is locked today).
+//                Database only, no API.
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
@@ -24,6 +26,7 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
 import { freezeSeasonLineups } from "../src/lib/queries/lineup";
+import { processDueTrades } from "../src/lib/queries/trades";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -145,12 +148,17 @@ async function rosters(): Promise<Result> {
   return { summary: `${teams} teams, ${players} players, ${games} games in the ${season} schedule`, nextInMs: 12 * HOUR };
 }
 
-/** Saves every team's lineup through today (league time); see freezeLineups. */
+/** Saves every team's lineup through today (league time), then processes due trades; see freezeLineups. */
 async function lineups(): Promise<Result> {
   const { teams, rows } = await freezeSeasonLineups(db, season);
+  const trades = await processDueTrades(db);
   // Right after midnight too, so a new day is pinned before anyone changes a roster.
   const nextInMs = Math.min(15 * MIN, msUntilLocalHour(0) + MIN);
-  return { summary: `${rows} lineup rows saved for ${teams} teams`, nextInMs };
+  return {
+    summary: `${rows} lineup rows saved for ${teams} teams; trades: ${trades.completed} processed, ` +
+      `${trades.failed} failed, ${trades.waiting} waiting on locks`,
+    nextInMs,
+  };
 }
 
 interface Task {

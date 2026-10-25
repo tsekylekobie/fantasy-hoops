@@ -1,0 +1,639 @@
+/* Trades: the builder (/team/[id]/trade) and the trades panel on /my-team and
+   /league. No trade mockup; cards, buttons and notes follow my-team and league. */
+
+.page {
+  min-height: 100vh;
+  padding: 12px 40px 48px;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.loading {
+  margin: 40px 0;
+  color: var(--ink-muted);
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 32px 0 8px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+.sub {
+  color: var(--ink-muted);
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-ink);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(0.9);
+  border-color: var(--accent);
+}
+
+.btn.danger {
+  color: var(--danger-ink);
+}
+
+.btn.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn:focus-visible,
+.pick:focus-visible,
+.teamLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-radius: var(--radius-card);
+  padding: 10px 12px 10px 16px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.note p {
+  margin: 0;
+  flex: 1 1 320px;
+}
+
+.ok {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-border);
+  color: var(--ok-ink);
+}
+
+.error {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.info {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+
+.warn {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+/* Builder: two rosters side by side */
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding: 16px 16px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.when {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+.r {
+  display: grid;
+  grid-template-columns: 32px minmax(180px, 1fr) repeat(4, 44px) 52px;
+  column-gap: 6px;
+  align-items: center;
+  padding: 0 16px;
+  min-width: 520px;
+  height: 56px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.r.h {
+  height: 34px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--surface-muted);
+}
+
+.r.picked {
+  background: var(--accent-soft);
+}
+
+:global(:root:not([data-theme="dark"])) .r.picked {
+  background: #fff4ec;
+}
+
+.n {
+  text-align: right;
+}
+
+.pick {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--on-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.pick[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--ink-subtle);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+
+.dtd {
+  background: var(--warn-soft);
+  border-color: transparent;
+  color: var(--warn-ink);
+}
+
+.out {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger-ink);
+}
+
+/* Builder summary */
+
+.summary {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 20px;
+}
+
+.summary .gets {
+  min-width: 0;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.none {
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+
+.noteField {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.noteField textarea {
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  min-height: 64px;
+  resize: vertical;
+}
+
+.noteField textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.submit {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.submit p {
+  margin: 0 auto 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.summary .wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Trades panel */
+
+.panel > .note {
+  margin: 12px 16px;
+}
+
+.panel {
+  margin-top: 24px;
+}
+
+.panel h3 {
+  border-bottom: 1px solid var(--row-divider);
+}
+
+.trade {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--row-divider);
+}
+
+.trade:last-of-type {
+  border-bottom: 0;
+}
+
+.trade.mine {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.tradeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.teams {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.teams i {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.teamLink {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.teamLink:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.swap {
+  color: var(--ink-subtle);
+  font-weight: 500;
+}
+
+.state {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.s_offered {
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+
+.s_review {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.s_completed {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+}
+
+.s_rejected,
+.s_cancelled,
+.s_failed {
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+}
+
+.s_vetoed {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.sides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 20px;
+  margin-top: 12px;
+}
+
+.sides .label {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.tradeNote {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.tradeFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.tradeFoot .btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.votes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meter {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.meter span {
+  width: 14px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--row-divider);
+  border: 1px solid var(--border);
+}
+
+.meter span.hit {
+  background: var(--danger-ink);
+  border-color: var(--danger-ink);
+}
+
+.recent {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 13px;
+}
+
+.recent .date {
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.recent .what {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentHead {
+  padding: 12px 16px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.empty {
+  padding: 14px 16px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.foot {
+  font-size: 13px;
+  color: var(--ink-muted);
+  padding: 12px 16px 14px;
+  margin: 0;
+  border-top: 1px solid var(--row-divider);
+}
+
+@media (max-width: 1100px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 8px 16px 40px;
+  }
+
+  .title {
+    font-size: 36px;
+  }
+
+  /* Phones: pick, player and value; the per-game columns drop off. */
+  .r {
+    grid-template-columns: 32px minmax(0, 1fr) 52px;
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .opt {
+    display: none;
+  }
+
+  .summary,
+  .sides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

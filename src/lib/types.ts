@@ -499,3 +499,101 @@ export interface RosterMoveResult {
   added: PlayerSummary | null;
   dropped: PlayerSummary | null;
 }
+
+// Trades (/team/[id]/trade, and the trades panels on /my-team and /league)
+
+/**
+ * Where a trade stands. `offered`: waiting on the other manager. `review`:
+ * accepted, in the league's review window (the rest of the league can vote
+ * to veto, or the commissioner can, depending on the league). The rest are final.
+ */
+export type TradeStatus = "offered" | "review" | "completed" | "rejected" | "cancelled" | "vetoed" | "failed";
+
+/** How the league reviews accepted trades (leagues.trade_review). */
+export type TradeReview = "none" | "commissioner" | "league_vote";
+
+export interface TradeSettings {
+  review: TradeReview;
+  /** Length of the review window. */
+  reviewDays: number;
+  /** Veto votes that kill a trade (league_vote only). */
+  vetoVotes: number;
+  /** Last day trades can be proposed or accepted (yyyy-mm-dd); null = none. */
+  deadline: string | null;
+  /** Most players a team may carry outside IL/IL+ (the league's non-IL slots). */
+  activeLimit: number;
+}
+
+export interface Trade {
+  id: number;
+  status: TradeStatus;
+  /** The team that proposed it, and the team it was offered to. */
+  proposer: FantasyTeamSummary;
+  partner: FantasyTeamSummary;
+  /** Players going from the proposer to the partner, and back. */
+  sends: PlayerSummary[];
+  receives: PlayerSummary[];
+  note: string | null;
+  /** ISO timestamps. */
+  createdAt: string;
+  acceptedAt: string | null;
+  /** When the review window ends (it processes then, or as soon as its players unlock). */
+  processAt: string | null;
+  /** When it completed, or was rejected, cancelled, vetoed or failed. */
+  closedAt: string | null;
+  /** Why it failed or who vetoed it; null otherwise. */
+  reason: string | null;
+  vetoVotes: number;
+  /** The signed-in manager's relation to it. */
+  role: "proposer" | "partner" | "league" | null;
+  myVote: boolean;
+  can: { accept: boolean; reject: boolean; cancel: boolean; vote: boolean; veto: boolean };
+}
+
+/** GET /api/trades: open trades (offered or in review) and the latest closed ones. Due trades process first. */
+export interface TradesResponse {
+  settings: TradeSettings;
+  myTeam: FantasyTeamSummary | null;
+  isCommissioner: boolean;
+  open: Trade[];
+  /** Newest first, up to 10. */
+  recent: Trade[];
+}
+
+/** A rostered player as the trade builder shows him. */
+export interface TradeRosterPlayer extends PlayerSummary {
+  slot: LineupSlot;
+  injuryStatus: string | null;
+  /** Season per-game line and 9CAT value; null before his first game. */
+  gp: number;
+  stats: CategoryLine | null;
+  value: number | null;
+  /** In another open trade (it would fail if that one processes first). */
+  inOpenTrade: boolean;
+}
+
+/** GET /api/trades/builder?team=ID: both rosters for a trade with team ID. */
+export interface TradeBuilderResponse {
+  settings: TradeSettings;
+  myTeam: FantasyTeamSummary & { players: TradeRosterPlayer[] };
+  partner: FantasyTeamSummary & { players: TradeRosterPlayer[] };
+  /** The league's today, yyyy-mm-dd. */
+  today: string;
+}
+
+/** POST /api/trades: propose. Responds with the new Trade. */
+export interface TradeProposal {
+  partnerTeamId: number;
+  /** From the proposer's roster. */
+  sendPlayerIds: number[];
+  /** From the partner's roster. */
+  receivePlayerIds: number[];
+  note?: string;
+}
+
+/**
+ * POST /api/trades/:id { action }. accept/reject: the partner. cancel: the
+ * proposer, before it processes. vote/unvote: other teams, during league-vote
+ * review. veto: the commissioner, during review. Responds with the Trade.
+ */
+export type TradeAction = "accept" | "reject" | "cancel" | "vote" | "unvote" | "veto";
