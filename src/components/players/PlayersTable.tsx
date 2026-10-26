@@ -164,20 +164,15 @@ function Row({
       <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
       <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
-          <span className={styles.claimCell}>
-            <button
-              type="button"
-              className={`${styles.add} ${styles.claim}`}
-              aria-label={`Claim ${fullName(p)} (on waivers, clears ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")})`}
-              title={`On waivers until ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")}`}
-              onClick={() => onAdd(p.id)}
-            >
-              Claim
-            </button>
-            <span className={styles.clears}>
-              <b className={styles.wBadge}>W</b> Clears {fmtWaiverTime(p.waiver.clearsAt, timeZone)}
-            </span>
-          </span>
+          <button
+            type="button"
+            className={`${styles.add} ${styles.claim}`}
+            aria-label={`Claim ${fullName(p)} (on waivers, clears ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")})`}
+            title={`On waivers until ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")}`}
+            onClick={() => onAdd(p.id)}
+          >
+            Claim ({fmtWaiverTime(p.waiver.clearsAt, timeZone, "date")})
+          </button>
         ) : p.owner === null ? (
           <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} onClick={() => onAdd(p.id)}>
             Add

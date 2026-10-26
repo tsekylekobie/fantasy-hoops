@@ -284,7 +284,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                 {saving
                   ? "Saving…"
                   : claim
-                    ? clearsAt ? `Claim (processes ${fmtWaiverTime(clearsAt, tz)})` : "Place claim"
+                    ? clearsAt ? `Claim (${fmtWaiverTime(clearsAt, tz, "date")})` : "Place claim"
                     : dropping ? "Add and drop" : "Add player"}
               </button>
             )}

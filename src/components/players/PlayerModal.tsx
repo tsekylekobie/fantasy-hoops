@@ -193,7 +193,7 @@ function DetailHead({
       </div>
       {owner === null && onAdd && (
         <button type="button" className={`${styles.add} ${waiver ? styles.claim : ""}`} onClick={() => onAdd(player.id)}>
-          {waiver ? "Claim" : "Add"}
+          {waiver ? `Claim (${fmtWaiverTime(waiver.clearsAt, data.timeZone, "date")})` : "Add"}
         </button>
       )}
     </>
