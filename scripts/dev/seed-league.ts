@@ -1,7 +1,11 @@
 // DEV ONLY: creates a 12-team league with mock managers, drafted rosters,
 // matchup weeks and a regular-season schedule, so you can sign in as any
 // manager (mock sign-in) and browse as them. League settings are the
-// column defaults (see db/migrations/0004_league_play.sql).
+// column defaults (see db/migrations/0004_league_play.sql) except the playoff
+// format: 8 playoff teams and a 4-team toilet bowl (0011_playoffs.sql).
+// Waivers look like a league a day in: every free agent is on waivers until
+// the next run, and a few teams made add/drops in the last day or so, whose
+// dropped players stay on waivers for the league's waiver_days.
 // Re-running replaces the seeded league; it refuses to touch a league that a
 // real (non-mock) user owns a team in.
 //   npm run db:seed:league            # same rosters every run
@@ -152,9 +156,11 @@ async function main() {
       playoff_teams: number;
       waiver_type: string;
       faab_budget: number;
+      waiver_days: number;
     }>(
-      `INSERT INTO leagues (name, season, commissioner_user_id) VALUES ($1, $2, $3)
-       RETURNING id, roster_slots, playoff_teams, waiver_type, faab_budget`,
+      `INSERT INTO leagues (name, season, commissioner_user_id, playoff_teams, toilet_bowl, toilet_bowl_teams)
+       VALUES ($1, $2, $3, 8, true, 4)
+       RETURNING id, roster_slots, playoff_teams, waiver_type, faab_budget, waiver_days`,
       [LEAGUE_NAME, CURRENT_SEASON, userIds[0]],
     );
     const starterSlots = FILL_ORDER.flatMap((s) => Array<string>(league.roster_slots[s] ?? 0).fill(s));
@@ -185,6 +191,7 @@ async function main() {
     }
 
     const teamIds: string[] = [];
+    const teamSlots: Map<number, string>[] = [];
     for (const [i, m] of MANAGERS.entries()) {
       // Waiver priority starts as the reverse of the draft order.
       const { rows: [team] } = await client.query<{ id: string }>(
@@ -195,6 +202,7 @@ async function main() {
       );
       teamIds.push(team.id);
       const slots = assignSlots(rosters[i], starterSlots);
+      teamSlots.push(slots);
       for (const p of rosters[i]) {
         await client.query(
           `INSERT INTO roster_players (league_id, player_id, fantasy_team_id, slot) VALUES ($1, $2, $3, $4)`,
@@ -204,7 +212,7 @@ async function main() {
     }
 
     // Weeks span the NBA regular season; the last ones are playoffs, one week
-    // per round (6 teams: a bye round for the top 2, semis, final).
+    // per round (8 teams: quarterfinals, semis, final).
     // As text: pg parses `date` at local midnight, and the week math is in UTC.
     const { rows: gameDays } = await client.query<{ date: string }>(
       `SELECT DISTINCT date::text AS date FROM games WHERE season = $1 AND game_type = 'regular' ORDER BY 1`,
@@ -232,10 +240,60 @@ async function main() {
         );
       }
     }
+
+    // Recent moves, newest first: hours ago, and whether the team also added
+    // someone. Each drops its last-drafted bench player and adds the best
+    // player left on the draft board; dropped players go on waivers the way
+    // runRosterMove does it (src/lib/queries/transactions.ts).
+    const MOVES = [{ hoursAgo: 2, add: true }, { hoursAgo: 6, add: true }, { hoursAgo: 19, add: false }, { hoursAgo: 27, add: true }];
+    const movers = MANAGERS.map((_, i) => i).sort(() => rand() - 0.5).slice(0, MOVES.length);
+    for (const [k, move] of MOVES.entries()) {
+      const t = movers[k];
+      const drop = [...rosters[t]].reverse().find((p) => teamSlots[t].get(p.id) === "BN")!;
+      const add = move.add ? board.shift()! : null;
+      const { rows: [tx] } = await client.query<{ id: string; at: Date }>(
+        `INSERT INTO transactions (league_id, type, status, team_id, created_by, created_at, processed_at)
+         VALUES ($1, $2, 'completed', $3, $4, now() - make_interval(hours => $5), now() - make_interval(hours => $5))
+         RETURNING id, processed_at AS at`,
+        [league.id, add ? "add_drop" : "drop", teamIds[t], userIds[t], move.hoursAgo],
+      );
+      await client.query(
+        `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id) VALUES ($1, $2, $3, NULL)`,
+        [tx.id, drop.id, teamIds[t]],
+      );
+      await client.query(`DELETE FROM roster_players WHERE league_id = $1 AND player_id = $2`, [league.id, drop.id]);
+      await client.query(
+        `INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
+         VALUES ($1, $2, next_waiver_run($1, $3::timestamptz + make_interval(days => $4)), $5)`,
+        [league.id, drop.id, tx.at, league.waiver_days, teamIds[t]],
+      );
+      if (add) {
+        await client.query(
+          `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id) VALUES ($1, $2, NULL, $3)`,
+          [tx.id, add.id, teamIds[t]],
+        );
+        await client.query(
+          `INSERT INTO roster_players (league_id, player_id, fantasy_team_id, slot) VALUES ($1, $2, $3, 'BN')`,
+          [league.id, add.id, teamIds[t]],
+        );
+      }
+    }
+
+    // Everyone else unrostered is on waivers until the next run (tomorrow
+    // morning, at the league's waiver_time).
+    const { rowCount: onWaivers } = await client.query(
+      `INSERT INTO waiver_players (league_id, player_id, clears_at)
+       SELECT $1, p.id, next_waiver_run($1, now()) FROM players p
+        WHERE p.team_id IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM roster_players r WHERE r.league_id = $1 AND r.player_id = p.id)
+       ON CONFLICT (league_id, player_id) DO NOTHING`,
+      [league.id],
+    );
     await client.query("COMMIT");
 
     console.log(`Seeded "${LEAGUE_NAME}" ${CURRENT_SEASON}: ${MANAGERS.length} teams × ${rosterSize} players, ` +
-      `${weeks.length} weeks (playoffs from week ${playoffStart}).`);
+      `${weeks.length} weeks (playoffs from week ${playoffStart}), ${MOVES.length} recent moves, ` +
+      `${onWaivers} more players on waivers until the next run.`);
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
