@@ -15,6 +15,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 - `src/lib/queries/waivers.ts`: the daily waiver run (worker task `waivers`, at `leagues.waiver_time` in its time zone),
   claims (`/api/team/claims`) and the waiver order. Run by hand: `npm run waivers -- --at next|now|<ISO>` or
   `POST /api/dev/waivers?at=...` (dev only).
+- `src/lib/queries/settings.ts` + `/api/league/settings` + `/league/settings`: the commissioner's league settings
+  (`leagues.commissioner_user_id` only). Waivers run on `leagues.waiver_days_of_week` (ISO weekdays, migration 0009).
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (league data: `il_statuses`,
   `il_min_days` and the IL+ pair); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
 - `src/components/`: UI. `Avatar` must fall back to initials.

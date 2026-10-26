@@ -5,7 +5,7 @@
 // decided in the last week with why any failed. API: /api/team/claims.
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { fetchJson, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
+import { fetchJson, fmtWaiverDays, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
 import type { ClaimOrderRequest, MyClaimsResponse, WaiverClaim } from "@/lib/types";
 import styles from "./MyClaims.module.css";
 
@@ -72,7 +72,7 @@ export default function MyClaims() {
       <div className={styles.hd}>
         <h3 id="my-claims-heading">My claims</h3>
         <p className={styles.sub}>
-          Waivers run daily at {fmtWaiverTime(data.nextRunAt, tz, "long").split(" · ")[1]}
+          Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {fmtWaiverTime(data.nextRunAt, tz, "long").split(" · ")[1]}
           {data.waiverPriority !== null && ` · Your waiver priority ${data.waiverPriority} of ${data.teamCount}`}
         </p>
       </div>

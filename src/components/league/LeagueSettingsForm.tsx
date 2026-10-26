@@ -1,0 +1,274 @@
+"use client";
+
+// /league/settings: the commissioner's form for the league's rules (Yahoo's
+// Commissioner > Edit League Settings). Saves the whole form at once with
+// PUT /api/league/settings and shows the next waiver run on the saved schedule.
+import { useState, type ReactNode } from "react";
+import { fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
+import { INJURY_STATUSES, type LeagueSettings, type LeagueSettingsResponse } from "@/lib/types";
+import styles from "./LeagueSettings.module.css";
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const TIME_ZONES = [
+  "America/New_York", "America/Chicago", "America/Denver", "America/Phoenix",
+  "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu", "America/Toronto", "Europe/London", "UTC",
+];
+
+const WAIVER_TYPES: { value: LeagueSettings["waiverType"]; label: string }[] = [
+  { value: "continual_rolling", label: "Continual rolling" },
+  { value: "reverse_standings", label: "Reverse standings" },
+  { value: "faab", label: "FAAB (bidding not built yet)" },
+];
+
+const TRADE_REVIEWS: { value: LeagueSettings["tradeReview"]; label: string }[] = [
+  { value: "league_vote", label: "League vote" },
+  { value: "commissioner", label: "Commissioner" },
+  { value: "none", label: "None" },
+];
+
+type Draft = Omit<LeagueSettings, "maxAddsPerWeek" | "maxAddsPerSeason" | "tradeDeadline"> & {
+  // Blank = unlimited / no deadline.
+  maxAddsPerWeek: string;
+  maxAddsPerSeason: string;
+  tradeDeadline: string;
+};
+
+const toDraft = (s: LeagueSettings): Draft => ({
+  ...s,
+  maxAddsPerWeek: s.maxAddsPerWeek === null ? "" : String(s.maxAddsPerWeek),
+  maxAddsPerSeason: s.maxAddsPerSeason === null ? "" : String(s.maxAddsPerSeason),
+  tradeDeadline: s.tradeDeadline ?? "",
+});
+
+const optionalInt = (v: string) => (v.trim() === "" ? null : Number(v));
+
+const fromDraft = (d: Draft): LeagueSettings => ({
+  ...d,
+  maxAddsPerWeek: optionalInt(d.maxAddsPerWeek),
+  maxAddsPerSeason: optionalInt(d.maxAddsPerSeason),
+  tradeDeadline: d.tradeDeadline || null,
+});
+
+function toggle<T>(list: T[], item: T, order: readonly T[]): T[] {
+  return list.includes(item) ? list.filter((x) => x !== item) : order.filter((x) => x === item || list.includes(x));
+}
+
+function Field({ label, help, htmlFor, children }: { label: string; help?: string; htmlFor?: string; children: ReactNode }) {
+  return (
+    <div className={styles.field}>
+      <div className={styles.label}>
+        {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
+        {help && <small>{help}</small>}
+      </div>
+      <div className={styles.control}>{children}</div>
+    </div>
+  );
+}
+
+function Chips<T extends string | number>({
+  label, options, value, onChange, format = String,
+}: { label: string; options: readonly T[]; value: T[]; onChange: (v: T[]) => void; format?: (v: T) => string }) {
+  return (
+    <div className={styles.chips} role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          className={styles.chip}
+          aria-pressed={value.includes(o)}
+          onClick={() => onChange(toggle(value, o, options))}
+        >
+          {format(o)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function LeagueSettingsForm({ initial }: { initial: LeagueSettingsResponse }) {
+  const [saved, setSaved] = useState(initial);
+  const [draft, setDraft] = useState(() => toDraft(initial.settings));
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    setStatus(null);
+  };
+  const num = (key: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    set(key, (e.target.value === "" ? "" : Number(e.target.value)) as never);
+
+  const dirty = JSON.stringify(fromDraft(draft)) !== JSON.stringify(saved.settings);
+  const zones = TIME_ZONES.includes(draft.timeZone) ? TIME_ZONES : [draft.timeZone, ...TIME_ZONES];
+  const maxVotes = Math.max(1, saved.teamCount - 2);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/league/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fromDraft(draft)),
+      });
+      const body = (await res.json().catch(() => ({}))) as LeagueSettingsResponse & { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status}).`);
+      setSaved(body);
+      setDraft(toDraft(body.settings));
+      setStatus({ ok: true, text: "Saved." });
+    } catch (err) {
+      setStatus({ ok: false, text: err instanceof Error ? err.message : "Save failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const next = fmtWaiverTime(saved.nextRunAt, saved.settings.timeZone, "long");
+  return (
+    <form onSubmit={save} className={styles.form}>
+      <p className={styles.sub}>
+        {saved.leagueName} · Changes apply from now on. Past lineups and processed moves stay as they are; pending claims
+        move to the next run on the new schedule.
+      </p>
+
+      <section className={styles.card} aria-labelledby="set-waivers">
+        <h3 id="set-waivers">Waivers</h3>
+        <Field label="Run days" help="Claims are processed and waivers clear only on these days.">
+          <Chips
+            label="Waiver run days"
+            options={[1, 2, 3, 4, 5, 6, 7]}
+            value={draft.waiverDaysOfWeek}
+            onChange={(v) => set("waiverDaysOfWeek", v)}
+            format={(d) => WEEKDAYS[d - 1]}
+          />
+        </Field>
+        <Field label="Run time" htmlFor="set-time">
+          <div className={styles.row}>
+            <input
+              id="set-time"
+              type="time"
+              required
+              value={draft.waiverTime}
+              onChange={(e) => set("waiverTime", e.target.value)}
+            />
+            <select aria-label="Time zone" value={draft.timeZone} onChange={(e) => set("timeZone", e.target.value)}>
+              {zones.map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+        </Field>
+        <Field label="Days on waivers" help="After a drop. Players clear at the first run after this. 0 = straight to free agents." htmlFor="set-wdays">
+          <input id="set-wdays" type="number" min={0} max={14} required value={draft.waiverDays} onChange={num("waiverDays")} />
+        </Field>
+        <Field label="Waiver order" htmlFor="set-wtype">
+          <select id="set-wtype" value={draft.waiverType} onChange={(e) => set("waiverType", e.target.value as Draft["waiverType"])}>
+            {WAIVER_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Free agents after tip-off" help="A free agent goes on waivers once his game starts, until the next run.">
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={draft.waiversAfterGameStart}
+              onChange={(e) => set("waiversAfterGameStart", e.target.checked)}
+            />
+            On waivers once their game starts
+          </label>
+        </Field>
+      </section>
+
+      <section className={styles.card} aria-labelledby="set-il">
+        <h3 id="set-il">Injured list</h3>
+        {([
+          ["IL", "ilSlots", "ilStatuses", "ilMinDays"],
+          ["IL+", "ilPlusSlots", "ilPlusStatuses", "ilPlusMinDays"],
+        ] as const).map(([name, slots, statuses, minDays]) => (
+          <div key={name} className={styles.group}>
+            <Field label={`${name} slots`} htmlFor={`set-${slots}`}>
+              <input id={`set-${slots}`} type="number" min={0} max={5} required value={draft[slots]} onChange={num(slots)} />
+            </Field>
+            <Field label={`Who can use ${name}`} help="Injury report statuses.">
+              <Chips label={`${name} statuses`} options={INJURY_STATUSES} value={draft[statuses]} onChange={(v) => set(statuses, v)} />
+            </Field>
+            <Field label="Minimum days on the report" help="Listed with one of those statuses without a break. 0 = right away." htmlFor={`set-${minDays}`}>
+              <input id={`set-${minDays}`} type="number" min={0} max={60} required value={draft[minDays]} onChange={num(minDays)} />
+            </Field>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.card} aria-labelledby="set-trades">
+        <h3 id="set-trades">Trades</h3>
+        <Field label="Review" htmlFor="set-review">
+          <select id="set-review" value={draft.tradeReview} onChange={(e) => set("tradeReview", e.target.value as Draft["tradeReview"])}>
+            {TRADE_REVIEWS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Review period (days)" help="After the other manager accepts." htmlFor="set-rdays">
+          <input
+            id="set-rdays"
+            type="number"
+            min={0}
+            max={7}
+            required
+            disabled={draft.tradeReview === "none"}
+            value={draft.tradeReviewDays}
+            onChange={num("tradeReviewDays")}
+          />
+        </Field>
+        <Field label="Veto votes to block" help={`League vote only. Up to ${maxVotes}.`} htmlFor="set-votes">
+          <input
+            id="set-votes"
+            type="number"
+            min={1}
+            max={maxVotes}
+            required
+            disabled={draft.tradeReview !== "league_vote"}
+            value={draft.tradeVetoVotes}
+            onChange={num("tradeVetoVotes")}
+          />
+        </Field>
+        <Field label="Trade deadline" help="Blank = no deadline." htmlFor="set-deadline">
+          <div className={styles.row}>
+            <input id="set-deadline" type="date" value={draft.tradeDeadline} onChange={(e) => set("tradeDeadline", e.target.value)} />
+            {draft.tradeDeadline && (
+              <button type="button" className={styles.btn} onClick={() => set("tradeDeadline", "")}>Clear</button>
+            )}
+          </div>
+        </Field>
+      </section>
+
+      <section className={styles.card} aria-labelledby="set-adds">
+        <h3 id="set-adds">Adds</h3>
+        <Field label="Adds per week" help="Free agents and waiver claims, per matchup week. Blank = unlimited." htmlFor="set-addw">
+          <input id="set-addw" type="number" min={0} max={200} placeholder="Unlimited" value={draft.maxAddsPerWeek} onChange={(e) => set("maxAddsPerWeek", e.target.value)} />
+        </Field>
+        <Field label="Adds per season" help="Blank = unlimited." htmlFor="set-adds-season">
+          <input id="set-adds-season" type="number" min={0} max={200} placeholder="Unlimited" value={draft.maxAddsPerSeason} onChange={(e) => set("maxAddsPerSeason", e.target.value)} />
+        </Field>
+      </section>
+
+      <div className={styles.bar}>
+        <p className={styles.next} aria-live="polite">
+          {status && <b className={status.ok ? styles.ok : styles.error} role={status.ok ? "status" : "alert"}>{status.text} </b>}
+          Waivers run {fmtWaiverDays(saved.settings.waiverDaysOfWeek)} at {next.split(" · ")[1]}. Next run{" "}
+          <b>{next.split(" · ")[0]}</b>.
+        </p>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.btn}
+            disabled={!dirty || saving}
+            onClick={() => { setDraft(toDraft(saved.settings)); setStatus(null); }}
+          >
+            Discard
+          </button>
+          <button type="submit" className={`${styles.btn} ${styles.primary}`} disabled={!dirty || saving}>
+            {saving ? "Saving…" : "Save settings"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}

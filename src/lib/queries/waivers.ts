@@ -7,8 +7,9 @@
 // the run that decides it: when the player's waivers clear, or the next run
 // for a player on waivers only because his game started.
 //
-// The run happens daily at leagues.waiver_time in leagues.time_zone (the
-// worker's waivers task; next_waiver_run/last_waiver_run in migration 0007).
+// The run happens at leagues.waiver_time in leagues.time_zone on the league's
+// waiver_days_of_week (the worker's waivers task; next_waiver_run /
+// last_waiver_run, migrations 0007 and 0009).
 // It takes every claim due by then and repeatedly gives the first team in the
 // waiver order its best-ranked remaining claim (claim_rank). Each claim is
 // re-checked against the roster as it is now (completeClaim), so a claim whose
@@ -103,6 +104,7 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
     type: league.type,
     timeZone: league.timeZone,
     waiverTime: league.waiverTime,
+    waiverDaysOfWeek: league.waiverDaysOfWeek,
     waiverDays: league.waiverDays,
     waiversAfterGameStart: league.waiversAfterGameStart,
     nextRunAt: league.nextRunAt,
@@ -346,6 +348,7 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
   return {
     timeZone: league!.timeZone,
     waiverTime: league!.waiverTime,
+    waiverDaysOfWeek: league!.waiverDaysOfWeek,
     nextRunAt: league!.nextRunAt,
     waiverPriority: tc.priority,
     teamCount: tc.n,

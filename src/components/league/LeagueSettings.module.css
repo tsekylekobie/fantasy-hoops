@@ -1,0 +1,298 @@
+/* League settings (/league/settings). No mockup of its own: the page, cards
+   and headings follow LeagueView (docs/design/league.mockup.html), chips its
+   .chip, buttons Trades.module.css. */
+
+.page {
+  min-height: 100vh;
+  padding: 12px 40px 48px;
+}
+
+.inner {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-block;
+  margin-top: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 8px 0 8px;
+}
+
+.sub {
+  color: var(--ink-muted);
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+
+.empty {
+  margin: 24px 0;
+  color: var(--ink-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding: 16px 20px 10px;
+}
+
+.group + .group {
+  border-top: 2px solid var(--row-divider);
+}
+
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 8px 24px;
+  align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--row-divider);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.label small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.control {
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.control input[type="number"],
+.control input[type="time"],
+.control input[type="date"],
+.control select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  max-width: 100%;
+}
+
+.control input[type="number"] {
+  width: 120px;
+  font-variant-numeric: tabular-nums;
+}
+
+.control select {
+  min-width: 0;
+}
+
+.control input:disabled {
+  opacity: 0.5;
+}
+
+.control input:focus-visible,
+.control select:focus-visible,
+.chip:focus-visible,
+.btn:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  height: 36px;
+  min-width: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--ink);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/* Save bar: stays in view at the bottom while the form scrolls. */
+.bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.next {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+  min-width: 0;
+}
+
+.next b {
+  color: var(--ink);
+}
+
+.next b.ok {
+  color: var(--ok-ink);
+}
+
+.next b.error {
+  color: var(--danger-ink);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-ink);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 8px 16px 40px;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px 16px;
+  }
+
+  .card h3 {
+    padding: 14px 16px 8px;
+  }
+
+  /* Above the phone tab bar (body padding-bottom in globals.css). */
+  .bar {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    padding: 12px 16px;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions .btn {
+    flex: 1;
+  }
+}

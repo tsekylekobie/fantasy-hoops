@@ -1,7 +1,7 @@
 // The League page's waiver order: who gets the first claim at the next waiver
 // run, each team's pending claim count, and the league's waiver rules.
 import Link from "next/link";
-import { fmtWaiverTime } from "@/components/players/format";
+import { fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import type { WaiverOrder as Data } from "@/lib/types";
 import styles from "./WaiverOrder.module.css";
 
@@ -18,7 +18,7 @@ export default function WaiverOrder({ data, myTeamId }: { data: Data | null; myT
     <section className={styles.card} aria-labelledby="waiver-order-heading">
       <h3 id="waiver-order-heading">Waiver order</h3>
       <p className={styles.sub}>
-        Waivers run daily at {next.split(" · ")[1]}. Next run {next.split(" · ")[0]}.
+        Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {next.split(" · ")[1]}. Next run {next.split(" · ")[0]}.
       </p>
       <ol className={styles.list}>
         {data.teams.map((t) => (

@@ -664,8 +664,10 @@ export interface WaiverClaim {
  */
 export interface MyClaimsResponse {
   timeZone: string;
-  /** Local daily run time, "HH:MM". */
+  /** Local run time, "HH:MM". */
   waiverTime: string;
+  /** ISO weekdays waivers run on (1 = Mon ... 7 = Sun). */
+  waiverDaysOfWeek: number[];
   nextRunAt: string;
   waiverPriority: number | null;
   teamCount: number;
@@ -683,9 +685,59 @@ export interface WaiverOrder {
   type: "continual_rolling" | "reverse_standings" | "faab";
   timeZone: string;
   waiverTime: string;
+  /** ISO weekdays waivers run on (1 = Mon ... 7 = Sun). */
+  waiverDaysOfWeek: number[];
   waiverDays: number;
   waiversAfterGameStart: boolean;
   nextRunAt: string;
   /** First claim first. */
   teams: (FantasyTeamSummary & { priority: number; pendingClaims: number })[];
+}
+
+// --- League settings (commissioner only) ---
+
+/** Injury report statuses (player_injuries.status) the IL rules can name. */
+export const INJURY_STATUSES = ["Out", "Doubtful", "Questionable", "Day-To-Day", "Probable"] as const;
+
+/**
+ * The rules on the leagues row the commissioner can change. GET /api/league/settings
+ * responds LeagueSettingsResponse; PUT takes a whole LeagueSettings and responds the same.
+ * Changes apply from now on: past lineups and processed transactions are untouched,
+ * and pending claims and waivers move to the next run on the new schedule.
+ */
+export interface LeagueSettings {
+  waiverType: WaiverOrder["type"];
+  /** Local run time, "HH:MM". */
+  waiverTime: string;
+  /** IANA zone the run time and the league's days are in. */
+  timeZone: string;
+  /** ISO weekdays waivers run on (1 = Mon ... 7 = Sun), ascending, at least one. */
+  waiverDaysOfWeek: number[];
+  /** Days a dropped player stays on waivers; 0 = straight to free agents. */
+  waiverDays: number;
+  waiversAfterGameStart: boolean;
+  /** Count of IL and IL+ slots (leagues.roster_slots). */
+  ilSlots: number;
+  ilStatuses: string[];
+  ilMinDays: number;
+  ilPlusSlots: number;
+  ilPlusStatuses: string[];
+  ilPlusMinDays: number;
+  tradeReview: TradeReview;
+  tradeReviewDays: number;
+  tradeVetoVotes: number;
+  /** Last day trades can be proposed, yyyy-mm-dd; null = none. */
+  tradeDeadline: string | null;
+  /** null = unlimited. */
+  maxAddsPerWeek: number | null;
+  maxAddsPerSeason: number | null;
+}
+
+export interface LeagueSettingsResponse {
+  leagueName: string;
+  teamCount: number;
+  settings: LeagueSettings;
+  /** The next waiver run on the saved schedule. */
+  nextRunAt: string;
+  updatedAt: string;
 }

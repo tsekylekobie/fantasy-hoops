@@ -25,23 +25,31 @@ function fmtRange(from: string, to: string): string {
 const teamHref = (t: FantasyTeamSummary, myTeam: FantasyTeamSummary | null) =>
   t.id === myTeam?.id ? "/my-team" : `/team/${t.id}`;
 
-/** `children` render below standings and the scoreboard (Recent transactions). */
-export default function LeagueView({ data, children }: { data: LeagueOverview | null; children?: ReactNode }) {
+/**
+ * `children` render below standings and the scoreboard (Recent transactions).
+ * `isCommissioner` shows the link to /league/settings.
+ */
+export default function LeagueView({
+  data, isCommissioner = false, children,
+}: { data: LeagueOverview | null; isCommissioner?: boolean; children?: ReactNode }) {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {data ? <><Overview data={data} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
+        {data ? <><Overview data={data} isCommissioner={isCommissioner} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
       </div>
     </div>
   );
 }
 
-function Overview({ data }: { data: LeagueOverview }) {
+function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommissioner: boolean }) {
   const season = `${data.season}–${String(data.season + 1).slice(2)}`;
   return (
     <>
-      <h1 className={styles.title}>League</h1>
+      <div className={styles.head}>
+        <h1 className={styles.title}>League</h1>
+        {isCommissioner && <Link href="/league/settings" className={styles.settings}>League settings</Link>}
+      </div>
       <p className={styles.sub}>
         {data.name} · {data.teamCount} teams · Head-to-head, 9 categories · {season}
       </p>

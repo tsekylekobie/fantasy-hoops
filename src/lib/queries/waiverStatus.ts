@@ -14,6 +14,7 @@ export interface WaiverLeague {
   type: WaiverOrder["type"];
   timeZone: string;
   waiverTime: string;
+  waiverDaysOfWeek: number[];
   waiverDays: number;
   waiversAfterGameStart: boolean;
   nextRunAt: string;
@@ -23,9 +24,10 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
   const bySeason = "season" in where;
   const { rows: [r] } = await db.query<{
     id: number; season: number; waiver_type: WaiverOrder["type"]; time_zone: string; waiver_time: string;
-    waiver_days: number; waivers_after_game_start: boolean; next_run_at: string;
+    waiver_days_of_week: number[]; waiver_days: number; waivers_after_game_start: boolean; next_run_at: string;
   }>(
-    `SELECT id::int, season, waiver_type, time_zone, to_char(waiver_time, 'HH24:MI') AS waiver_time, waiver_days,
+    `SELECT id::int, season, waiver_type, time_zone, to_char(waiver_time, 'HH24:MI') AS waiver_time,
+            waiver_days_of_week, waiver_days,
             waivers_after_game_start, ${ISO("next_waiver_run(id, now())")} AS next_run_at
        FROM leagues WHERE ${bySeason ? "season" : "id"} = $1 ORDER BY id DESC LIMIT 1`,
     [bySeason ? where.season : where.leagueId],
@@ -33,7 +35,7 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
   if (!r) return null;
   return {
     id: r.id, season: r.season, type: r.waiver_type, timeZone: r.time_zone, waiverTime: r.waiver_time,
-    waiverDays: r.waiver_days, waiversAfterGameStart: r.waivers_after_game_start, nextRunAt: r.next_run_at,
+    waiverDaysOfWeek: r.waiver_days_of_week, waiverDays: r.waiver_days, waiversAfterGameStart: r.waivers_after_game_start, nextRunAt: r.next_run_at,
   };
 }
 

@@ -78,3 +78,13 @@ export function fmtWaiverTime(iso: string, timeZone: string, style: "short" | "l
   if (style === "sentence") return `${weekday} at ${time} ${zone}`.trim();
   return `${weekday}, ${date} · ${time} ${zone}`.trim();
 }
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Waiver run days (ISO weekdays, 1 = Mon): "daily", "on weekdays", or "on Tue, Fri". */
+export function fmtWaiverDays(days: number[]): string {
+  const set = new Set(days);
+  if (set.size === 7) return "daily";
+  if (set.size === 5 && [1, 2, 3, 4, 5].every((d) => set.has(d))) return "on weekdays";
+  return `on ${[...set].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")}`;
+}
