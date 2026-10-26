@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Propose a trade</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1300px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.thm{width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.acct{width:44px;height:44px;box-sizing:border-box;padding:4px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;cursor:pointer}
+.acct i{width:34px;height:34px;border-radius:50%;background:#16181D;color:#fff;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:32px 0 8px}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:0;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0 0 20px;max-width:80ch}
+.btn{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 14px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:#16181D;color:#16181D}
+.btn.pri{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn:disabled{background:#EFECE4;border-color:#EFECE4;color:#8A8F98;cursor:default}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
+.card h3{font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;padding:16px 16px 10px;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.card h3 span{font:500 13px Inter,sans-serif;text-transform:none;letter-spacing:0;color:#4A4F57}
+.r{display:grid;grid-template-columns:44px minmax(160px,1fr) 36px 44px 44px 44px 52px;align-items:center;gap:6px;padding:0 16px;min-height:56px;border-top:1px solid #EEEAE0;font-size:14px;font-variant-numeric:tabular-nums;min-width:480px;box-sizing:border-box}
+.r.h{min-height:34px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4A4F57;background:#FBFAF6}
+.r.on{background:#FFF4EC}
+.pk{width:28px;height:28px;border:1px solid #CFC9BD;border-radius:6px;background:#fff;color:#fff;font:700 15px Inter,sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.r.on .pk{background:#C2410C;border-color:#C2410C}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.av{width:34px;height:34px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 12px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
+.who b{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.who small{display:block;font-size:12px;color:#5A5F68}
+.tg{font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;background:#EFECE4;color:#4A4F57}
+.tg.dtd{background:#FEF3C7;color:#92400E}
+.n{text-align:right}
+.sum{margin-top:20px;background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:18px 20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
+.lbl{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4A4F57}
+.chips{display:flex;gap:6px;flex-wrap:wrap;font-size:13px}
+.chips span{background:#FFF4EC;border:1px solid #F5C6A5;border-radius:999px;padding:5px 10px;font-weight:600}
+.chips em{font-style:normal;color:#5A5F68}
+.note{grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#4A4F57}
+.note textarea{min-height:72px;border:1px solid #CFC9BD;border-radius:10px;padding:10px 12px;font:400 14px Inter,sans-serif;color:#16181D;resize:vertical}
+.go{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:#4A4F57}
+.ok{grid-column:1 / -1;background:#E8F0E6;border:1px solid #B9CFB3;color:#1F3A1B;border-radius:10px;padding:10px 14px;font-size:14px}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="league.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="league.mockup.html" class="on" aria-current="page">League</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="rankings.mockup.html">Rankings</a><a href="players-table.mockup.html">Players</a></div>
+<div class="me"><span class="tag">Sample data</span><button class="thm" aria-label="Switch to dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button><button class="acct" aria-label="Account: Sam Rivera" aria-haspopup="menu" aria-expanded="false"><i>SR</i></button></div>
+</nav>
+<div class="head"><h1>Trade with Corner Three Club</h1><a class="btn" href="my-team.mockup.html">Back to their team</a></div>
+<p class="sub">Pick players from each roster. Corner Three Club can accept or reject your offer. Once they accept, the league has 2 days to review it; 4 veto votes kill it.</p>
+<div class="cols">
+<sc-for list="{{sides}}" as="sd" hint-placeholder-count="2">
+<section class="card" aria-label="{{sd.aria}}">
+<h3>{{sd.title}}<span>{{sd.team}}</span></h3>
+<div class="r h"><span></span><span>Player</span><span class="n">GP</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n" title="9CAT value this season">Value</span></div>
+<sc-for list="{{sd.rows}}" as="p" hint-placeholder-count="8">
+<div class="{{p.cls}}"><span><button class="pk" role="checkbox" aria-checked="{{p.on}}" aria-label="{{p.aria}}" onClick="{{p.flip}}">{{p.mark}}</button></span>
+<span class="who"><i class="av">{{p.ini}}</i><span><b>{{p.name}}<sc-if value="{{p.hasTag}}" hint-placeholder-val="{{ false }}"><span class="{{p.tagCls}}">{{p.tag}}</span></sc-if></b><small>{{p.meta}}</small></span></span>
+<span class="n">{{p.gp}}</span><span class="n">{{p.pts}}</span><span class="n">{{p.reb}}</span><span class="n">{{p.ast}}</span><span class="n">{{p.val}}</span></div>
+</sc-for>
+</section>
+</sc-for>
+</div>
+<section class="sum" aria-label="Trade summary">
+<div><p class="lbl">Corner Three Club gets</p><div class="chips"><sc-for list="{{sendNames}}" as="x" hint-placeholder-count="2"><span>{{x}}</span></sc-for><sc-if value="{{noSend}}" hint-placeholder-val="{{ false }}"><em>Pick players from your roster</em></sc-if></div></div>
+<div><p class="lbl">You get</p><div class="chips"><sc-for list="{{getNames}}" as="x" hint-placeholder-count="1"><span>{{x}}</span></sc-for><sc-if value="{{noGet}}" hint-placeholder-val="{{ false }}"><em>Pick players from Corner Three Club</em></sc-if></div></div>
+<label class="note" for="tr-note">Note to Corner Three Club (optional)<textarea id="tr-note" placeholder="Pitch your offer…" maxlength="500"></textarea></label>
+<sc-if value="{{sent}}" hint-placeholder-val="{{ false }}"><p class="ok">Offer sent. It shows under Trades on both teams’ pages until Corner Three Club answers.</p></sc-if>
+<div class="go"><span>{{count}} · up to 4 players a side. Players arrive on the bench.</span><button class="btn pri" disabled="{{notReady}}" onClick="{{propose}}">Propose trade</button></div>
+</section>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1300}}'>
+var MINE=[['dk','Darnell Pike','IND · SG/SF · UTIL',3,'17.2','4.1','3.3','4.12',''],['cw','Cam Whitfield','DAL · SF · BN',3,'12.3','4.8','2.1','1.95',''],['oh','Owen Hartley','POR · PG/SG · UTIL',2,'15.5','3.0','5.9','3.40',''],['tl','Theo Lindqvist','SAS · SF/PF · F',3,'15.8','6.7','3.0','3.88',''],['rt','Reggie Tanaka','WAS · C · BN',3,'11.8','9.6','1.4','2.61',''],['eb','Eli Brooks','SAC · SG · BN',2,'13.9','3.1','2.6','1.20','DTD'],['so','Silas Ortega','CHA · PF/C · C',3,'14.1','9.4','2.2','4.45','']];
+var THEIRS=[['ns','Nico Santoro','LAL · SF · SF',2,'20.2','5.5','4.0','5.77',''],['mh','Marcus Holt','BOS · PG · PG',3,'18.4','3.9','7.7','5.02','In a trade'],['ar','Ari Varga','ATL · C · C',3,'12.7','10.2','1.6','3.91',''],['jq','Jordan Quill','TOR · SG · SG',3,'16.1','3.3','2.9','2.74',''],['ts','Tomas Stone','HOU · PF · BN',2,'9.8','6.4','1.3','0.88',''],['rv','Rafe Varga','SAC · G · BN',3,'11.0','2.7','4.4','1.65','']];
+function ini(n){return n.split(' ').map(function(w){return w[0];}).join('');}
+class Component extends DCLogic {
+renderVals(){
+var self=this;var s=this.state||{};var send=s.send||['dk','cw'];var get=s.get||['ns'];
+function toggle(key,list,id){var on=list.indexOf(id)>=0;var nl=on?list.filter(function(x){return x!==id;}):(list.length>=4?list:list.concat([id]));var u={sent:false};u[key]=nl;self.setState(u);}
+function rows(src,list,key){return src.map(function(p){var on=list.indexOf(p[0])>=0;return {cls:on?'r on':'r',on:on?'true':'false',mark:on?'✓':'',aria:(on?'Remove ':'Add ')+p[1],flip:function(){toggle(key,list,p[0]);},
+ini:ini(p[1]),name:p[1],meta:p[2],gp:p[3],pts:p[4],reb:p[5],ast:p[6],val:p[7],hasTag:!!p[8],tag:p[8],tagCls:p[8]==='DTD'?'tg dtd':'tg'};});}
+function names(src,list){return src.filter(function(p){return list.indexOf(p[0])>=0;}).map(function(p){return p[1];});}
+return {
+sides:[{title:'You send',team:'Back Door Cuts',aria:'You send: Back Door Cuts',rows:rows(MINE,send,'send')},{title:'You receive',team:'Corner Three Club',aria:'You receive: Corner Three Club',rows:rows(THEIRS,get,'get')}],
+sendNames:names(MINE,send),getNames:names(THEIRS,get),noSend:send.length===0,noGet:get.length===0,
+count:send.length+'-for-'+get.length,notReady:send.length===0||get.length===0||!!s.sent,sent:!!s.sent,
+propose:function(){self.setState({sent:true});}
+};
+}
+}
+</script>
+</body>
+</html>

@@ -34,7 +34,10 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   starts next week. Matchup scoring (`queries/matchups.ts`: `weekLines`, used by standings, rankings and playoffs) applies
   them; My team shows games used (`teamGameLimitUsage`).
 - `src/components/`: UI. `Avatar` must fall back to initials.
-- `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; `league-settings` is the commissioner's /league/settings; the others (my team, matchup, league, rankings, claim, nav map, phone) are later-milestone exploration.
+- `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (PLAN.md links it). M1 is `players-table` and `player-modal`;
+  `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`,
+  `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
+  and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
 
 ## Conventions

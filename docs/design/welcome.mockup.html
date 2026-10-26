@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Welcome</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.w{width:1280px;height:820px;box-sizing:border-box;background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:56px 64px}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;align-self:flex-start}
+.logo b{color:#C2410C}
+.c{width:640px;margin-top:40px;display:flex;flex-direction:column;gap:20px}
+.who{display:flex;align-items:center;gap:12px;font-size:14px;color:#4A4F57}
+.who i{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 14px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+.who b{color:#16181D}
+h1{font:700 64px/.95 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.lead{margin:0;font-size:16px;color:#4A4F57;line-height:1.5}
+.team{background:#16181D;color:#fff;border-radius:16px;padding:24px 28px;display:flex;flex-direction:column;gap:18px}
+.team .top{display:flex;align-items:center;gap:16px}
+.team .top i{width:56px;height:56px;border-radius:50%;background:#C2410C;font:700 20px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.team small{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#C9C5BC}
+.team h2{font:700 36px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:4px 0 0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border-top:1px solid #2B2E35;padding-top:16px}
+.stats div{display:flex;flex-direction:column;gap:4px}
+.stats b{font:700 26px/1 'Barlow Condensed',sans-serif}
+.stats span{font-size:12px;color:#C9C5BC}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;height:48px;box-sizing:border-box;padding:0 22px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 15px Inter,sans-serif;text-decoration:none}
+.btn:hover{border-color:#16181D;color:#16181D}
+.btn.pri{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn.pri:hover{background:#9A3412;color:#fff}
+.fine{margin:0;font-size:13px;color:#4A4F57}
+</style>
+</helmet>
+<div class="w">
+<div class="logo">Fantasy <b>Hoops</b></div>
+<div class="c">
+<div class="who"><i>SR</i><span>Signed in as <b>sam.rivera@example.com</b></span></div>
+<h1>You’re in, Sam.</h1>
+<p class="lead">Your commissioner set you up as the manager of this team. Your lineup, claims and moves all live under My team.</p>
+<div class="team">
+<div class="top"><i>BDC</i><div><small>Your team</small><h2>Back Door Cuts</h2></div></div>
+<div class="stats"><div><b>13 + 1 IL</b><span>Players on the roster</span></div><div><b>vs PPC</b><span>Week 1 matchup, Oct 20–25</span></div><div><b>Sat 3:00 AM</b><span>Next waiver run (ET)</span></div></div>
+</div>
+<div class="acts"><a class="btn pri" href="my-team.mockup.html">Go to my team</a><a class="btn" href="players-table.mockup.html">Browse players</a></div>
+<p class="fine">Wrong team? Tell your commissioner; they can reassign it in League › Members. This screen shows once, on your first sign-in.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

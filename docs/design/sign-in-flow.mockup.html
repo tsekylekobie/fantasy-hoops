@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign-in flow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+</style>
+</helmet>
+<div style="position: relative; width: 1280px; height: 640px; background: #F6F4EF; color: #16181D; font-family: Inter, system-ui, sans-serif; font-size: 15px; line-height: 20px">
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 240px; top: 256px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 480px; top: 256px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 720px; top: 256px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 960px; top: 256px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="8" height="95" viewBox="0 0 8 95" preserveAspectRatio="none" style="position: absolute; left: 388px; top: 320px; width: 8px; height: 95px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 4 0 L 4 91" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<svg width="8" height="95" viewBox="0 0 8 95" preserveAspectRatio="none" style="position: absolute; left: 1116px; top: 320px; width: 8px; height: 95px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-6" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 4 0 L 4 91" marker-end="url(#dc-arrow-head-filled-6)"></path></svg>
+<svg width="8" height="55" viewBox="0 0 8 55" preserveAspectRatio="none" style="position: absolute; left: 1116px; top: 145px; width: 8px; height: 55px; overflow: visible; fill: none; stroke: #8A8378; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-7" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#8A8378" stroke="none" style="stroke: none; fill: #8A8378; fill: context-stroke"></path></marker></defs><path d="M 4 55 L 4 4" marker-end="url(#dc-arrow-head-filled-7)"></path></svg>
+<div style="position: absolute; left: 64px; top: 64px; font: 700 40px/1 'Barlow Condensed', sans-serif; text-transform: uppercase">Signing in</div>
+<div style="position: absolute; left: 64px; top: 112px; width: 640px; font-size: 14px; color: #4A4F57">Google proves who someone is. Our league list decides whether they get in, and which team they manage.</div>
+<div style="position: absolute; left: 64px; top: 220px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #ffffff; border: 1px solid #E2DDD1; border-radius: 10px"><span><b>Opens any page</b><br>or a shared link</span></div>
+<div style="position: absolute; left: 304px; top: 200px; width: 176px; height: 120px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; background: #FFE7D6; color: #7C2D12; font-weight: 600; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%)">Signed in?</div>
+<a href="sign-in.mockup.html" style="position: absolute; left: 544px; top: 220px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #ffffff; border: 2px solid #C2410C; border-radius: 10px; color: #16181D; text-decoration: none"><span><b>Sign-in page</b><br>Continue with Google</span></a>
+<div style="position: absolute; left: 784px; top: 220px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #EFECE4; border: 1px dashed #A8A295; border-radius: 10px"><span><b>Google’s screen</b><br>pick an account</span></div>
+<div style="position: absolute; left: 1024px; top: 200px; width: 192px; height: 120px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; background: #FFE7D6; color: #7C2D12; font-weight: 600; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%)"><span>Email on the<br>league list?</span></div>
+<a href="my-team.mockup.html" style="position: absolute; left: 304px; top: 416px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #ffffff; border: 1px solid #E2DDD1; border-radius: 10px; color: #16181D; text-decoration: none"><span><b>Page loads</b><br>session lasts 30 days</span></a>
+<a href="welcome.mockup.html" style="position: absolute; left: 1032px; top: 416px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #ffffff; border: 2px solid #C2410C; border-radius: 10px; color: #16181D; text-decoration: none"><span><b>Welcome</b> (first time)<br>then the page they asked for</span></a>
+<a href="not-in-league.mockup.html" style="position: absolute; left: 1032px; top: 64px; width: 176px; height: 80px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #ffffff; border: 2px solid #C2410C; border-radius: 10px; color: #16181D; text-decoration: none"><span><b>Not in this league</b><br>try another account</span></a>
+<div style="position: absolute; left: 500px; top: 232px; width: 24px; text-align: center; font-size: 13px; line-height: 16px; color: #4A4F57">no</div>
+<div style="position: absolute; left: 404px; top: 360px; width: 28px; text-align: center; font-size: 13px; line-height: 16px; color: #4A4F57">yes</div>
+<div style="position: absolute; left: 1132px; top: 360px; width: 28px; text-align: center; font-size: 13px; line-height: 16px; color: #4A4F57">yes</div>
+<div style="position: absolute; left: 1132px; top: 164px; width: 24px; text-align: center; font-size: 13px; line-height: 16px; color: #4A4F57">no</div>
+<div style="position: absolute; left: 64px; top: 544px; width: 1152px; font-size: 13px; line-height: 20px; color: #4A4F57"><span><b style="color: #16181D">Who is on the list:</b> the commissioner adds each manager’s email and team in <a href="league-members.mockup.html">League › Members</a>. Orange outlines are the screens mocked on this row. Signing out is in the account menu at the top right of every page.</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

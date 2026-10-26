@@ -12,7 +12,7 @@
 <style>
 body{margin:0}
 a{color:#C2410C}a:hover{color:#7C2D12}
-.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1120px;box-sizing:border-box;padding:12px 40px 48px}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1700px;box-sizing:border-box;padding:12px 40px 48px}
 .in{max-width:1200px;margin:0 auto}
 .nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
 .logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
@@ -23,53 +23,110 @@ a{color:#C2410C}a:hover{color:#7C2D12}
 .tabs a.on{color:#16181D;border-bottom-color:#C2410C}
 .me{margin-left:auto;display:flex;align-items:center;gap:12px}
 .tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
-.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
-.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
-h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.thm{width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.acct{width:44px;height:44px;box-sizing:border-box;padding:4px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;cursor:pointer}
+.acct i{width:34px;height:34px;border-radius:50%;background:#16181D;color:#fff;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:32px 0 8px}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:0;text-transform:uppercase;letter-spacing:.01em}
+.btn{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 14px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:#16181D;color:#16181D}
+.btn.pri{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn.sm{height:36px;padding:0 14px;font-size:13px}
 .sub{color:#4A4F57;font-size:15px;margin:0 0 20px}
-.sw{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.chip{height:44px;border:1px solid #CFC9BD;border-radius:999px;padding:0 16px;font:500 13px Inter,sans-serif;background:#fff;color:#16181D}
-.chip.on{background:#16181D;color:#fff;border-color:#16181D}
 .cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
-.main{flex:999 1 620px;min-width:0}
-.aside{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.main{flex:999 1 640px;min-width:0}
+.aside{flex:1 1 340px;min-width:0}
 .card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
 .card h3{font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;padding:16px 20px 10px;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.card h3 a{font:600 13px Inter,sans-serif;text-transform:none;letter-spacing:0}
+.card h3 a,.card h3 small{font:600 13px Inter,sans-serif;text-transform:none;letter-spacing:0}
+.card h3 small{color:#4A4F57;font-weight:500}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px 8px;flex-wrap:wrap}
+.ch h3{padding:0}
+.seg{display:inline-flex;border:1px solid #CFC9BD;border-radius:10px;background:#fff;padding:3px;gap:2px}
+.seg button{height:34px;padding:0 14px;border:0;border-radius:7px;background:transparent;font:600 13px Inter,sans-serif;color:#4A4F57;cursor:pointer}
+.seg button[aria-pressed="true"]{background:#16181D;color:#fff}
 .s{display:grid;grid-template-columns:36px minmax(200px,1fr) 96px 64px 48px 64px;align-items:center;gap:8px;padding:0 20px;min-width:600px;box-sizing:border-box;height:52px;border-top:1px solid #EEEAE0;font-size:14px;font-variant-numeric:tabular-nums}
 .s.h{height:36px;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase}
 .s.me2{background:#FFF4EC}
 .s.cut{border-top:2px dashed #CFC9BD}
 .tn{display:flex;align-items:center;gap:10px;font-weight:600;min-width:0}
-.tn i{width:32px;height:32px;border-radius:50%;background:#EFECE4;color:#16181D;font:700 12px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
-.s.me2 .tn i{background:#16181D;color:#fff}
+.tn i,.bd{width:32px;height:32px;border-radius:50%;background:#EFECE4;color:#16181D;font:700 12px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.s.me2 .tn i,.bd.mine{background:#16181D;color:#fff}
 .tn a{color:#16181D;text-decoration:none}
 .tn a:hover{color:#C2410C;text-decoration:underline}
 .n{text-align:right}
-.set{display:flex;flex-direction:column;padding:0 20px 8px}
-.kv{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #EEEAE0;font-size:14px}
-.kv span{color:#4A4F57}
-.kv b{font-weight:600;text-align:right}
-.kv b em{font-style:normal;display:block;font-size:12px;font-weight:500;color:#C2410C}
+.foot{font-size:13px;color:#4A4F57;padding:12px 20px 16px;margin:0;border-top:1px solid #EEEAE0}
+.m{display:grid;grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);align-items:center;gap:8px;min-height:56px;padding:0 20px;border-top:1px solid #EEEAE0;font-size:13px;font-weight:600;color:#16181D;text-decoration:none}
+.m:hover{background:#FBFAF6;color:#16181D}
+.m.mine{background:#FFF4EC}
+.m b{text-align:center;font:700 20px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+.side{display:flex;align-items:center;gap:8px;min-width:0}
+.side.r{flex-direction:row-reverse;text-align:right}
+.side .bd{width:28px;height:28px;font-size:11px}
+.brk{padding:4px 20px 16px;overflow-x:auto}
+.proj{display:inline-block;font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:4px 10px;margin:4px 0 8px}
+.bh{font:700 15px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px}
+.bh span{font:500 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:#4A4F57;margin-left:6px}
+.rounds{display:grid;grid-template-columns:repeat(3,minmax(190px,1fr));gap:16px;min-width:620px}
+.rd{display:flex;flex-direction:column;gap:10px}
+.rh{font-size:12px;color:#4A4F57;display:flex;flex-direction:column;gap:2px}
+.rh b{font-size:13px;color:#16181D}
+.rslots{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:10px}
+.gm{border:1px solid #E2DDD1;border-radius:10px;background:#fff;overflow:hidden}
+.gm.my{border-color:#C2410C;box-shadow:inset 0 0 0 1px #C2410C}
+.tm{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;font-size:13px;border-top:1px solid #EEEAE0}
+.tm:first-child{border-top:0}
+.tm .sd{width:16px;font-size:11px;font-weight:700;color:#5A5F68;text-align:right}
+.tm .bd{width:24px;height:24px;font-size:10px}
+.tm .nmx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.tm .nmx small{font-size:11px;color:#5A5F68}
+.tm.tbd{color:#5A5F68;font-style:italic}
+.tro{border:1px dashed #CFC9BD;border-radius:10px;padding:10px;font-size:12px;color:#4A4F57;display:flex;flex-direction:column;gap:2px}
+.tro b{color:#16181D}
+.below{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-top:20px}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 20px;border-top:1px solid #EEEAE0;font-size:14px}
+.tr .who{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tr .who > b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip2{font-size:11px;font-weight:600;border-radius:999px;padding:3px 9px}
+.chip2.rv{color:#7C2D12;background:#FFE7D6}
+.chip2.ok{color:#166534;background:#DCFCE7}
+.gets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px;font-size:13px;color:#4A4F57}
+.gets b{color:#16181D;font-weight:600}
+.tr small{font-size:12px;color:#5A5F68}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.sec2{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4A4F57;padding:12px 20px 6px;border-top:1px solid #EEEAE0}
 .ev{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-top:1px solid #EEEAE0;font-size:14px}
 .ev small{font-size:12px;color:#5A5F68}
+.ev .kind{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7C2D12}
 .plus{color:#166534;font-weight:600}
 .minus{color:#991B1B;font-weight:600}
-.foot{font-size:13px;color:#4A4F57;padding:12px 20px 16px;margin:0;border-top:1px solid #EEEAE0}
+.run{display:flex;flex-direction:column;gap:6px}
+.run ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.run li{display:flex;justify-content:space-between;gap:12px}
+.run li span:last-child{color:#5A5F68;font-size:12px;text-align:right}
+.lk{border:0;background:transparent;padding:0;font:600 13px Inter,sans-serif;color:#C2410C;cursor:pointer;align-self:flex-start;min-height:32px}
+.wo{list-style:none;margin:0;padding:0 0 4px}
+.wo li{display:flex;align-items:center;gap:10px;height:44px;padding:0 20px;border-top:1px solid #EEEAE0;font-size:14px}
+.wo li.mine{background:#FFF4EC}
+.wo li > span:first-child{width:20px;text-align:right;font-variant-numeric:tabular-nums;color:#4A4F57;font-size:13px}
+.wo li a{color:#16181D;text-decoration:none;font-weight:600;flex:1;min-width:0}
+.wo .cl{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:3px 9px}
+.wsub{margin:0;padding:0 20px 12px;font-size:13px;color:#4A4F57}
 </style>
 </helmet>
 <div class="pg"><div class="in">
 <nav class="nav" aria-label="Main">
-<a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a>
-<div class="tabs"><a href="players-table.mockup.html">Players</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="league.mockup.html" class="on" aria-current="page">League</a></div>
-<div class="me"><span class="tag">Sample data</span><a class="tmc" href="my-team.mockup.html"><i>BDC</i>Back Door Cuts</a></div>
+<a class="logo" href="league.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="league.mockup.html" class="on" aria-current="page">League</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="rankings.mockup.html">Rankings</a><a href="players-table.mockup.html">Players</a></div>
+<div class="me"><span class="tag">Sample data</span><button class="thm" aria-label="Switch to dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button><button class="acct" aria-label="Account: Sam Rivera" aria-haspopup="menu" aria-expanded="false"><i>SR</i></button></div>
 </nav>
-<h1>League</h1>
-<p class="sub">12 teams · Head-to-head, 9 categories · 2026–27</p>
-<div class="sw"><button class="chip on">Standings</button><button class="chip">Schedule</button><button class="chip">Transactions</button><button class="chip">Settings</button></div>
+<div class="head"><h1>League</h1><a class="btn" href="league-settings.mockup.html">League settings</a></div>
+<p class="sub">Back Door League · 12 teams · Head-to-head, 9 categories · 2026–27</p>
 <div class="cols">
-<div class="main card">
-<h3>Standings<a href="matchup.mockup.html">This week’s matchups</a></h3>
+<section class="main card">
+<div class="ch"><h3>{{cardTitle}}</h3><div class="seg" role="group" aria-label="Standings or playoffs"><button aria-pressed="{{stOn}}" onClick="{{showSt}}">Standings</button><button aria-pressed="{{poOn}}" onClick="{{showPo}}">Playoffs</button></div></div>
+<sc-if value="{{isSt}}" hint-placeholder-val="{{ true }}">
+<div role="table" aria-label="Standings">
 <div class="s h"><span>#</span><span>Team</span><span class="n">W–L–T</span><span class="n">Pct</span><span class="n">GB</span><span class="n">Moves</span></div>
 <div class="s"><span>1</span><span class="tn"><i>FBF</i><a href="my-team.mockup.html">Fast Break Fund</a></span><span class="n">7–2–0</span><span class="n">.778</span><span class="n">–</span><span class="n">3</span></div>
 <div class="s"><span>2</span><span class="tn"><i>GLC</i><a href="my-team.mockup.html">Glass Cleaners</a></span><span class="n">6–3–0</span><span class="n">.667</span><span class="n">1.0</span><span class="n">2</span></div>
@@ -79,37 +136,122 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 <div class="s"><span>6</span><span class="tn"><i>SPZ</i><a href="my-team.mockup.html">Splash Zone</a></span><span class="n">4–4–1</span><span class="n">.500</span><span class="n">2.5</span><span class="n">4</span></div>
 <div class="s cut"><span>7</span><span class="tn"><i>CTC</i><a href="my-team.mockup.html">Corner Three Club</a></span><span class="n">4–4–1</span><span class="n">.500</span><span class="n">2.5</span><span class="n">1</span></div>
 <div class="s"><span>8</span><span class="tn"><i>BMB</i><a href="my-team.mockup.html">Bench Mob</a></span><span class="n">4–5–0</span><span class="n">.444</span><span class="n">3.0</span><span class="n">2</span></div>
-<div class="s"><span>9</span><span class="tn"><i>FCP</i><a href="my-team.mockup.html">Full Court Press</a></span><span class="n">3–5–1</span><span class="n">.389</span><span class="n">3.5</span><span class="n">0</span></div>
+<div class="s cut"><span>9</span><span class="tn"><i>FCP</i><a href="my-team.mockup.html">Full Court Press</a></span><span class="n">3–5–1</span><span class="n">.389</span><span class="n">3.5</span><span class="n">0</span></div>
 <div class="s"><span>10</span><span class="tn"><i>PPC</i><a href="my-team.mockup.html">Pick &amp; Pop Culture</a></span><span class="n">3–5–1</span><span class="n">.389</span><span class="n">3.5</span><span class="n">2</span></div>
 <div class="s"><span>11</span><span class="tn"><i>EUS</i><a href="my-team.mockup.html">Euro Steppers</a></span><span class="n">3–6–0</span><span class="n">.333</span><span class="n">4.0</span><span class="n">3</span></div>
 <div class="s"><span>12</span><span class="tn"><i>MVS</i><a href="my-team.mockup.html">Moving Screens</a></span><span class="n">2–7–0</span><span class="n">.222</span><span class="n">5.0</span><span class="n">0</span></div>
-<p class="foot">Category record across all weeks. Top 6 make the playoffs (dashed line). Team names open that team’s roster, read-only unless it is yours.</p>
 </div>
-<div class="aside">
-<div class="card">
-<h3>League rules<a href="league.mockup.html">Edit (commissioner)</a></h3>
-<div class="set">
-<div class="kv"><span>Waivers run</span><b>Daily, 3:00 AM ET<em>Configurable</em></b></div>
-<div class="kv"><span>Waiver period after a drop</span><b>2 days</b></div>
-<div class="kv"><span>IL eligibility</span><b>Players listed Out<em>Configurable</em></b></div>
-<div class="kv"><span>Adds per week</span><b>4</b></div>
-<div class="kv"><span>Roster</span><b>PG SG G SF PF F C C UTIL UTIL<em style="color:#4A4F57">+ 3 bench, 2 IL</em></b></div>
+<p class="foot">Category record across 1 finished week plus this week’s live score. Top 6 make the playoffs; the bottom 4 play the toilet bowl (dashed lines). Team names open that team’s roster.</p>
+</sc-if>
+<sc-if value="{{isPo}}" hint-placeholder-val="{{ false }}">
+<div class="brk">
+<span class="proj">If the season ended today</span>
+<h4 class="bh">Playoffs<span>Seeds 1–6 · winner advances</span></h4>
+<div class="rounds">
+<div class="rd"><div class="rh"><b>Quarterfinals</b><span>Week 21 · Mar 15–21</span></div><div class="rslots">
+<div class="gm"><div class="tm"><span class="sd">1</span><i class="bd">FBF</i><span class="nmx">Fast Break Fund<small>7–2–0</small></span></div><div class="tm tbd"><span class="sd"></span>Bye</div></div>
+<div class="gm"><div class="tm"><span class="sd">4</span><i class="bd">PNT</i><span class="nmx">Paint Protectors<small>5–3–1</small></span></div><div class="tm"><span class="sd">5</span><i class="bd">FTL</i><span class="nmx">Free Throw Line Dancers<small>5–4–0</small></span></div></div>
+<div class="gm my"><div class="tm"><span class="sd">3</span><i class="bd mine">BDC</i><span class="nmx">Back Door Cuts<small>5–3–1</small></span></div><div class="tm"><span class="sd">6</span><i class="bd">SPZ</i><span class="nmx">Splash Zone<small>4–4–1</small></span></div></div>
+<div class="gm"><div class="tm"><span class="sd">2</span><i class="bd">GLC</i><span class="nmx">Glass Cleaners<small>6–3–0</small></span></div><div class="tm tbd"><span class="sd"></span>Bye</div></div>
+</div></div>
+<div class="rd"><div class="rh"><b>Semifinals</b><span>Week 22 · Mar 22–28</span></div><div class="rslots">
+<div class="gm"><div class="tm"><span class="sd">1</span><i class="bd">FBF</i><span class="nmx">Fast Break Fund<small>7–2–0</small></span></div><div class="tm tbd"><span class="sd"></span>Winner of 4v5</div></div>
+<div class="gm"><div class="tm tbd"><span class="sd"></span>Winner of 3v6</div><div class="tm"><span class="sd">2</span><i class="bd">GLC</i><span class="nmx">Glass Cleaners<small>6–3–0</small></span></div></div>
+</div></div>
+<div class="rd"><div class="rh"><b>Final</b><span>Week 23 · Mar 29 – Apr 4</span></div><div class="rslots">
+<div class="gm"><div class="tm tbd"><span class="sd"></span>Winner</div><div class="tm tbd"><span class="sd"></span>Winner</div></div>
+<div class="tro"><b>Champion</b>TBD</div>
+</div></div>
+</div>
+<h4 class="bh">Toilet bowl<span>Seeds 9–12 · loser advances</span></h4>
+<div class="rounds">
+<div class="rd"><div class="rh"><b>Off week</b><span>Week 21</span></div><div class="rslots"><div class="gm"><div class="tm tbd"><span class="sd"></span>No game</div></div></div></div>
+<div class="rd"><div class="rh"><b>Round 1</b><span>Week 22 · Mar 22–28</span></div><div class="rslots">
+<div class="gm"><div class="tm"><span class="sd">9</span><i class="bd">FCP</i><span class="nmx">Full Court Press<small>3–5–1</small></span></div><div class="tm"><span class="sd">12</span><i class="bd">MVS</i><span class="nmx">Moving Screens<small>2–7–0</small></span></div></div>
+<div class="gm"><div class="tm"><span class="sd">10</span><i class="bd">PPC</i><span class="nmx">Pick &amp; Pop Culture<small>3–5–1</small></span></div><div class="tm"><span class="sd">11</span><i class="bd">EUS</i><span class="nmx">Euro Steppers<small>3–6–0</small></span></div></div>
+</div></div>
+<div class="rd"><div class="rh"><b>Final</b><span>Week 23 · Mar 29 – Apr 4</span></div><div class="rslots">
+<div class="gm"><div class="tm tbd"><span class="sd"></span>Loser of 9v12</div><div class="tm tbd"><span class="sd"></span>Loser of 10v11</div></div>
+<div class="tro"><b>Last place</b>TBD</div>
+</div></div>
 </div>
 </div>
-<div class="card">
-<h3>Recent moves<a href="league.mockup.html">All</a></h3>
-<div class="ev"><span><b>Splash Zone</b> <span class="plus">added</span> Nate Kowal, <span class="minus">dropped</span> Ty Benford</span><small>Waiver claim · Today 3:00 AM</small></div>
-<div class="ev"><span><b>Fast Break Fund</b> <span class="plus">added</span> Mason Reyes</span><small>Free agent · Yesterday 9:41 PM</small></div>
-<div class="ev"><span><b>Back Door Cuts</b> moved Jordan Faye to IL</span><small>Lineup · Yesterday 6:12 PM</small></div>
-<div class="ev"><span><b>Euro Steppers</b> <span class="minus">dropped</span> Caleb Moore</span><small>On waivers until Sun 3:00 AM · Thu 11:05 AM</small></div>
+<p class="foot">Seeded from today’s standings. One week per round; a tied matchup goes to the better seed. In the toilet bowl the loser advances, and the loser of its final finishes last.</p>
+</sc-if>
+</section>
+<section class="aside card">
+<h3>Week 1<small>Oct 20–25 · Live</small></h3>
+<a class="m mine" href="matchup.mockup.html"><span class="side"><i class="bd mine">BDC</i><span>Back Door Cuts</span></span><b>5–3–1</b><span class="side r"><i class="bd">PPC</i><span>Pick &amp; Pop Culture</span></span></a>
+<a class="m" href="matchup.mockup.html"><span class="side"><i class="bd">GLC</i><span>Glass Cleaners</span></span><b>6–2–1</b><span class="side r"><i class="bd">EUS</i><span>Euro Steppers</span></span></a>
+<a class="m" href="matchup.mockup.html"><span class="side"><i class="bd">SPZ</i><span>Splash Zone</span></span><b>4–5–0</b><span class="side r"><i class="bd">CTC</i><span>Corner Three Club</span></span></a>
+<a class="m" href="matchup.mockup.html"><span class="side"><i class="bd">FCP</i><span>Full Court Press</span></span><b>3–6–0</b><span class="side r"><i class="bd">PNT</i><span>Paint Protectors</span></span></a>
+<a class="m" href="matchup.mockup.html"><span class="side"><i class="bd">FBF</i><span>Fast Break Fund</span></span><b>7–2–0</b><span class="side r"><i class="bd">MVS</i><span>Moving Screens</span></span></a>
+<a class="m" href="matchup.mockup.html"><span class="side"><i class="bd">BMB</i><span>Bench Mob</span></span><b>4–4–1</b><span class="side r"><i class="bd">FTL</i><span>Free Throw Line Dancers</span></span></a>
+<p class="foot">Categories won–lost–tied, for the team on the left. Tap a matchup for the box score.</p>
+</section>
 </div>
+<section class="card" style="margin-top: 20px">
+<h3>League trades<small>League vote · 2 days to review · 4 veto votes block</small></h3>
+<div class="tr">
+<div class="who"><b>Fast Break Fund ⇄ Splash Zone<span class="chip2 rv">In review</span></b>
+<div class="gets"><span>Fast Break Fund gets <b>Nate Kowal, Ty Benford</b></span><span>Splash Zone gets <b>Marcus Holt</b></span></div>
+<small>Accepted Sat 9:12 PM · Review ends Mon, Oct 26 · 3:00 AM ET · 2 of 4 veto votes</small></div>
+<div class="acts"><button class="btn sm" aria-pressed="{{vetoOn}}" onClick="{{flipVeto}}">{{vetoLabel}}</button></div>
 </div>
+<div class="sec2">Recent</div>
+<div class="tr">
+<div class="who"><b>Glass Cleaners ⇄ Euro Steppers<span class="chip2 ok">Completed</span></b>
+<div class="gets"><span>Glass Cleaners gets <b>Caleb Moore</b></span><span>Euro Steppers gets <b>Ari Varga</b></span></div>
+<small>Processed Thu, Oct 22 · 3:00 AM ET</small></div>
+<div class="acts"></div>
+</div>
+</section>
+<div class="below">
+<section class="main card">
+<h3>Recent transactions</h3>
+<div class="ev"><span class="kind">Waiver run</span>
+<div class="run"><ul><li><span><b>Splash Zone</b> <span class="plus">claimed</span> Nate Kowal</span><span>Won · dropped Ty Benford</span></li><li><span><b>Euro Steppers</b> <span class="plus">claimed</span> Reggie Stone</span><span>Won</span></li></ul>
+<sc-if value="{{runOpen}}" hint-placeholder-val="{{ false }}"><ul><li><span><b>Back Door Cuts</b> claimed Nate Kowal</span><span>Failed · a team higher in the order won him</span></li><li><span><b>Bench Mob</b> claimed Reggie Stone</span><span>Failed · a team higher in the order won him</span></li><li><span><b>Moving Screens</b> claimed Ari Quill</span><span>Failed · roster would be illegal</span></li></ul></sc-if>
+<button class="lk" onClick="{{flipRun}}">{{runLabel}}</button></div>
+<small>Today · 3:00 AM</small></div>
+<div class="ev"><span class="kind">Add / drop</span><span><b>Fast Break Fund</b> <span class="plus">added</span> Mason Reyes, <span class="minus">dropped</span> Dev Rana</span><small>Yesterday · 9:41 PM</small></div>
+<div class="ev"><span class="kind">Trade</span><span><b>Glass Cleaners</b> and <b>Euro Steppers</b> traded Caleb Moore for Ari Varga</span><small>Thu · 3:00 AM</small></div>
+<div class="ev"><span class="kind">Drop</span><span><b>Euro Steppers</b> <span class="minus">dropped</span> Kofi Mensah</span><small>On waivers until Sun 3:00 AM · Thu 11:05 AM</small></div>
+</section>
+<section class="aside card">
+<h3>Waiver order<a href="league-settings.mockup.html">Edit rules</a></h3>
+<p class="wsub">Waivers run daily at 3:00 AM ET. Next run Mon, Oct 26.</p>
+<ol class="wo">
+<li><span>1</span><i class="bd">MVS</i><a href="my-team.mockup.html">Moving Screens</a></li>
+<li><span>2</span><i class="bd">BMB</i><a href="my-team.mockup.html">Bench Mob</a><span class="cl">1 claim</span></li>
+<li><span>3</span><i class="bd">PPC</i><a href="my-team.mockup.html">Pick &amp; Pop Culture</a></li>
+<li><span>4</span><i class="bd">FCP</i><a href="my-team.mockup.html">Full Court Press</a></li>
+<li><span>5</span><i class="bd">FTL</i><a href="my-team.mockup.html">Free Throw Line Dancers</a></li>
+<li><span>6</span><i class="bd">CTC</i><a href="my-team.mockup.html">Corner Three Club</a></li>
+<li class="mine"><span>7</span><i class="bd mine">BDC</i><a href="my-team.mockup.html">Back Door Cuts</a><span class="cl">1 claim</span></li>
+<li><span>8</span><i class="bd">PNT</i><a href="my-team.mockup.html">Paint Protectors</a></li>
+<li><span>9</span><i class="bd">GLC</i><a href="my-team.mockup.html">Glass Cleaners</a></li>
+<li><span>10</span><i class="bd">FBF</i><a href="my-team.mockup.html">Fast Break Fund</a></li>
+<li><span>11</span><i class="bd">SPZ</i><a href="my-team.mockup.html">Splash Zone</a></li>
+<li><span>12</span><i class="bd">EUS</i><a href="my-team.mockup.html">Euro Steppers</a></li>
+</ol>
+<p class="foot">Continual rolling: a team that wins a claim moves to the back. Dropped players stay on waivers for 2 days, and free agents go on waivers once their game starts.</p>
+</section>
 </div>
 </div></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1120}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1700}}'>
 class Component extends DCLogic {
-renderVals() { return {}; }
+renderVals(){
+var self=this;var s=this.state||{};var view=s.view||'standings';var veto=!!s.veto;var run=!!s.run;
+return {
+isSt:view==='standings',isPo:view==='playoffs',stOn:view==='standings'?'true':'false',poOn:view==='playoffs'?'true':'false',
+cardTitle:view==='standings'?'Standings':'Playoffs',
+showSt:function(){self.setState({view:'standings'});},showPo:function(){self.setState({view:'playoffs'});},
+vetoOn:veto?'true':'false',vetoLabel:veto?'Vetoed · undo':'Vote to veto',flipVeto:function(){self.setState({veto:!veto});},
+runOpen:run,runLabel:run?'Hide claims':'Show all 5 claims',flipRun:function(){self.setState({run:!run});}
+};
+}
 }
 </script>
 </body>

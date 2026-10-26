@@ -12,7 +12,7 @@
 <style>
 body{margin:0}
 a{color:#C2410C}a:hover{color:#7C2D12}
-.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1040px;box-sizing:border-box;padding:12px 40px 48px}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1180px;box-sizing:border-box;padding:12px 40px 48px}
 .in{max-width:1200px;margin:0 auto}
 .nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
 .logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
@@ -23,26 +23,52 @@ a{color:#C2410C}a:hover{color:#7C2D12}
 .tabs a.on{color:#16181D;border-bottom-color:#C2410C}
 .me{margin-left:auto;display:flex;align-items:center;gap:12px}
 .tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
-.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
-.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.thm{width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.acct{width:44px;height:44px;box-sizing:border-box;padding:4px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;cursor:pointer}
+.acct i{width:34px;height:34px;border-radius:50%;background:#16181D;color:#fff;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
 h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.01em}
 .sub{color:#4A4F57;font-size:15px;margin:0}
-.bar{display:flex;gap:10px;margin:24px 0 16px;flex-wrap:wrap;align-items:center}
-.bar input{height:44px;box-sizing:border-box;width:280px;max-width:100%;border:1px solid #CFC9BD;border-radius:10px;padding:0 14px;font:400 14px Inter,sans-serif;background:#fff;color:#16181D}
-.chip{height:44px;border:1px solid #CFC9BD;border-radius:999px;padding:0 16px;font:500 13px Inter,sans-serif;background:#fff;color:#16181D}
-.chip.on{background:#16181D;color:#fff;border-color:#16181D}
+.bar{display:flex;gap:10px;margin:24px 0 12px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid #CFC9BD;border-radius:10px;background:#fff;padding:3px;gap:2px}
+.seg button{height:36px;padding:0 14px;border:0;border-radius:7px;background:transparent;font:600 13px Inter,sans-serif;color:#4A4F57;cursor:pointer}
+.seg button[aria-pressed="true"]{background:#16181D;color:#fff}
+.search{height:44px;box-sizing:border-box;width:260px;max-width:100%;border:1px solid #CFC9BD;border-radius:10px;padding:0 14px;font:400 14px Inter,sans-serif;background:#fff;color:#16181D}
+.pw{height:44px;padding:0 16px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;font:600 13px Inter,sans-serif;color:#16181D;cursor:pointer}
+.pw[aria-expanded="true"]{border-color:#C2410C;color:#7C2D12;background:#FFF4EC}
+.panel{background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:16px 20px;margin-bottom:12px}
+.wgrid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:14px}
+.cat{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.cat .hd2{display:flex;justify-content:space-between;font-weight:600;color:#4A4F57;letter-spacing:.04em}
+.cat .hd2 b{color:#16181D;font-variant-numeric:tabular-nums}
+.cat input{width:100%;accent-color:#C2410C;margin:0}
+.pfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:#4A4F57}
+.pfoot button{height:36px;padding:0 14px;border:1px solid #CFC9BD;border-radius:8px;background:#fff;font:600 13px Inter,sans-serif;color:#16181D}
+.flt{margin-bottom:16px}
+.ftog{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 4px;border:0;background:transparent;font:600 14px Inter,sans-serif;color:#16181D;cursor:pointer;flex-wrap:wrap;text-align:left}
+.ftog .chev{width:8px;height:8px;border-right:2px solid #4A4F57;border-bottom:2px solid #4A4F57;transform:rotate(-45deg);margin-right:4px}
+.ftog[aria-expanded="true"] .chev{transform:rotate(45deg)}
+.ftog small{font:500 13px Inter,sans-serif;color:#5A5F68}
+.fpanel{display:flex;flex-wrap:wrap;gap:12px 24px;padding:8px 4px 4px}
+.fgrp{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4A4F57}
 .card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
-.g{display:grid;grid-template-columns:40px minmax(200px,1fr) 44px 52px repeat(9,66px) 96px;align-items:center;padding:0 16px;min-width:1060px;box-sizing:border-box}
+.g{display:grid;grid-template-columns:36px minmax(230px,1fr) 40px 48px 70px 70px repeat(7,52px) 60px 104px;align-items:center;padding:0 16px;min-width:1180px;box-sizing:border-box;column-gap:4px}
 .hd{height:44px;font-size:12px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #E2DDD1;background:#FBFAF6}
-.r{height:56px;border-bottom:1px solid #EEEAE0;font-size:15px;font-variant-numeric:tabular-nums}
+.hd .srt{color:#16181D}
+.hd .srt::after{content:" ▾";color:#C2410C}
+.r{min-height:64px;border-bottom:1px solid #EEEAE0;font-size:15px;font-variant-numeric:tabular-nums}
 .n{text-align:right}
+.n small{display:block;font-size:11px;color:#5A5F68}
 .k{font-weight:600}
+.val{font-weight:700;color:#7C2D12}
 .nm{font:600 15px Inter,sans-serif;color:#16181D;text-decoration:none;display:block}
 .nm:hover{color:#C2410C;text-decoration:underline}
-.tm{font-size:12px;color:#5A5F68;display:block;margin-top:2px}.pl{display:flex;align-items:center;gap:12px}.av2{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
+.tm{font-size:12px;color:#5A5F68;display:block;margin-top:2px}
+.up{font-size:11px;color:#4A4F57;display:block;margin-top:2px}
+.pl{display:flex;align-items:center;gap:12px;padding:8px 0}
+.av2{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
 .own{text-align:right;font-size:12px;font-weight:600;letter-spacing:.04em;color:#5A5F68}
 .own .mine{color:#fff;background:#16181D;border-radius:999px;padding:4px 10px}
-.add{display:inline-flex;align-items:center;justify-content:center;height:36px;min-width:72px;box-sizing:border-box;border-radius:8px;background:#C2410C;color:#fff;text-decoration:none;font:600 13px Inter,sans-serif;letter-spacing:0}
+.add{display:inline-flex;align-items:center;justify-content:center;height:36px;min-width:72px;box-sizing:border-box;padding:0 10px;border-radius:8px;background:#C2410C;color:#fff;text-decoration:none;font:600 13px Inter,sans-serif;letter-spacing:0}
 .add:hover{background:#9A3412;color:#fff}
 .add.w{background:#fff;color:#C2410C;border:1px solid #C2410C}
 .ft{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px;color:#4A4F57;flex-wrap:wrap;gap:12px}
@@ -51,35 +77,88 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 </helmet>
 <div class="pg"><div class="in">
 <nav class="nav" aria-label="Main">
-<a class="logo" href="players-table.mockup.html">Fantasy <b>Hoops</b></a>
-<div class="tabs"><a href="players-table.mockup.html" class="on" aria-current="page">Players</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="league.mockup.html">League</a></div>
-<div class="me"><span class="tag">Sample data</span><a class="tmc" href="my-team.mockup.html"><i>BDC</i>Back Door Cuts</a></div>
+<a class="logo" href="league.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="league.mockup.html">League</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="rankings.mockup.html">Rankings</a><a href="players-table.mockup.html" class="on" aria-current="page">Players</a></div>
+<div class="me"><span class="tag">Sample data</span><button class="thm" aria-label="Switch to dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button><button class="acct" aria-label="Account: Sam Rivera" aria-haspopup="menu" aria-expanded="false"><i>SR</i></button></div>
 </nav>
-<h1>Season averages</h1>
-<p class="sub">2026–27 · per game · 9-category</p>
+<h1>{{title}}</h1>
+<sc-if value="{{last14}}" hint-placeholder-val="{{ false }}"><p class="sub">Oct 12 – Oct 25</p></sc-if>
 <div class="bar">
-<label><input type="text" placeholder="Search players" aria-label="Search players"></label>
-<button class="chip">All positions</button><button class="chip">Available only</button><button class="chip on">Per game</button><button class="chip">Totals</button><button class="chip">Sort: 9CAT value</button>
+<div class="seg" role="group" aria-label="Games"><sc-for list="{{ranges}}" as="o" hint-placeholder-count="2"><button aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div>
+<div class="seg" role="group" aria-label="Stat mode"><sc-for list="{{modes}}" as="o" hint-placeholder-count="2"><button aria-pressed="{{o.on}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div>
+<input class="search" type="search" placeholder="Search players" aria-label="Search players">
+<button class="pw" aria-expanded="{{showW}}" onClick="{{flipW}}">{{pwLabel}}</button>
+</div>
+<sc-if value="{{showW}}" hint-placeholder-val="{{ true }}">
+<section class="panel" aria-label="Punt weights">
+<div class="wgrid">
+<sc-for list="{{weights}}" as="w" hint-placeholder-count="9"><label class="cat"><span class="hd2">{{w.label}}<b>{{w.text}}</b></span><input type="range" min="0" max="1" step="0.1" value="{{w.v}}" aria-label="{{w.aria}}" onInput="{{w.set}}"></label></sc-for>
+</div>
+<div class="pfoot"><span>0 ignores a category, 1 is the default (TO counts 0.25). Saved to your account and this browser.</span><button onClick="{{resetW}}" disabled="{{isDefault}}">Reset to defaults</button></div>
+</section>
+</sc-if>
+<div class="flt">
+<button class="ftog" aria-expanded="{{showF}}" onClick="{{flipF}}"><span class="chev" aria-hidden="true"></span>Filters<sc-if value="{{hideF}}" hint-placeholder-val="{{ true }}"><small>All players · All positions · Plays any day · Any waiver status</small></sc-if></button>
+<sc-if value="{{showF}}" hint-placeholder-val="{{ false }}">
+<div class="fpanel">
+<span class="fgrp">Players<span class="seg"><button aria-pressed="false">Free agents</button><button aria-pressed="true">All players</button></span></span>
+<span class="fgrp">Position<span class="seg"><button aria-pressed="true">All positions</button><button aria-pressed="false">G</button><button aria-pressed="false">F</button><button aria-pressed="false">C</button></span></span>
+<span class="fgrp">Plays<span class="seg"><button aria-pressed="true">Any day</button><button aria-pressed="false">Today</button><button aria-pressed="false">Tomorrow</button><button aria-pressed="false">In 2 days</button></span></span>
+<span class="fgrp">Waivers<span class="seg"><button aria-pressed="true">Any</button><button aria-pressed="false">On waivers</button><button aria-pressed="false">Clears by tomorrow</button></span></span>
+</div>
+</sc-if>
 </div>
 <div class="card">
-<div class="g hd"><span>#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span class="n">Owner</span></div>
-<div class="g r"><span>1</span><span class="pl"><i class="av2">MD</i><span><a class="nm" href="player-modal.mockup.html">Marcus Delaney</a><span class="tm">BOS · SG/SF</span></span></span><span class="n">3</span><span class="n">35.0</span><span class="n">.492</span><span class="n">.857</span><span class="n">3.0</span><span class="n k">29.0</span><span class="n">6.0</span><span class="n">5.3</span><span class="n">1.3</span><span class="n">0.7</span><span class="n">2.7</span><span class="own">PPC</span></div>
-<div class="g r"><span>2</span><span class="pl"><i class="av2">TV</i><span><a class="nm" href="player-modal.mockup.html">Tomas Veric</a><span class="tm">DEN · C</span></span></span><span class="n">3</span><span class="n">33.8</span><span class="n">.612</span><span class="n">.745</span><span class="n">0.4</span><span class="n k">24.1</span><span class="n">12.3</span><span class="n">8.9</span><span class="n">1.2</span><span class="n">1.1</span><span class="n">3.4</span><span class="own">GLC</span></div>
-<div class="g r"><span>3</span><span class="pl"><i class="av2">JO</i><span><a class="nm" href="player-modal.mockup.html">Jalen Okoro</a><span class="tm">OKC · PG</span></span></span><span class="n">3</span><span class="n">34.6</span><span class="n">.501</span><span class="n">.904</span><span class="n">2.4</span><span class="n k">27.8</span><span class="n">4.4</span><span class="n">7.2</span><span class="n">1.8</span><span class="n">0.4</span><span class="n">2.6</span><span class="own"><span class="mine">BDC</span></span></div>
-<div class="g r"><span>4</span><span class="pl"><i class="av2">DP</i><span><a class="nm" href="player-modal.mockup.html">Devin Park</a><span class="tm">MIN · PF/C</span></span></span><span class="n">2</span><span class="n">32.1</span><span class="n">.546</span><span class="n">.801</span><span class="n">1.8</span><span class="n k">21.3</span><span class="n">10.8</span><span class="n">3.1</span><span class="n">1.0</span><span class="n">2.2</span><span class="n">1.9</span><span class="own"><a class="add" href="claim-player.mockup.html">Add</a></span></div>
-<div class="g r"><span>5</span><span class="pl"><i class="av2">AW</i><span><a class="nm" href="player-modal.mockup.html">Andre Whitlock</a><span class="tm">PHX · SG</span></span></span><span class="n">3</span><span class="n">36.0</span><span class="n">.458</span><span class="n">.867</span><span class="n">3.9</span><span class="n k">26.6</span><span class="n">4.9</span><span class="n">4.8</span><span class="n">1.1</span><span class="n">0.3</span><span class="n">2.9</span><span class="own"><span class="mine">BDC</span></span></div>
-<div class="g r"><span>6</span><span class="pl"><i class="av2">LF</i><span><a class="nm" href="player-modal.mockup.html">Luis Ferrer</a><span class="tm">MIA · SF/PF</span></span></span><span class="n">2</span><span class="n">31.4</span><span class="n">.527</span><span class="n">.712</span><span class="n">1.2</span><span class="n k">18.9</span><span class="n">8.2</span><span class="n">4.6</span><span class="n">1.6</span><span class="n">1.4</span><span class="n">1.8</span><span class="own"><span class="mine">BDC</span></span></div>
-<div class="g r"><span>7</span><span class="pl"><i class="av2">KM</i><span><a class="nm" href="player-modal.mockup.html">Kofi Mensah</a><span class="tm">MEM · C</span></span></span><span class="n">3</span><span class="n">30.5</span><span class="n">.668</span><span class="n">.603</span><span class="n">0.0</span><span class="n k">14.2</span><span class="n">11.5</span><span class="n">2.1</span><span class="n">0.8</span><span class="n">2.9</span><span class="n">1.4</span><span class="own"><a class="add w" href="claim-player.mockup.html">Claim</a></span></div>
-<div class="g r"><span>8</span><span class="pl"><i class="av2">RC</i><span><a class="nm" href="player-modal.mockup.html">Ryan Calloway</a><span class="tm">NYK · PG</span></span></span><span class="n">3</span><span class="n">33.0</span><span class="n">.441</span><span class="n">.925</span><span class="n">2.9</span><span class="n k">19.7</span><span class="n">3.2</span><span class="n">8.1</span><span class="n">1.3</span><span class="n">0.2</span><span class="n">2.1</span><span class="own"><span class="mine">BDC</span></span></div>
-<div class="g r"><span>9</span><span class="pl"><i class="av2">IB</i><span><a class="nm" href="player-modal.mockup.html">Isaiah Brandt</a><span class="tm">CLE · PF</span></span></span><span class="n">3</span><span class="n">28.9</span><span class="n">.513</span><span class="n">.768</span><span class="n">1.5</span><span class="n k">16.4</span><span class="n">7.9</span><span class="n">2.8</span><span class="n">1.4</span><span class="n">1.0</span><span class="n">1.5</span><span class="own"><span class="mine">BDC</span></span></div>
-<div class="g r"><span>10</span><span class="pl"><i class="av2">NS</i><span><a class="nm" href="player-modal.mockup.html">Nico Santoro</a><span class="tm">LAL · SF</span></span></span><span class="n">2</span><span class="n">32.7</span><span class="n">.478</span><span class="n">.834</span><span class="n">2.1</span><span class="n k">20.2</span><span class="n">5.5</span><span class="n">4.0</span><span class="n">1.5</span><span class="n">0.5</span><span class="n">2.3</span><span class="own">CTC</span></div>
+<div class="g hd"><span title="9CAT rank">#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span class="n srt">Value</span><span class="n">Owner</span></div>
+<sc-for list="{{rows}}" as="p" hint-placeholder-count="10">
+<div class="g r"><span>{{p.rank}}</span><span class="pl"><i class="av2">{{p.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{p.name}}</a><span class="tm">{{p.tm}}</span><span class="up">{{p.up}}</span></span></span><span class="n">{{p.gp}}</span><span class="n">{{p.min}}</span><span class="n">{{p.fg}}<small>{{p.fgma}}</small></span><span class="n">{{p.ft}}<small>{{p.ftma}}</small></span><span class="n">{{p.s0}}</span><span class="n k">{{p.s1}}</span><span class="n">{{p.s2}}</span><span class="n">{{p.s3}}</span><span class="n">{{p.s4}}</span><span class="n">{{p.s5}}</span><span class="n">{{p.s6}}</span><span class="n val">{{p.value}}</span>
+<span class="own"><sc-if value="{{p.isAdd}}" hint-placeholder-val="{{ false }}"><a class="add" href="claim-player.mockup.html">Add</a></sc-if><sc-if value="{{p.isClaim}}" hint-placeholder-val="{{ false }}"><a class="add w" href="claim-player.mockup.html" title="On waivers until Sun, Oct 25 · 3:00 AM ET">Claim (Oct 25)</a></sc-if><sc-if value="{{p.isMine}}" hint-placeholder-val="{{ false }}"><span class="mine">BDC</span></sc-if><sc-if value="{{p.isOther}}" hint-placeholder-val="{{ true }}">{{p.owner}}</sc-if></span></div>
+</sc-for>
 </div>
-<div class="ft"><span>Showing 1–10 of 540 players · Add = free agent, joins now · Claim = on waivers until the next run</span><span><button>Previous</button><button>Next</button></span></div>
+<div class="ft"><span>Showing 1–10 of 540 players · Sorted by Value (9CAT, with your punt weights) · Click any column to sort</span><span><button disabled>Previous</button><button>Next</button></span></div>
 </div></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1040}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+// name, team · pos, upcoming games, GP, MIN, FGM, FGA, FTM, FTA, 3PM, PTS, REB, AST, STL, BLK, TO, value, owner
+var P=[
+['Marcus Delaney','BOS · SG/SF','Today vs ORL 7:30 PM · Tomorrow @ CHI 8:00 PM',3,35.0,9.7,19.7,6.0,7.0,3.0,29.0,6.0,5.3,1.3,0.7,2.7,9.84,'PPC'],
+['Tomas Veric','DEN · C','Today @ UTA 9:00 PM',3,33.8,9.1,14.9,3.8,5.1,0.4,24.1,12.3,8.9,1.2,1.1,3.4,9.12,'GLC'],
+['Jalen Okoro','OKC · PG','Today vs SAC 8:00 PM · Tue @ DAL 8:30 PM',3,34.6,9.9,19.8,6.6,7.3,2.4,27.8,4.4,7.2,1.8,0.4,2.6,8.97,'mine'],
+['Devin Park','MIN · PF/C','Tomorrow vs PHX 8:00 PM',2,32.1,7.7,14.1,4.1,5.1,1.8,21.3,10.8,3.1,1.0,2.2,1.9,8.40,'add'],
+['Andre Whitlock','PHX · SG','Today @ LAL 10:30 PM · Tomorrow @ MIN 8:00 PM',3,36.0,9.0,19.7,4.7,5.4,3.9,26.6,4.9,4.8,1.1,0.3,2.9,7.71,'mine'],
+['Luis Ferrer','MIA · SF/PF','Today @ TOR 7:30 PM',2,31.4,7.3,13.9,3.1,4.4,1.2,18.9,8.2,4.6,1.6,1.4,1.8,7.25,'mine'],
+['Kofi Mensah','MEM · C','Tomorrow vs NOP 8:00 PM',3,30.5,6.2,9.3,1.8,3.0,0.0,14.2,11.5,2.1,0.8,2.9,1.4,6.88,'claim'],
+['Ryan Calloway','NYK · PG','Today vs BKN 7:30 PM',3,33.0,7.0,15.9,3.7,4.0,2.9,19.7,3.2,8.1,1.3,0.2,2.1,6.52,'mine'],
+['Isaiah Brandt','CLE · PF','Today vs DET 7:00 PM · Tue vs BOS 7:00 PM',3,28.9,6.0,11.7,2.9,3.8,1.5,16.4,7.9,2.8,1.4,1.0,1.5,6.03,'mine'],
+['Nico Santoro','LAL · SF','Today vs PHX 10:30 PM',2,32.7,7.3,15.3,3.5,4.2,2.1,20.2,5.5,4.0,1.5,0.5,2.3,5.77,'CTC']
+];
+var CATS=[['FG%','fg',1],['FT%','ft',1],['3PM','3pm',1],['PTS','pts',1],['REB','reb',1],['AST','ast',1],['STL','stl',1],['BLK','blk',1],['TO','to',0.25]];
+function pct(m,a){return (m/a).toFixed(3).replace(/^0/,'');}
+function f1(x){return x.toFixed(1);}
 class Component extends DCLogic {
-renderVals() { return {}; }
+renderVals(){
+var self=this;var s=this.state||{};
+var range=s.range||'season';var mode=s.mode||'avg';var showW=s.showW===undefined?true:s.showW;var showF=!!s.showF;
+var w=s.w||CATS.map(function(c){return c[2];});
+var isDefault=w.every(function(v,i){return v===CATS[i][2];});
+var tot=mode==='total';
+function v(x,gp){return tot?String(Math.round(x*gp)):f1(x);}
+return {
+title:range==='last14'?'Last 14 days':'Season averages',last14:range==='last14',
+ranges:[['season','Season'],['last14','Last 14 days']].map(function(o){return {label:o[1],on:o[0]===range?'true':'false',pick:function(){self.setState({range:o[0]});}};}),
+modes:[['avg','Per game'],['total','Totals']].map(function(o){return {label:o[1],on:o[0]===mode?'true':'false',pick:function(){self.setState({mode:o[0]});}};}),
+showW:showW,flipW:function(){self.setState({showW:!showW});},pwLabel:'Punt weights'+(isDefault?'':' · custom'),
+showF:showF,hideF:!showF,flipF:function(){self.setState({showF:!showF});},
+weights:CATS.map(function(c,i){return {label:c[0],v:w[i],text:w[i]===0?'Punt':(i===8&&w[i]===0.25?'0.25':w[i].toFixed(1)),aria:c[0]+' weight',
+set:function(e){var nw=w.slice();nw[i]=Math.round(Number(e.target.value)*10)/10;self.setState({w:nw});}};}),
+isDefault:isDefault,resetW:function(){self.setState({w:null});},
+rows:P.map(function(p,i){var gp=p[3];return {rank:i+1,name:p[0],ini:p[0].split(' ').map(function(x){return x[0];}).join(''),tm:p[1],up:p[2],gp:gp,min:v(p[4],gp),
+fg:pct(p[5],p[6]),fgma:tot?Math.round(p[5]*gp)+'/'+Math.round(p[6]*gp):f1(p[5])+'/'+f1(p[6]),
+ft:pct(p[7],p[8]),ftma:tot?Math.round(p[7]*gp)+'/'+Math.round(p[8]*gp):f1(p[7])+'/'+f1(p[8]),
+s0:v(p[9],gp),s1:v(p[10],gp),s2:v(p[11],gp),s3:v(p[12],gp),s4:v(p[13],gp),s5:v(p[14],gp),s6:v(p[15],gp),value:p[16].toFixed(2),
+isAdd:p[17]==='add',isClaim:p[17]==='claim',isMine:p[17]==='mine',isOther:['add','claim','mine'].indexOf(p[17])<0,owner:p[17]};})
+};
+}
 }
 </script>
 </body>

@@ -12,7 +12,7 @@
 <style>
 body{margin:0}
 a{color:#C2410C}a:hover{color:#7C2D12}
-.m{width:1280px;height:780px;box-sizing:border-box;padding:40px 48px;background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;gap:20px}
+.m{width:1280px;height:900px;box-sizing:border-box;padding:40px 48px;background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;gap:20px}
 h1{font:700 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
 .lead{margin:0;font-size:15px;color:#4A4F57;max-width:80ch}
 .bar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:#16181D;color:#fff;font-size:13px;flex-wrap:wrap}
@@ -20,7 +20,7 @@ h1{font:700 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin
 .bar b em{font-style:normal;color:#FDBA74}
 .bar span{padding:6px 12px;border-radius:999px;background:#2B2E35}
 .bar .r{margin-left:auto;background:transparent;border:1px solid #4A4F57}
-.cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
 .c{background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px}
 .c h2{font:700 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0;display:flex;justify-content:space-between;align-items:baseline}
 .c h2 a{font:600 13px Inter,sans-serif;text-transform:none}
@@ -40,25 +40,29 @@ h1{font:700 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin
 </helmet>
 <div class="m">
 <h1>How the pages connect</h1>
-<p class="lead">Four top-level pages share one header. Everything else is an overlay that opens on top of the current page, so closing it puts you back where you were.</p>
-<div class="bar"><b>Fantasy <em>Hoops</em></b><span>Players</span><span>My team</span><span>Matchup</span><span>League</span><span class="r">Team chip → My team</span></div>
+<p class="lead">Five top-level pages share one header; League is the home page. Other teams’ pages and the trade builder sit under League. Everything else is an overlay that opens on top of the current page, so closing it puts you back where you were.</p>
+<div class="bar"><b>Fantasy <em>Hoops</em></b><span>League</span><span>My team</span><span>Matchup</span><span>Rankings</span><span>Players</span><span class="r">Theme toggle · Account menu (Edit team, Sign out)</span></div>
 <div class="cols">
-<div class="c"><h2>Players<a href="players-table.mockup.html">Open</a></h2><p>Every NBA player, searchable. The M1 table, plus an Owner column.</p>
+<div class="c"><h2>League<a href="league.mockup.html">Open</a></h2><p>Standings or the playoff bracket, this week’s scoreboard, league trades, recent transactions and the waiver order.</p>
+<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Any team name<span>That roster</span></a><a href="matchup.mockup.html">A score<span>That matchup</span></a><a href="league-settings.mockup.html">League settings<span>Commissioner</span></a></div></div>
+<div class="c"><h2>My team<a href="my-team.mockup.html">Open</a></h2><p>Your lineup for one day of the matchup week, auto set, games remaining, game limits, your trades and waiver claims.</p>
+<h4>Goes to</h4><div class="go"><a href="edit-team.mockup.html">Edit team<span>Name and logo</span></a><a href="player-modal.mockup.html">Player name<span>Player card</span></a></div></div>
+<div class="c"><h2>Matchup<a href="matchup.mockup.html">Open</a></h2><p>This week’s head-to-head: 9 categories, both rosters with stats by day, and every other matchup.</p>
+<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Set lineup<span>My team</span></a><a href="matchup.mockup.html">Around the league<span>That matchup</span></a></div></div>
+<div class="c"><h2>Rankings<a href="rankings.mockup.html">Open</a></h2><p>Power rankings: every team’s week against every other team (all-play), for a week or the season.</p>
+<h4>Goes to</h4><div class="go"><a href="rankings.mockup.html">A team<span>Versus the league</span></a></div></div>
+<div class="c"><h2>Players<a href="players-table.mockup.html">Open</a></h2><p>Every NBA player: season or last 14 days, punt weights, filters for free agents, games and waivers.</p>
 <h4>Goes to</h4><div class="go"><a href="player-modal.mockup.html">Player name<span>Player card</span></a><a href="claim-player.mockup.html">Add / Claim<span>Add or claim sheet</span></a></div></div>
-<div class="c"><h2>My team<a href="my-team.mockup.html">Open</a></h2><p>Your roster by slot for one day, with games today and season stats. Move players between slots here.</p>
-<h4>Goes to</h4><div class="go"><a href="matchup.mockup.html">Week score card<span>Matchup</span></a><a href="players-table.mockup.html">Add a player<span>Players, filtered to available</span></a><a href="player-modal.mockup.html">Player name<span>Player card</span></a></div></div>
-<div class="c"><h2>Matchup<a href="matchup.mockup.html">Open</a></h2><p>This week’s head-to-head: 9 categories, who leads each, games left.</p>
-<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Set lineup<span>My team</span></a><a href="league.mockup.html">Opponent<span>Their roster</span></a></div></div>
-<div class="c"><h2>League<a href="league.mockup.html">Open</a></h2><p>Standings, schedule, every team’s moves, and the league rules (waiver time, IL rule).</p>
-<h4>Goes to</h4><div class="go"><a href="my-team.mockup.html">Any team name<span>That roster</span></a><a href="matchup.mockup.html">This week<span>Matchups</span></a></div></div>
 </div>
 <div class="ov">
-<div class="o"><i>Overlay</i><p><a href="player-modal.mockup.html">Player card</a> opens from any player name on any page. When the player is a free agent or on waivers, it also gets an Add or Claim button.</p></div>
-<div class="o"><i>Overlay</i><p><a href="claim-player.mockup.html">Add or claim sheet</a> asks who to drop when the roster is full. Free agents join right away; waiver players become a claim that runs at the league’s waiver time.</p></div>
+<div class="o"><i>Overlay</i><p><a href="player-modal.mockup.html">Player card</a> opens from any player name on any page, with this week’s games. When the player is a free agent or on waivers, it also gets an Add or Claim button.</p></div>
+<div class="o"><i>Overlay</i><p><a href="claim-player.mockup.html">Add or claim sheet</a> asks who to drop when the roster is full. Free agents join right away; waiver players become a claim (with a bid in FAAB leagues).</p></div>
+<div class="o"><i>Page</i><p><a href="trade-builder.mockup.html">Trade builder</a> opens from another team’s page (Propose trade). Offers show under Trades on My team and League.</p></div>
+<div class="o"><i>Overlay</i><p><a href="edit-team.mockup.html">Edit team</a> renames your team and sets its logo, from My team or the account menu.</p></div>
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":780}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
 class Component extends DCLogic {
 renderVals() { return {}; }
 }

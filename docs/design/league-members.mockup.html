@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>League members</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:1040px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto;position:relative}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #16181D;border-radius:999px;background:#fff;color:#16181D;font:600 13px Inter,sans-serif;cursor:pointer}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.menu{position:absolute;right:0;top:64px;width:280px;background:#fff;border:1px solid #E2DDD1;border-radius:12px;box-shadow:0 16px 40px rgba(22,24,29,.16);z-index:2;overflow:hidden}
+.menu .id{display:flex;gap:12px;align-items:center;padding:16px}
+.menu .id i{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 14px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
+.menu .id b{display:block;font-size:14px}
+.menu .id span{font-size:12px;color:#5A5F68}
+.menu a{display:flex;align-items:center;height:44px;padding:0 16px;border-top:1px solid #EEEAE0;color:#16181D;text-decoration:none;font-size:14px}
+.menu a:hover{background:#FBFAF6;color:#16181D}
+.menu a.out{color:#991B1B;font-weight:600}
+.menu small{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:2px 8px}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0 0 20px}
+.sw{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.chip{height:44px;border:1px solid #CFC9BD;border-radius:999px;padding:0 16px;font:500 13px Inter,sans-serif;background:#fff;color:#16181D}
+.chip.on{background:#16181D;color:#fff;border-color:#16181D}
+.add{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.add h3{flex-basis:100%;margin:0;font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em}
+.f{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#4A4F57}
+.f input,.f select{height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:10px;padding:0 12px;font:400 14px Inter,sans-serif;background:#fff;color:#16181D}
+.f input{width:300px;max-width:100%}
+.f select{width:240px}
+.btn{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;border:1px solid #C2410C;background:#C2410C;color:#fff;font:600 14px Inter,sans-serif;cursor:pointer}
+.btn:disabled{background:#EFECE4;border-color:#EFECE4;color:#8A8F98;cursor:default}
+.ok{font-size:13px;color:#1F3A1B;background:#E8F0E6;border-radius:8px;padding:8px 12px}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;overflow-x:auto}
+.m{display:grid;grid-template-columns:minmax(220px,1fr) minmax(240px,1.2fr) 130px 190px 96px;align-items:center;gap:12px;padding:0 20px;min-width:920px;box-sizing:border-box;height:56px;border-top:1px solid #EEEAE0;font-size:14px}
+.m.h{height:40px;border-top:0;background:#FBFAF6;border-bottom:1px solid #E2DDD1;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase}
+.tn{display:flex;align-items:center;gap:10px;font-weight:600}
+.tn i{width:32px;height:32px;border-radius:50%;background:#EFECE4;font:700 12px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.mail{font:500 13px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+.role{font-size:12px;font-weight:600}
+.role.c{color:#7C2D12}
+.st{font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;justify-self:start}
+.st.j{background:#E8F0E6;color:#1F3A1B}
+.st.p{background:#FEF3C7;color:#92400E}
+.lk{background:none;border:0;padding:0;font:600 13px Inter,sans-serif;color:#C2410C;cursor:pointer;text-align:right;height:44px}
+.foot{font-size:13px;color:#4A4F57;padding:12px 20px 16px;margin:0;border-top:1px solid #EEEAE0}
+.thm{width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;display:flex;align-items:center;justify-content:center;cursor:pointer}.acct{width:44px;height:44px;box-sizing:border-box;padding:4px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;cursor:pointer}.acct i{width:34px;height:34px;border-radius:50%;background:#16181D;color:#fff;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="league.mockup.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="league.mockup.html" class="on" aria-current="page">League</a><a href="my-team.mockup.html">My team</a><a href="matchup.mockup.html">Matchup</a><a href="rankings.mockup.html">Rankings</a><a href="players-table.mockup.html">Players</a></div>
+<div class="me"><span class="tag">Sample data</span><button class="thm" aria-label="Switch to dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button><button class="acct" aria-label="Account: Sam Rivera" aria-haspopup="menu" aria-expanded="true"><i>SR</i></button></div>
+</nav>
+<div class="menu" role="menu">
+<div class="id"><i>SR</i><div><b>Sam Rivera</b><span>sam.rivera@example.com</span></div></div>
+<a href="edit-team.mockup.html" role="menuitem">Edit team</a>
+<a href="league-members.mockup.html" role="menuitem">League members<small>Commish</small></a>
+<a href="sign-in.mockup.html" role="menuitem" class="out">Sign out</a>
+</div>
+<h1>League</h1>
+<p class="sub">Only the commissioner sees this tab. Whoever is on this list can sign in with Google.</p>
+<div class="sw"><button class="chip">Standings</button><button class="chip">Schedule</button><button class="chip">Transactions</button><button class="chip">Settings</button><button class="chip on">Members</button></div>
+<div class="add">
+<h3>Add a manager</h3>
+<label class="f" for="mem-email">Google account email<input id="mem-email" type="email" placeholder="name@gmail.com" value="{{email}}" onInput="{{typeEmail}}"></label>
+<label class="f" for="mem-team">Team<select id="mem-team"><option>Moving Screens (no manager)</option></select></label>
+<button class="btn" disabled="{{cantAdd}}" onClick="{{addIt}}">Add to league</button>
+<sc-if value="{{added}}" hint-placeholder-val="{{ false }}"><span class="ok">Added. They can sign in now; nothing is emailed for you, so send them the link.</span></sc-if>
+</div>
+<div class="card">
+<div class="m h"><span>Team</span><span>Manager email</span><span>Role</span><span>Status</span><span></span></div>
+<div class="m"><span class="tn"><i>BDC</i>Back Door Cuts</span><span class="mail">sam.rivera@example.com</span><span class="role c">Commissioner</span><span class="st j">Joined Oct 2</span><button class="lk">Edit</button></div>
+<div class="m"><span class="tn"><i>FBF</i>Fast Break Fund</span><span class="mail">dana.k@example.com</span><span class="role">Manager</span><span class="st j">Joined Oct 3</span><button class="lk">Edit</button></div>
+<div class="m"><span class="tn"><i>GLC</i>Glass Cleaners</span><span class="mail">pat.ng@example.com</span><span class="role">Manager</span><span class="st j">Joined Oct 3</span><button class="lk">Edit</button></div>
+<div class="m"><span class="tn"><i>PNT</i>Paint Protectors</span><span class="mail">alex.m@example.com</span><span class="role">Manager</span><span class="st j">Joined Oct 4</span><button class="lk">Edit</button></div>
+<div class="m"><span class="tn"><i>FTL</i>Free Throw Line Dancers</span><span class="mail">chris.o@example.com</span><span class="role">Manager</span><span class="st p">Added, not signed in yet</span><button class="lk">Edit</button></div>
+<div class="m"><span class="tn"><i>PPC</i>Pick &amp; Pop Culture</span><span class="mail">jo.t@example.com</span><span class="role">Manager</span><span class="st j">Joined Oct 5</span><button class="lk">Edit</button></div>
+<sc-if value="{{added}}" hint-placeholder-val="{{ false }}"><div class="m"><span class="tn"><i>MVS</i>Moving Screens</span><span class="mail">{{email}}</span><span class="role">Manager</span><span class="st p">Added, not signed in yet</span><button class="lk">Edit</button></div></sc-if>
+<p class="foot">Showing 6 of 11 managers. Removing an email signs that person out everywhere; their team stays and can be given to someone else.</p>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1040}}'>
+class Component extends DCLogic {
+renderVals(){
+var self=this;var s=this.state||{};var email=s.email||'';var ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+return {
+email:email,added:!!s.added,cantAdd:!ok||!!s.added,
+typeEmail:function(e){self.setState({email:e.target.value,added:false});},
+addIt:function(){if(ok)self.setState({added:true});}
+};
+}
+}
+</script>
+</body>
+</html>
