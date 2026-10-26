@@ -8,6 +8,13 @@
 // schedule (claims' process_at, waiver_players.clears_at), which move to the
 // first run on the new schedule at or after their old time, so nobody clears
 // earlier than they would have.
+//
+// FAAB: switching the league to FAAB gives every team the full budget (and
+// pending claims a bid of the minimum); switching away leaves balances alone
+// and drops pending claims' bids. Changing the budget while on FAAB adds the
+// difference to every team's remaining balance (never below $0), so money
+// already spent stays spent and everyone keeps the same gap. A new minimum bid
+// applies to bids placed or changed from then on.
 import type { Pool } from "pg";
 import type { SlotCounts } from "../lineup/rules";
 import {
@@ -28,6 +35,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const LIMITS = {
   waiverDays: [0, 14],
+  faabBudget: [1, 1000],
   ilSlots: [0, 5],
   ilMinDays: [0, 60],
   tradeReviewDays: [0, 7],
@@ -47,6 +55,8 @@ interface LeagueRow {
   waiver_days_of_week: number[];
   waiver_days: number;
   waivers_after_game_start: boolean;
+  faab_budget: number;
+  faab_min_bid: number;
   roster_slots: SlotCounts;
   il_statuses: string[];
   il_min_days: number;
@@ -73,7 +83,7 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
     `SELECT l.id::int, l.name, l.commissioner_user_id::int,
             (SELECT count(*)::int FROM fantasy_teams ft WHERE ft.league_id = l.id) AS team_count,
             l.waiver_type, to_char(l.waiver_time, 'HH24:MI') AS waiver_time, l.time_zone, l.waiver_days_of_week,
-            l.waiver_days, l.waivers_after_game_start, l.roster_slots, l.il_statuses, l.il_min_days,
+            l.waiver_days, l.waivers_after_game_start, l.faab_budget, l.faab_min_bid, l.roster_slots, l.il_statuses, l.il_min_days,
             l.il_plus_statuses, l.il_plus_min_days, l.trade_review, l.trade_review_days, l.trade_veto_votes,
             to_char(l.trade_deadline, 'YYYY-MM-DD') AS trade_deadline, l.max_adds_per_week, l.max_adds_per_season,
             l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams,
@@ -105,6 +115,8 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
       waiverDaysOfWeek: r.waiver_days_of_week,
       waiverDays: r.waiver_days,
       waiversAfterGameStart: r.waivers_after_game_start,
+      faabBudget: r.faab_budget,
+      faabMinBid: r.faab_min_bid,
       ilSlots: r.roster_slots.IL ?? 0,
       ilStatuses: r.il_statuses,
       ilMinDays: r.il_min_days,
@@ -172,6 +184,8 @@ export function parseSettings(
   }
   if (!isInt(b.waiverDays, LIMITS.waiverDays)) return { error: `Days on waivers must be ${LIMITS.waiverDays.join("–")}.` };
   if (typeof b.waiversAfterGameStart !== "boolean") return { error: "waiversAfterGameStart must be true or false." };
+  if (!isInt(b.faabBudget, LIMITS.faabBudget)) return { error: `The FAAB budget must be $${LIMITS.faabBudget.join("–$")}.` };
+  if (!isInt(b.faabMinBid, [0, b.faabBudget])) return { error: `The minimum bid must be $0–$${b.faabBudget}.` };
 
   const il = statuses(b.ilStatuses);
   const ilPlus = statuses(b.ilPlusStatuses);
@@ -231,6 +245,8 @@ export function parseSettings(
       waiverDaysOfWeek: [...new Set(days as number[])].sort((x, y) => x - y),
       waiverDays: b.waiverDays,
       waiversAfterGameStart: b.waiversAfterGameStart,
+      faabBudget: b.faabBudget,
+      faabMinBid: b.faabMinBid,
       ilSlots: b.ilSlots as number,
       ilStatuses: il,
       ilMinDays: b.ilMinDays as number,
@@ -322,7 +338,7 @@ export async function updateLeagueSettings(
          il_plus_statuses = $11, il_plus_min_days = $12, trade_review = $13, trade_review_days = $14,
          trade_veto_votes = $15, trade_deadline = $16, max_adds_per_week = $17, max_adds_per_season = $18,
          playoff_teams = $19, playoff_start_week = $20, toilet_bowl = $21, toilet_bowl_teams = $22,
-         updated_at = now()
+         faab_budget = $23, faab_min_bid = $24, updated_at = now()
        WHERE id = $1`,
       [
         current.id, s.waiverType, s.waiverTime, s.timeZone, s.waiverDaysOfWeek, s.waiverDays,
@@ -330,8 +346,29 @@ export async function updateLeagueSettings(
         s.ilPlusStatuses, s.ilPlusMinDays, s.tradeReview, s.tradeReviewDays,
         s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
         s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
+        s.faabBudget, s.faabMinBid,
       ],
     );
+
+    const toFaab = s.waiverType === "faab" && current.waiver_type !== "faab";
+    if (toFaab) {
+      await client.query(`UPDATE fantasy_teams SET faab_balance = $2 WHERE league_id = $1`, [current.id, s.faabBudget]);
+      await client.query(
+        `UPDATE transactions SET faab_bid = $2 WHERE league_id = $1 AND type = 'waiver_claim' AND status = 'pending'`,
+        [current.id, s.faabMinBid],
+      );
+    } else if (s.waiverType === "faab" && s.faabBudget !== current.faab_budget) {
+      await client.query(
+        `UPDATE fantasy_teams SET faab_balance = greatest(0, coalesce(faab_balance, $3) + $2 - $3) WHERE league_id = $1`,
+        [current.id, s.faabBudget, current.faab_budget],
+      );
+    } else if (s.waiverType !== "faab" && current.waiver_type === "faab") {
+      await client.query(
+        `UPDATE transactions SET faab_bid = NULL WHERE league_id = $1 AND type = 'waiver_claim' AND status = 'pending'`,
+        [current.id],
+      );
+    }
+
     if (playoffsChanged) {
       await client.query(
         `UPDATE league_weeks SET is_playoffs = (week >= $2) WHERE league_id = $1 AND is_playoffs <> (week >= $2)`,

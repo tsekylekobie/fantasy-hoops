@@ -10,22 +10,31 @@
 // The run happens at leagues.waiver_time in leagues.time_zone on the league's
 // waiver_days_of_week (the worker's waivers task; next_waiver_run /
 // last_waiver_run, migrations 0007 and 0009).
-// It takes every claim due by then and repeatedly gives the first team in the
-// waiver order its best-ranked remaining claim (claim_rank). Each claim is
+// It takes every claim due by then and decides them one at a time
+// (resolveClaims, a pure function with the DB work passed in). Each claim is
 // re-checked against the roster as it is now (completeClaim), so a claim whose
 // drop is gone, whose roster is full, or that hits the adds limit fails with a
-// reason and the team's next claim is tried. When a claim wins, the other due
-// claims for that player fail, and with continual rolling waivers the winning
-// team moves to the back of the order. Then players whose waivers ended are
-// cleared to free agents.
+// reason and the next claim is tried. When a claim wins, the other due claims
+// for that player fail. Then players whose waivers ended are cleared to free
+// agents.
 //
-// Waiver order (leagues.waiver_type):
-//   continual_rolling  fantasy_teams.waiver_priority; a won claim goes to the back.
-//   reverse_standings  worst record first (ties: waiver_priority); winning doesn't move you.
-//   faab               bidding isn't built yet; treated as continual_rolling.
+// Which claim goes next (leagues.waiver_type):
+//   continual_rolling  the first team in fantasy_teams.waiver_priority order with a
+//                      claim left, its best-ranked claim (claim_rank); a win moves
+//                      the team to the back.
+//   reverse_standings  the same with worst record first (ties: waiver_priority);
+//                      winning doesn't move you.
+//   faab               the highest bid (transactions.faab_bid) across all players,
+//                      as Yahoo does. Equal bids go by waiver_priority, then the
+//                      team's own claim_rank. A claim the team can no longer afford
+//                      (earlier wins in the run spent its balance) fails. The winning
+//                      bid comes off fantasy_teams.faab_balance; losers pay nothing.
+//                      Priority is continual rolling but only spent on ties: a team
+//                      that wins a player over an equal bid moves to the back.
 import type { Pool, PoolClient } from "pg";
 import type { SlotCounts } from "../lineup/rules";
 import type {
+  FaabBudget,
   FantasyTeamSummary,
   MyClaimsResponse,
   PlayerSummary,
@@ -34,9 +43,10 @@ import type {
 } from "../types";
 import { getLeagueOverview } from "./league";
 import { LineupError, loadValues, withTeamLock, type TeamContext } from "./lineup";
+import { faabBidProblem } from "../transactions/policy";
 import { completeClaim } from "./transactions";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
-import { ISO, getWaiverLeague, type WaiverLeague } from "./waiverStatus";
+import { ISO, getTeamFaab, getWaiverLeague, type WaiverLeague } from "./waiverStatus";
 
 // Any constant (paired with the league id); keeps two waiver runs from overlapping.
 const RUN_LOCK = 727_031_007;
@@ -93,12 +103,13 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
   if (!league) return null;
   const [order, { rows: teams }] = await Promise.all([
     waiverOrder(pool, league),
-    pool.query<TeamRow & { pending: number }>(
+    pool.query<TeamRow & { pending: number; faab_balance: number }>(
       `SELECT ft.id::int, ft.name, ft.abbreviation, ft.logo_updated_at,
+              coalesce(ft.faab_balance, $2) AS faab_balance,
               (SELECT count(*)::int FROM transactions t
                 WHERE t.team_id = ft.id AND t.type = 'waiver_claim' AND t.status = 'pending') AS pending
          FROM fantasy_teams ft WHERE ft.league_id = $1`,
-      [league.id],
+      [league.id, league.faabBudget],
     ),
   ]);
   const byId = new Map(teams.map((t) => [t.id, t]));
@@ -110,22 +121,122 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
     waiverDays: league.waiverDays,
     waiversAfterGameStart: league.waiversAfterGameStart,
     nextRunAt: league.nextRunAt,
+    faabBudget: league.faabBudget,
+    faabMinBid: league.faabMinBid,
     teams: order.map((id, i) => {
       const t = byId.get(id)!;
-      return { ...toTeamSummary(t), priority: i + 1, pendingClaims: t.pending };
+      return {
+        ...toTeamSummary(t), priority: i + 1, pendingClaims: t.pending,
+        faabBalance: league.type === "faab" ? t.faab_balance : null,
+      };
     }),
   };
 }
 
 // --- The waiver run ---
 
-interface DueClaim {
+/** A claim due in this run. */
+export interface DueClaim {
   id: number;
   teamId: number;
+  /** The team's claim_rank (lower = preferred). */
   rank: number;
   addPlayerId: number;
   addName: string;
   dropPlayerId: number | null;
+  /** FAAB bid in whole dollars; ignored unless the league is FAAB (null = $0). */
+  bid: number | null;
+}
+
+export interface RunState {
+  type: WaiverOrder["type"];
+  /** Team ids in waiver order, first first. */
+  order: number[];
+  /** FAAB: each team's balance before the run. */
+  balances: Map<number, number>;
+  /** Team abbreviations, for the reasons claims fail. */
+  abbr: Map<number, string>;
+}
+
+/** What completing a claim also changes: the new waiver order (null = unchanged) and the FAAB charge. */
+export interface WinEffects {
+  order: number[] | null;
+  charge: number;
+}
+
+export type ClaimOutcome =
+  | { claim: DueClaim; won: true; charge: number; tie: boolean }
+  | { claim: DueClaim; won: false; reason: string };
+
+/**
+ * Decides a run's claims, one at a time, in the order the league's waiver type
+ * says (see the top of this file). `attempt` tries to complete a claim against
+ * the rosters as they are now, applying `effects` with it, and returns why it
+ * failed or null. Returns every claim's outcome in the order decided, and the
+ * waiver order and balances after the run. No I/O of its own.
+ */
+export async function resolveClaims(
+  claims: DueClaim[], state: RunState, attempt: (claim: DueClaim, effects: WinEffects) => Promise<string | null>,
+): Promise<{ outcomes: ClaimOutcome[]; order: number[]; balances: Map<number, number> }> {
+  const faab = state.type === "faab";
+  let order = [...state.order];
+  const balances = new Map(state.balances);
+  const bid = (c: DueClaim) => (faab ? c.bid ?? 0 : 0);
+  const balance = (teamId: number) => balances.get(teamId) ?? 0;
+  // Teams missing from the order (shouldn't happen) go last.
+  const pos = (teamId: number) => {
+    const i = order.indexOf(teamId);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  const abbr = (teamId: number) => state.abbr.get(teamId) ?? `team ${teamId}`;
+  const outcomes: ClaimOutcome[] = [];
+  let open = [...claims];
+
+  while (open.length > 0) {
+    // FAAB: the highest bid anywhere. Otherwise the first team in the order
+    // with a claim left. Ties: waiver order, then the team's own ranking.
+    const claim = open.reduce((best, c) => {
+      const d = bid(c) - bid(best) || pos(best.teamId) - pos(c.teamId) || best.rank - c.rank || best.id - c.id;
+      return d > 0 ? c : best;
+    });
+    open = open.filter((c) => c !== claim);
+
+    const amount = bid(claim);
+    if (faab && amount > balance(claim.teamId)) {
+      const spent = outcomes.some((o) => o.won && o.claim.teamId === claim.teamId && o.charge > 0);
+      outcomes.push({
+        claim, won: false,
+        reason: `You bid $${amount} but had $${balance(claim.teamId)} left${spent ? " after winning earlier claims in this run" : ""}.`,
+      });
+      continue;
+    }
+    // A tie: another team bid the same for him and could pay it.
+    const tie = faab && open.some((c) => c.addPlayerId === claim.addPlayerId && c.teamId !== claim.teamId
+      && bid(c) === amount && bid(c) <= balance(c.teamId));
+    const moves = state.type === "continual_rolling" || tie;
+    const nextOrder = moves ? [...order.filter((id) => id !== claim.teamId), claim.teamId] : null;
+
+    const reason = await attempt(claim, { order: nextOrder, charge: amount });
+    if (reason !== null) {
+      outcomes.push({ claim, won: false, reason });
+      continue;
+    }
+    outcomes.push({ claim, won: true, charge: amount, tie });
+    if (nextOrder) order = nextOrder;
+    if (faab) balances.set(claim.teamId, balance(claim.teamId) - amount);
+
+    const winner = abbr(claim.teamId);
+    for (const lost of open.filter((c) => c.addPlayerId === claim.addPlayerId)) {
+      const reason = !faab
+        ? `${claim.addName} went to ${winner}, ahead of you in the waiver order.`
+        : tie && bid(lost) === amount
+          ? `${claim.addName} went to ${winner} on a tied $${amount} bid; they were ahead of you in the waiver order.`
+          : `${claim.addName} went to ${winner}, who bid $${amount}.`;
+      outcomes.push({ claim: lost, won: false, reason });
+    }
+    open = open.filter((c) => c.addPlayerId !== claim.addPlayerId);
+  }
+  return { outcomes, order, balances };
 }
 
 export interface WaiverRunSummary {
@@ -175,9 +286,10 @@ export async function processWaivers(
     const values = await loadValues(pool, league.season);
     const { rows } = await pool.query<{
       id: number; team_id: number; claim_rank: number | null; add_id: number; add_name: string; drop_id: number | null;
+      faab_bid: number | null;
     }>(
       `SELECT t.id::int, t.team_id::int, t.claim_rank, a.player_id AS add_id,
-              trim(p.first_name || ' ' || p.last_name) AS add_name, d.player_id AS drop_id
+              trim(p.first_name || ' ' || p.last_name) AS add_name, d.player_id AS drop_id, t.faab_bid
          FROM transactions t
          JOIN transaction_players a ON a.transaction_id = t.id AND a.to_team_id IS NOT NULL
          JOIN players p ON p.id = a.player_id
@@ -188,56 +300,54 @@ export async function processWaivers(
     );
     const due: DueClaim[] = rows.map((r) => ({
       id: r.id, teamId: r.team_id, rank: r.claim_rank ?? Number.MAX_SAFE_INTEGER,
-      addPlayerId: r.add_id, addName: r.add_name, dropPlayerId: r.drop_id,
+      addPlayerId: r.add_id, addName: r.add_name, dropPlayerId: r.drop_id, bid: r.faab_bid,
     }));
+    const { rows: teamRows } = await pool.query<{ id: number; abbreviation: string; balance: number }>(
+      `SELECT id::int, abbreviation, coalesce(faab_balance, $2) AS balance FROM fantasy_teams WHERE league_id = $1`,
+      [leagueId, league.faabBudget],
+    );
 
     const summary: WaiverRunSummary = { leagueId, asOf: asOf.toISOString(), claims: due.length, won: 0, failed: 0, cleared: 0, log: [] };
     const teams = new Map<number, TeamContext>();
-    const abbr = async (teamId: number) => {
+    const context = async (teamId: number) => {
       if (!teams.has(teamId)) teams.set(teamId, (await getTeamContext(pool, teamId))!);
       return teams.get(teamId)!;
     };
-    const rolling = league.type !== "reverse_standings";
-    let order = await waiverOrder(pool, league);
-    const open = new Set(due.map((c) => c.id));
+    const faab = league.type === "faab";
+    const state: RunState = {
+      type: league.type,
+      order: await waiverOrder(pool, league),
+      balances: new Map(teamRows.map((t) => [t.id, t.balance])),
+      abbr: new Map(teamRows.map((t) => [t.id, t.abbreviation])),
+    };
 
-    while (open.size > 0) {
-      // The first team in the order with a claim left, and its best-ranked claim.
-      let claim: DueClaim | undefined;
-      for (const teamId of order) {
-        claim = due.filter((c) => open.has(c.id) && c.teamId === teamId).sort((a, b) => a.rank - b.rank || a.id - b.id)[0];
-        if (claim) break;
-      }
-      // Teams missing from the order (shouldn't happen) go last.
-      claim ??= due.find((c) => open.has(c.id))!;
-      open.delete(claim.id);
-      const team = await abbr(claim.teamId);
-
-      const winner = claim;
-      const reason = await completeClaim(pool, team, values, winner, async (db) => {
-        if (!rolling) return;
-        const next = [...order.filter((id) => id !== winner.teamId), winner.teamId];
-        await db.query(
-          `UPDATE fantasy_teams ft SET waiver_priority = o.ord
-             FROM unnest($1::bigint[]) WITH ORDINALITY AS o(id, ord) WHERE ft.id = o.id`,
-          [next],
-        );
-      });
-      if (reason !== null) {
-        await failClaim(pool, claim.id, reason);
+    const { outcomes } = await resolveClaims(due, state, async (claim, effects) =>
+      completeClaim(pool, await context(claim.teamId), values, claim, async (db) => {
+        if (effects.order) {
+          await db.query(
+            `UPDATE fantasy_teams ft SET waiver_priority = o.ord
+               FROM unnest($1::bigint[]) WITH ORDINALITY AS o(id, ord) WHERE ft.id = o.id`,
+            [effects.order],
+          );
+        }
+        if (faab) {
+          await db.query(`UPDATE fantasy_teams SET faab_balance = coalesce(faab_balance, $2) - $3 WHERE id = $1`, [
+            claim.teamId, league.faabBudget, effects.charge,
+          ]);
+          await db.query(`UPDATE transactions SET faab_bid = $2 WHERE id = $1`, [claim.id, effects.charge]);
+        }
+      }),
+    );
+    for (const o of outcomes) {
+      const who = `${state.abbr.get(o.claim.teamId)} ${o.claim.addName}`;
+      if (o.won) {
+        summary.won++;
+        const paid = faab ? ` for $${o.charge}${o.tie ? " (tie, won on priority)" : ""}` : "";
+        summary.log.push(`${who}: won${paid}${o.claim.dropPlayerId ? ` (dropped #${o.claim.dropPlayerId})` : ""}`);
+      } else {
+        await failClaim(pool, o.claim.id, o.reason);
         summary.failed++;
-        summary.log.push(`${team.abbreviation} ${claim.addName}: failed (${reason})`);
-        continue;
-      }
-      summary.won++;
-      summary.log.push(`${team.abbreviation} ${claim.addName}: won${claim.dropPlayerId ? ` (dropped #${claim.dropPlayerId})` : ""}`);
-      if (rolling) order = [...order.filter((id) => id !== winner.teamId), winner.teamId];
-      for (const lost of due.filter((c) => open.has(c.id) && c.addPlayerId === winner.addPlayerId)) {
-        open.delete(lost.id);
-        const loser = await abbr(lost.teamId);
-        await failClaim(pool, lost.id, `${claim.addName} went to ${team.abbreviation}, ahead of you in the waiver order.`);
-        summary.failed++;
-        summary.log.push(`${loser.abbreviation} ${lost.addName}: lost to ${team.abbreviation}`);
+        summary.log.push(`${who}${faab ? ` ($${o.claim.bid ?? 0})` : ""}: failed (${o.reason})`);
       }
     }
 
@@ -290,6 +400,7 @@ interface ClaimRow {
   id: number;
   status: WaiverClaim["status"];
   claim_rank: number | null;
+  faab_bid: number | null;
   process_at: string;
   processed_at: string | null;
   failure_reason: string | null;
@@ -308,7 +419,7 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
   const [league, { rows }] = await Promise.all([
     getWaiverLeague(pool, { leagueId: team.leagueId }),
     pool.query<ClaimRow>(
-      `SELECT t.id::int, t.status, t.claim_rank, ${ISO("t.process_at")} AS process_at,
+      `SELECT t.id::int, t.status, t.claim_rank, t.faab_bid, ${ISO("t.process_at")} AS process_at,
               ${ISO("t.processed_at")} AS processed_at, t.failure_reason, ${ISO("t.created_at")} AS created_at,
               p.id AS player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
               nt.abbreviation AS team_abbr, tp.to_team_id IS NOT NULL AS is_add
@@ -322,6 +433,7 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
       [team.teamId],
     ),
   ]);
+  const faab = await getTeamFaab(pool, team.teamId);
   const { rows: [tc] } = await pool.query<{ n: number; priority: number | null }>(
     `SELECT (SELECT count(*)::int FROM fantasy_teams WHERE league_id = $1) AS n,
             (SELECT waiver_priority FROM fantasy_teams WHERE id = $2) AS priority`,
@@ -338,6 +450,8 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
     if (!c) {
       c = {
         id: r.id, status: r.status, rank: r.status === "pending" ? r.claim_rank : null,
+        // A pending bid shows only in FAAB leagues; a won claim shows what it cost.
+        bid: r.status === "completed" || (r.status === "pending" && faab) ? r.faab_bid : null,
         add: player, drop: null, processAt: r.process_at, processedAt: r.processed_at,
         failureReason: r.failure_reason, createdAt: r.created_at,
       };
@@ -354,6 +468,7 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
     nextRunAt: league!.nextRunAt,
     waiverPriority: tc.priority,
     teamCount: tc.n,
+    faab,
     pending: all.filter((c) => c.status === "pending").sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.id - b.id),
     recent: all.filter((c) => c.status !== "pending").sort((a, b) => (b.processedAt ?? "").localeCompare(a.processedAt ?? "") || b.id - a.id),
   };
@@ -385,6 +500,21 @@ export async function cancelClaim(pool: Pool, team: TeamContext, claimId: number
       `UPDATE transactions SET status = 'cancelled', processed_at = now()
         WHERE id = $1 AND team_id = $2 AND type = 'waiver_claim' AND status = 'pending'`,
       [claimId, team.teamId],
+    );
+    if (rowCount === 0) throw new LineupError("That claim isn't pending anymore.", 404);
+  });
+}
+
+/** Changes one of the team's pending claims' FAAB bid (the league must be FAAB). */
+export async function setClaimBid(pool: Pool, team: TeamContext, claimId: number, bid: unknown): Promise<void> {
+  await withTeamLock(pool, team.teamId, async (db) => {
+    const faab: FaabBudget | null = await getTeamFaab(db, team.teamId);
+    if (!faab) throw new LineupError("This league doesn't use FAAB bids.", 409);
+    const problem = faabBidProblem(faab, bid);
+    if (problem) throw new LineupError(problem, 400);
+    const { rowCount } = await db.query(
+      `UPDATE transactions SET faab_bid = $3 WHERE id = $1 AND team_id = $2 AND type = 'waiver_claim' AND status = 'pending'`,
+      [claimId, team.teamId, bid],
     );
     if (rowCount === 0) throw new LineupError("That claim isn't pending anymore.", 404);
   });

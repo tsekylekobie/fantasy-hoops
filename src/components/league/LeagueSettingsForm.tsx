@@ -19,7 +19,7 @@ const TIME_ZONES = [
 const WAIVER_TYPES: { value: LeagueSettings["waiverType"]; label: string }[] = [
   { value: "continual_rolling", label: "Continual rolling" },
   { value: "reverse_standings", label: "Reverse standings" },
-  { value: "faab", label: "FAAB (bidding not built yet)" },
+  { value: "faab", label: "FAAB (blind bidding)" },
 ];
 
 const TRADE_REVIEWS: { value: LeagueSettings["tradeReview"]; label: string }[] = [
@@ -169,11 +169,41 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
         <Field label="Days on waivers" help="After a drop. Players clear at the first run after this. 0 = straight to free agents." htmlFor="set-wdays">
           <input id="set-wdays" type="number" min={0} max={14} required value={draft.waiverDays} onChange={num("waiverDays")} />
         </Field>
-        <Field label="Waiver order" htmlFor="set-wtype">
+        <Field
+          label="Waiver order"
+          help={draft.waiverType === "faab"
+            ? "Highest bid wins and pays; tied bids go by continual rolling priority, and only a tie win moves a team to the back."
+            : undefined}
+          htmlFor="set-wtype"
+        >
           <select id="set-wtype" value={draft.waiverType} onChange={(e) => set("waiverType", e.target.value as Draft["waiverType"])}>
             {WAIVER_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </Field>
+        {draft.waiverType === "faab" && (
+          <>
+            <Field
+              label="FAAB budget"
+              help={saved.settings.waiverType === "faab"
+                ? "Per team, for the season. Changing it adds the difference to (or takes it from) every team’s remaining balance, never below $0, so money already spent stays spent."
+                : "Per team, for the season. Saving the switch to FAAB sets every team’s balance to this; switching away later leaves balances as they are."}
+              htmlFor="set-faab"
+            >
+              <div className={styles.row}>
+                $<input id="set-faab" type="number" min={1} max={1000} required value={draft.faabBudget} onChange={num("faabBudget")} />
+              </div>
+            </Field>
+            <Field
+              label="Minimum bid"
+              help="0 allows $0 bids. Applies to bids placed or changed from now on."
+              htmlFor="set-faab-min"
+            >
+              <div className={styles.row}>
+                $<input id="set-faab-min" type="number" min={0} max={draft.faabBudget || 0} required value={draft.faabMinBid} onChange={num("faabMinBid")} />
+              </div>
+            </Field>
+          </>
+        )}
         <Field label="Free agents after tip-off" help="A free agent goes on waivers once his game starts, until the next run.">
           <label className={styles.check}>
             <input

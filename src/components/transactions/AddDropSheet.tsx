@@ -3,11 +3,13 @@
 // The add / claim sheet: docs/design/claim-player.mockup.html. Asks who to
 // drop when the roster is full, confirms, then shows the result. Free agents
 // join right away; waiver players (mode "waiver") become a claim that the
-// waiver run processes (cancel or reorder it under My claims on My team).
+// waiver run processes (cancel or reorder it under My claims on My team). In
+// FAAB leagues a claim carries a blind bid, checked against the team's balance.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { fetchJson, fmtAvg, fmtPct, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
+import { faabBidProblem } from "@/lib/transactions/policy";
 import type { CategoryLine, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
 
@@ -28,6 +30,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [load, setLoad] = useState<Load | null>(null);
   const [pick, setPick] = useState<number | null>(null);
+  const [bid, setBid] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RosterMoveResult | null>(null);
@@ -58,7 +61,9 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
           const body = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(body?.error ?? `Request failed (${res.status}).`);
         }
-        setLoad({ status: "ready", id: playerId, data: (await res.json()) as RosterMovesContext });
+        const data = (await res.json()) as RosterMovesContext;
+        setBid(data.faab ? String(data.faab.minBid) : "");
+        setLoad({ status: "ready", id: playerId, data });
       })
       .catch((err: unknown) => {
         if (ctrl.signal.aborted) return;
@@ -83,13 +88,21 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   const claim = add?.mode === "waiver";
   const clearsAt = add?.waiver?.clearsAt ?? null;
   const tz = data?.timeZone ?? "America/New_York";
+  // FAAB claims: the bid as typed, and why it can't be placed (null when it can).
+  const faab = claim ? data?.faab ?? null : null;
+  const bidValue = bid.trim() === "" ? NaN : Number(bid);
+  const bidProblem = faab ? (bid.trim() === "" ? "Enter a bid." : faabBidProblem(faab, bidValue)) : null;
 
   async function submit() {
     if (!add || saving) return;
     setSaving(true);
     setError(null);
     try {
-      const body: RosterMoveRequest = { addPlayerId: add.id, ...(dropping ? { dropPlayerId: dropping.id } : {}) };
+      const body: RosterMoveRequest = {
+        addPlayerId: add.id,
+        ...(dropping ? { dropPlayerId: dropping.id } : {}),
+        ...(faab ? { faabBid: bidValue } : {}),
+      };
       const res = await fetch("/api/team/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -246,9 +259,34 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                 <span>Processes</span>
                 <b>{claim && clearsAt ? fmtWaiverTime(clearsAt, tz, "long") : claim ? "At the next waiver run" : "Right away"}</b>
               </div>
+              {faab && (
+                <div className={styles.row}>
+                  <label htmlFor="faab-bid">Your bid</label>
+                  <span className={styles.bid}>
+                    <span aria-hidden="true">$</span>
+                    <input
+                      id="faab-bid"
+                      type="number"
+                      inputMode="numeric"
+                      min={faab.minBid}
+                      max={faab.balance}
+                      step={1}
+                      value={bid}
+                      aria-invalid={bidProblem !== null}
+                      aria-describedby="faab-bid-help"
+                      onChange={(e) => setBid(e.target.value)}
+                    />
+                  </span>
+                </div>
+              )}
+              {faab && (
+                <p id="faab-bid-help" className={bidProblem ? styles.bidError : styles.bidHelp}>
+                  {bidProblem ?? `Blind bid. $${faab.balance} of $${faab.budget} left${faab.minBid > 0 ? `, $${faab.minBid} minimum` : ""}. You pay only if you win.`}
+                </p>
+              )}
               {claim && data.team.waiverPriority !== null && (
                 <div className={styles.row}>
-                  <span>Your waiver priority</span>
+                  <span>{faab ? "Priority on tied bids" : "Your waiver priority"}</span>
                   <b>
                     {data.team.waiverPriority} of {data.teamCount}
                   </b>
@@ -278,7 +316,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.pri}`}
-                disabled={needsPick || saving || (dropping?.dropBlocked ?? null) !== null}
+                disabled={needsPick || saving || (dropping?.dropBlocked ?? null) !== null || bidProblem !== null}
                 onClick={submit}
               >
                 {saving
@@ -382,7 +420,7 @@ function Done({ data, result, onClose }: { data: RosterMovesContext; result: Ros
       <h3 className={styles.doneTitle}>{pending ? "Claim placed" : "Player added"}</h3>
       <p>
         {pending
-          ? `If it goes through ${when}, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}. You can cancel or reorder claims from My team until then.`
+          ? `${result.faabBid !== null ? `You bid $${result.faabBid}. ` : ""}If it goes through ${when}, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}. You can ${result.faabBid !== null ? "change the bid, " : ""}cancel or reorder claims from My team until then.`
           : `${added} is on ${data.team.name}'s bench${result.dropped ? ` and ${fullName(result.dropped)} ${droppedTo}` : ""}. Set your lineup on My team.`}
       </p>
       {cancelError && (

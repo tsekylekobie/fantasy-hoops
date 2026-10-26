@@ -7,6 +7,7 @@ import { parseSettings } from "./settings";
 const valid: LeagueSettings = {
   waiverType: "continual_rolling", waiverTime: "03:00", timeZone: "America/New_York",
   waiverDaysOfWeek: [1, 2, 3, 4, 5, 6, 7], waiverDays: 2, waiversAfterGameStart: false,
+  faabBudget: 100, faabMinBid: 0,
   ilSlots: 2, ilStatuses: ["Out"], ilMinDays: 0, ilPlusSlots: 0, ilPlusStatuses: [], ilPlusMinDays: 0,
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
   maxAddsPerWeek: 4, maxAddsPerSeason: null,
@@ -86,4 +87,15 @@ test("the playoff weeks fit the schedule", () => {
   assert.ok(error({ playoffStartWeek: 1 }));
   assert.ok(error({ playoffStartWeek: null }));
   assert.ok("error" in parseSettings(valid, 12, 3));
+});
+
+test("FAAB budget and minimum bid: whole dollars, the minimum within the budget", () => {
+  assert.equal(error({ faabBudget: 200, faabMinBid: 1 }), null);
+  assert.equal(error({ faabMinBid: 100 }), null);
+  assert.match(error({ faabBudget: 0 })!, /budget/);
+  assert.match(error({ faabBudget: 1001 })!, /budget/);
+  assert.match(error({ faabBudget: 50.5 })!, /budget/);
+  assert.match(error({ faabMinBid: -1 })!, /minimum bid/);
+  assert.match(error({ faabMinBid: 101 })!, /minimum bid must be \$0–\$100/);
+  assert.match(error({ faabMinBid: undefined })!, /minimum bid/);
 });

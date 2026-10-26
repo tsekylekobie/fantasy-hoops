@@ -1,5 +1,5 @@
 // GET  /api/team/transactions?add=<playerId>  roster and limits for the add/drop sheet
-// POST /api/team/transactions  { addPlayerId?, dropPlayerId? }  add, drop, or add/drop
+// POST /api/team/transactions  { addPlayerId?, dropPlayerId?, faabBid? }  add, drop, add/drop, or claim
 // The signed-in user's team. Contract: RosterMovesContext, RosterMoveRequest
 // and RosterMoveResult in src/lib/types.ts. Rules: src/lib/queries/transactions.ts.
 import { cookies } from "next/headers";
@@ -45,14 +45,14 @@ export async function POST(req: Request) {
   try {
     const who = await requireManager();
     if (who instanceof NextResponse) return who;
-    const body = (await req.json().catch(() => null)) as { addPlayerId?: unknown; dropPlayerId?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as { addPlayerId?: unknown; dropPlayerId?: unknown; faabBid?: unknown } | null;
     const addPlayerId = optionalId(body?.addPlayerId);
     const dropPlayerId = optionalId(body?.dropPlayerId);
     if (Number.isNaN(addPlayerId) || Number.isNaN(dropPlayerId)) {
       return errorResponse("addPlayerId and dropPlayerId must be player ids", 400);
     }
     const values = await loadValues(pool, who.team.season);
-    const result = await runRosterMove(pool, who.team, who.userId, values, { addPlayerId, dropPlayerId });
+    const result = await runRosterMove(pool, who.team, who.userId, values, { addPlayerId, dropPlayerId, faabBid: body?.faabBid });
     return NextResponse.json(result, { headers: NO_STORE });
   } catch (err) {
     return handleError("POST /api/team/transactions", err);

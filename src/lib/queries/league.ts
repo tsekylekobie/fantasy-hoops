@@ -133,20 +133,20 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   );
   if (!league) return null;
   const { rows } = await db.query<{
-    id: number; type: LeagueTransaction["type"]; at: string;
+    id: number; type: LeagueTransaction["type"]; at: string; faab_bid: number | null;
     team_id: number | null; trade_team_id: number | null;
     player_id: number | null; first_name: string | null; last_name: string | null; position: string | null;
     nba_person_id: number | null; team_abbr: string | null; from_team_id: number | null; to_team_id: number | null;
   }>(
     `WITH t AS (
-       SELECT id, type, team_id, trade_team_id, coalesce(processed_at, created_at) AS at
+       SELECT id, type, team_id, trade_team_id, faab_bid, coalesce(processed_at, created_at) AS at
        FROM transactions
        WHERE league_id = $1 AND status = 'completed'
        ORDER BY coalesce(processed_at, created_at) DESC, id DESC
        LIMIT $2
      )
      SELECT t.id::int, t.type, to_char(t.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
-            t.team_id::int, t.trade_team_id::int,
+            t.team_id::int, t.trade_team_id::int, t.faab_bid,
             tp.player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
             nt.abbreviation AS team_abbr, tp.from_team_id::int, tp.to_team_id::int
      FROM t
@@ -167,7 +167,9 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   for (const r of rows) {
     let tx = byId.get(r.id);
     if (!tx) {
-      tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [] };
+      tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [],
+        faabBid: r.type === "waiver_claim" ? r.faab_bid : null,
+      };
       byId.set(r.id, tx);
     }
     if (r.player_id === null) continue;

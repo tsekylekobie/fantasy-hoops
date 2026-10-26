@@ -2,7 +2,7 @@
 // league's waiver settings, shared with queries/waivers.ts). Kept apart from
 // waivers.ts so players.ts can use it without importing the roster-move code.
 import type { Pool, PoolClient } from "pg";
-import type { PlayerWaiver, WaiverOrder } from "../types";
+import type { FaabBudget, PlayerWaiver, WaiverOrder } from "../types";
 import { teamLogoUrl } from "./teamLogo";
 
 type Db = Pool | PoolClient;
@@ -19,6 +19,8 @@ export interface WaiverLeague {
   waiverDays: number;
   waiversAfterGameStart: boolean;
   nextRunAt: string;
+  faabBudget: number;
+  faabMinBid: number;
 }
 
 export async function getWaiverLeague(db: Db, where: { season: number } | { leagueId: number }): Promise<WaiverLeague | null> {
@@ -26,9 +28,10 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
   const { rows: [r] } = await db.query<{
     id: number; season: number; waiver_type: WaiverOrder["type"]; time_zone: string; waiver_time: string;
     waiver_days_of_week: number[]; waiver_days: number; waivers_after_game_start: boolean; next_run_at: string;
+    faab_budget: number; faab_min_bid: number;
   }>(
     `SELECT id::int, season, waiver_type, time_zone, to_char(waiver_time, 'HH24:MI') AS waiver_time,
-            waiver_days_of_week, waiver_days,
+            waiver_days_of_week, waiver_days, faab_budget, faab_min_bid,
             waivers_after_game_start, ${ISO("next_waiver_run(id, now())")} AS next_run_at
        FROM leagues WHERE ${bySeason ? "season" : "id"} = $1 ORDER BY id DESC LIMIT 1`,
     [bySeason ? where.season : where.leagueId],
@@ -37,7 +40,19 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
   return {
     id: r.id, season: r.season, type: r.waiver_type, timeZone: r.time_zone, waiverTime: r.waiver_time,
     waiverDaysOfWeek: r.waiver_days_of_week, waiverDays: r.waiver_days, waiversAfterGameStart: r.waivers_after_game_start, nextRunAt: r.next_run_at,
+    faabBudget: r.faab_budget, faabMinBid: r.faab_min_bid,
   };
+}
+
+/** The team's FAAB budget, or null when its league doesn't run FAAB waivers. A missing balance counts as the full budget. */
+export async function getTeamFaab(db: Db, teamId: number): Promise<FaabBudget | null> {
+  const { rows: [r] } = await db.query<{ waiver_type: WaiverOrder["type"]; budget: number; min_bid: number; balance: number }>(
+    `SELECT l.waiver_type, l.faab_budget AS budget, l.faab_min_bid AS min_bid, coalesce(ft.faab_balance, l.faab_budget) AS balance
+       FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id WHERE ft.id = $1`,
+    [teamId],
+  );
+  if (!r || r.waiver_type !== "faab") return null;
+  return { budget: r.budget, minBid: r.min_bid, balance: r.balance };
 }
 
 /**

@@ -32,7 +32,7 @@ const teamHref = (t: FantasyTeamSummary, myTeamId: number | null) => (t.id === m
 function moveText(tx: LeagueTransaction, m: TransactionMove): { sign: "+" | "−" | "→"; verb: string } {
   if (m.to === null) return { sign: "−", verb: "Dropped" };
   if (m.from === null) {
-    const verb = tx.type === "waiver_claim" ? "Claimed" : "Added";
+    const verb = tx.type === "waiver_claim" ? `Claimed${tx.faabBid !== null ? ` for $${tx.faabBid}` : ""}` : "Added";
     return { sign: "+", verb: m.to.id === tx.team?.id ? verb : `${verb} to ${m.to.abbreviation}` };
   }
   return { sign: "→", verb: `${m.from.abbreviation} to ${m.to.abbreviation}` };

@@ -426,6 +426,8 @@ export interface LeagueTransaction {
   tradeTeam: FantasyTeamSummary | null;
   /** Adds first, then moves between teams, then drops. */
   moves: TransactionMove[];
+  /** A waiver claim won in a FAAB league: what it cost, in whole dollars. Null otherwise. */
+  faabBid: number | null;
 }
 
 /** The League page's Recent transactions: newest first, and the league's time zone for times. */
@@ -624,6 +626,8 @@ export interface RosterMovesContext {
   /** Lowest value first. */
   roster: RosterMoveOption[];
   add: AddCandidate | null;
+  /** The team's budget when the league runs FAAB waivers; null otherwise. */
+  faab: FaabBudget | null;
 }
 
 /**
@@ -634,6 +638,8 @@ export interface RosterMovesContext {
 export interface RosterMoveRequest {
   addPlayerId?: number;
   dropPlayerId?: number;
+  /** FAAB leagues, waiver claims only: the blind bid, whole dollars from the minimum bid to the team's balance. */
+  faabBid?: number;
 }
 
 export interface RosterMoveResult {
@@ -644,6 +650,8 @@ export interface RosterMoveResult {
   processAt: string | null;
   added: PlayerSummary | null;
   dropped: PlayerSummary | null;
+  /** The claim's FAAB bid; null for immediate moves and non-FAAB leagues. */
+  faabBid: number | null;
 }
 
 // Trades (/team/[id]/trade, and the trades panels on /my-team and /league)
@@ -746,12 +754,28 @@ export type TradeAction = "accept" | "reject" | "cancel" | "vote" | "unvote" | "
 
 // Waivers (/api/team/claims, the League page's waiver order)
 
+/**
+ * A team's FAAB (free agent acquisition budget), whole dollars. Bids are blind,
+ * from minBid up to balance; the winning bid comes off the balance when the
+ * claim completes. Pending bids don't hold money: they're checked against the
+ * balance again when the run reaches them.
+ */
+export interface FaabBudget {
+  /** The league's season budget per team. */
+  budget: number;
+  minBid: number;
+  /** What the team has left. */
+  balance: number;
+}
+
 /** One of the manager's waiver claims. */
 export interface WaiverClaim {
   id: number;
   status: "pending" | "completed" | "failed" | "cancelled";
   /** The team's preference order among its pending claims, 1 = first; null once processed. */
   rank: number | null;
+  /** FAAB bid (pending), or what a won claim cost; null when the league isn't FAAB. */
+  bid: number | null;
   add: PlayerSummary;
   drop: PlayerSummary | null;
   /** ISO UTC: when it processes (pending) or processed. */
@@ -774,11 +798,18 @@ export interface MyClaimsResponse {
   nextRunAt: string;
   waiverPriority: number | null;
   teamCount: number;
+  /** Set when the league runs FAAB waivers: bids decide claims, the waiver priority breaks ties. */
+  faab: FaabBudget | null;
   pending: WaiverClaim[];
   recent: WaiverClaim[];
 }
 
-/** PUT /api/team/claims { order: claimIds } reorders all pending claims (responds MyClaimsResponse). DELETE /api/team/claims/:id cancels one. */
+/**
+ * PUT /api/team/claims { order: claimIds } reorders all pending claims (in FAAB
+ * leagues the order only breaks ties between your own equal bids).
+ * PATCH /api/team/claims/:id { bid } changes a pending claim's FAAB bid.
+ * DELETE /api/team/claims/:id cancels one. All respond MyClaimsResponse.
+ */
 export interface ClaimOrderRequest {
   order: number[];
 }
@@ -793,8 +824,11 @@ export interface WaiverOrder {
   waiverDays: number;
   waiversAfterGameStart: boolean;
   nextRunAt: string;
-  /** First claim first. */
-  teams: (FantasyTeamSummary & { priority: number; pendingClaims: number })[];
+  /** FAAB leagues: the season budget per team and the minimum bid. */
+  faabBudget: number;
+  faabMinBid: number;
+  /** First claim first (in FAAB leagues: first on tied bids). faabBalance is null unless the league is FAAB. */
+  teams: (FantasyTeamSummary & { priority: number; pendingClaims: number; faabBalance: number | null })[];
 }
 
 // --- League settings (commissioner only) ---
@@ -819,6 +853,14 @@ export interface LeagueSettings {
   /** Days a dropped player stays on waivers; 0 = straight to free agents. */
   waiverDays: number;
   waiversAfterGameStart: boolean;
+  /**
+   * FAAB season budget per team, whole dollars. Switching the league to FAAB
+   * gives every team this much; changing it later adds the difference to (or
+   * takes it from) every team's remaining balance, never below $0.
+   */
+  faabBudget: number;
+  /** Smallest FAAB bid allowed (0 allows $0 bids); at most the budget. */
+  faabMinBid: number;
   /** Count of IL and IL+ slots (leagues.roster_slots). */
   ilSlots: number;
   ilStatuses: string[];
