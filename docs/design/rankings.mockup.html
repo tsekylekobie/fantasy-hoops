@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Power rankings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:100vh;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:#4A4F57;font-size:15px;margin:0 0 20px;max-width:720px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.seg{display:flex;border:1px solid #CFC9BD;border-radius:999px;background:#fff;padding:3px}
+.seg button{height:38px;border:0;border-radius:999px;padding:0 18px;font:600 13px Inter,sans-serif;background:transparent;color:#4A4F57;cursor:pointer}
+.seg button.on{background:#16181D;color:#fff}
+.pager{display:flex;align-items:center;gap:8px}
+.pager button{width:44px;height:44px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;color:#16181D;font:600 16px Inter,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pager button:disabled{color:#B4B0A8;cursor:default}
+.pager .lb{min-width:200px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.pager .lb b{font:700 20px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.pager .lb small{font-size:12px;color:#5A5F68}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;min-width:0}
+.card h3{font:700 18px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0;padding:16px 20px 4px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.card h3 span{font:500 13px Inter,sans-serif;text-transform:none;letter-spacing:0;color:#4A4F57}
+.scroll{overflow-x:auto}
+.foot{font-size:13px;color:#4A4F57;padding:12px 20px 16px;margin:0;border-top:1px solid #EEEAE0;line-height:1.5}
+/* Stack rank */
+.rk{display:grid;align-items:center;column-gap:6px;padding:0 20px;box-sizing:border-box;border-top:1px solid #EEEAE0;font-size:14px;font-variant-numeric:tabular-nums}
+.rk{grid-template-columns:32px minmax(200px,1fr) repeat(9,72px);min-width:960px}
+.rk.h{height:36px;font-size:11px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.rk.r{min-height:56px}
+.rk.r.mine{background:#FFF4EC}
+.rk.r.foc{box-shadow:inset 3px 0 0 #C2410C}
+.n{text-align:right}
+.c{text-align:center}
+.pos{font:700 20px 'Barlow Condensed',sans-serif}
+.tn{display:flex;align-items:center;gap:10px;min-width:0;border:0;background:none;padding:0;font:600 14px Inter,sans-serif;color:#16181D;cursor:pointer;text-align:left;min-height:44px}
+.tn:hover span{color:#C2410C;text-decoration:underline}
+.tn i{width:32px;height:32px;border-radius:50%;background:#EFECE4;color:#16181D;font:700 12px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.mine .tn i{background:#16181D;color:#fff}
+.tn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pct{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.pct b{font-weight:700}
+.meter{width:80px;height:6px;border-radius:3px;background:#EEEAE0;overflow:hidden}
+.meter s{display:block;height:100%;background:#C2410C;border-radius:3px}
+.sm{display:block;font-size:11px;font-weight:500;color:#5A5F68}
+.res b{font-weight:700}
+.res .W{color:#7C2D12}
+.res .L{color:#4A4F57}
+.res .T{color:#4A4F57}
+/* Category values shaded by rank this week: 1–3, 4–6, 7–9, 10–12 */
+.cv{text-align:right;padding:6px 6px;border-radius:6px;line-height:1.15}
+.cv.t1{background:#FDBA74;color:#16181D;font-weight:700}
+.cv.t2{background:#FFE7D6;color:#16181D}
+.cv.t3{background:transparent;color:#16181D}
+.cv.t4{background:#EFECE4;color:#4A4F57}
+.cv small{display:block;font-size:10px;font-weight:600;color:#5A5F68}
+.cv.t1 small{color:#7C2D12}
+.wr{display:flex;gap:4px}
+.wr span{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font:700 13px 'Barlow Condensed',sans-serif}
+.wr .t1{background:#C2410C;color:#fff}
+.wr .t2{background:#FFE7D6;color:#7C2D12}
+.wr .t3{background:#F6F4EF;color:#16181D;border:1px solid #E2DDD1;box-sizing:border-box}
+.wr .t4{background:#E2DDD1;color:#4A4F57}
+.luck{font-weight:600}
+.luck.up{color:#166534}
+.luck.dn{color:#991B1B}
+.luck.ev{color:#5A5F68;font-weight:500}
+/* Stack rank controls sit in the card */
+.card .bar{padding:10px 20px 6px;margin:0}
+/* Versus the league: one team against each other team, two columns when wide */
+.vs{margin-top:20px}
+.fl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));column-gap:32px;padding:0 0 4px}
+.lg{display:flex;flex-wrap:wrap;gap:8px 18px;padding:14px 20px 4px;font-size:12px;color:#4A4F57}
+.lg span{display:flex;align-items:center;gap:6px}
+.lg i{width:16px;height:16px;border-radius:4px;display:inline-block;box-sizing:border-box}
+/* Focus: one team against each other team */
+.fh{display:flex;align-items:center;gap:12px;padding:6px 20px 12px}
+.fh i{width:44px;height:44px;border-radius:50%;background:#16181D;color:#fff;font:700 16px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.fh div{display:flex;flex-direction:column;gap:2px}
+.fh b{font:700 22px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.fh small{font-size:13px;color:#4A4F57}
+.fr{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,252px) 52px;align-items:center;gap:12px;padding:0 20px;min-height:52px;border-top:1px solid #EEEAE0;font-size:13px;font-variant-numeric:tabular-nums}
+.fr.h{min-height:30px;font-size:10px;font-weight:600;color:#4A4F57;letter-spacing:.06em;text-transform:uppercase}
+.fr .op{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0}
+.fr .op i{width:28px;height:28px;border-radius:50%;background:#EFECE4;font:700 11px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none}
+.fr .op > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fr .op em{font-style:normal;display:block;font-size:11px;font-weight:600;color:#7C2D12}
+.fr .op em.cat{color:#5A5F68;font-weight:500}
+.dots{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px}
+.dots span{height:20px;border-radius:4px;box-sizing:border-box}
+.dots .W{background:#C2410C}
+.dots .L{background:#E2DDD1}
+.dots .T{background:#fff;border:1px dashed #8A8F98}
+.dots.h span{height:auto;text-align:center;font-size:9px;letter-spacing:0}
+.fr .sc{text-align:right;font-weight:700}
+.fr .sc.W{color:#7C2D12}
+.fr .sc.L,.fr .sc.T{color:#4A4F57}
+.stk{display:flex;height:18px;border-radius:4px;overflow:hidden;gap:2px}
+.stk span{display:block;height:100%}
+.stk .W{background:#C2410C}
+.stk .T{background:#fff;border:1px dashed #8A8F98;box-sizing:border-box}
+.stk .L{background:#E2DDD1}
+@media (max-width:760px){
+.pg{padding:8px 16px 32px}
+h1{font-size:36px;margin-top:20px}
+.me .tag{display:none}
+.pager .lb{min-width:0;flex:1}
+.bar{flex-direction:column;align-items:stretch}
+.seg{align-self:flex-start}
+.pager{justify-content:space-between}
+}
+</style>
+</helmet>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="#">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="#">League</a><a href="#">My team</a><a href="#">Matchup</a><a href="#" class="on" aria-current="page">Rankings</a><a href="#">Players</a></div>
+<div class="me"><span class="tag">Sample data</span><a class="tmc" href="#"><i>BDC</i>Back Door Cuts</a></div>
+</nav>
+<h1>Power rankings</h1>
+<p class="sub">Every team’s week against all 11 others, nine categories each. Ranked by the share of categories you’d have won.</p>
+
+<div class="card">
+<h3>Stack rank<span>{{rankNote}}</span></h3>
+<div class="bar">
+<div class="seg" role="group" aria-label="Period">
+<button class="{{weekBtn}}" onClick="{{showWeek}}" aria-pressed="{{isWeek}}">Week</button>
+<button class="{{seasonBtn}}" onClick="{{showSeason}}" aria-pressed="{{isSeason}}">Season</button>
+</div>
+<sc-if value="{{isWeek}}" hint-placeholder-val="{{ true }}">
+<div class="pager">
+<button onClick="{{prev}}" disabled="{{prevOff}}" aria-label="Previous week">‹</button>
+<div class="lb"><b>Week {{wk.n}}</b><small>{{wk.dates}} · Final</small></div>
+<button onClick="{{next}}" disabled="{{nextOff}}" aria-label="Next week">›</button>
+</div>
+</sc-if>
+<sc-if value="{{isSeason}}" hint-placeholder-val="{{ false }}">
+<div class="pager"><div class="lb"><b>Weeks 1–{{lastWeek}}</b><small>Regular season to date</small></div></div>
+</sc-if>
+</div>
+<div class="scroll">
+<div class="rk h"><span>#</span><span>Team</span>
+<span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span></div>
+<sc-for list="{{rankRows}}" as="row" hint-placeholder-count="12">
+<div class="rk r {{row.cls}}">
+<span class="pos">{{row.rank}}</span>
+<button class="tn" onClick="{{row.pick}}"><i>{{row.abbr}}</i><span>{{row.name}}</span></button>
+<sc-for list="{{row.vals}}" as="v" hint-placeholder-count="9">
+<span class="cv {{v.tier}}">{{v.val}}<small>{{v.ord}}</small></span>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<p class="foot">{{footNote}}</p>
+</div>
+
+<div class="vs card">
+<h3>Versus the league<span>{{focusNote}}</span></h3>
+<div class="fh"><i>{{focus.abbr}}</i><div><b>{{focus.name}}</b><small>{{focus.summary}}</small></div></div>
+<sc-if value="{{isWeek}}" hint-placeholder-val="{{ true }}">
+<div class="fl">
+<sc-for list="{{focusCols}}" as="col" hint-placeholder-count="2">
+<div>
+<div class="fr h"><span>Opp</span><span class="dots h"><span>FG%</span><span>FT%</span><span>3PM</span><span>PTS</span><span>REB</span><span>AST</span><span>STL</span><span>BLK</span><span>TO</span></span><span class="n">Score</span></div>
+<sc-for list="{{col.rows}}" as="f" hint-placeholder-count="6">
+<div class="fr">
+<span class="op"><i>{{f.abbr}}</i><span>{{f.name}}<sc-if value="{{f.actual}}" hint-placeholder-val="{{ false }}"><em>Actual matchup</em></sc-if></span></span>
+<span class="dots" aria-label="{{f.label}}"><sc-for list="{{f.res}}" as="d" hint-placeholder-count="9"><span class="{{d.r}}" title="{{d.t}}"></span></sc-for></span>
+<span class="sc {{f.r}}">{{f.score}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{isSeason}}" hint-placeholder-val="{{ false }}">
+<div class="fl">
+<sc-for list="{{focusSeasonCols}}" as="col" hint-placeholder-count="2">
+<div>
+<div class="fr h"><span>Opp</span><span>Weeks won · tied · lost</span><span class="n">W–L–T</span></div>
+<sc-for list="{{col.rows}}" as="f" hint-placeholder-count="6">
+<div class="fr">
+<span class="op"><i>{{f.abbr}}</i><span>{{f.name}}<em class="cat">{{f.cats}} cats</em></span></span>
+<span class="stk" aria-label="{{f.label}}"><span class="W" style="flex: {{f.w}}"></span><span class="T" style="flex: {{f.t}}"></span><span class="L" style="flex: {{f.l}}"></span></span>
+<span class="sc {{f.r}}">{{f.score}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<div class="lg">
+<span><i style="background:#C2410C"></i>Category won</span>
+<span><i style="background:#E2DDD1"></i>Lost</span>
+<span><i style="background:#fff;border:1px dashed #8A8F98"></i>Tied</span>
+</div>
+<p class="foot" style="border-top:0">Pick any team in the stack rank to see it against everyone. Follows the stack rank’s week or season.</p>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["week","season"],"default":"week"},"$preview":{"width":1280,"height":2000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: null, week: 6, focus: 2 };
+    this.data = this.build();
+  }
+
+  build() {
+    let seed = 20261026;
+    const rnd = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const gauss = () => (rnd() + rnd() + rnd() - 1.5) * 1.15;
+    const teams = [
+      ['FBF', 'Fast Break Fund'], ['GLC', 'Glass Cleaners'], ['BDC', 'Back Door Cuts'], ['PNT', 'Paint Protectors'],
+      ['FTL', 'Free Throw Line Dancers'], ['SPZ', 'Splash Zone'], ['CTC', 'Corner Three Club'], ['BMB', 'Bench Mob'],
+      ['FCP', 'Full Court Press'], ['PPC', 'Pick & Pop Culture'], ['EUS', 'Euro Steppers'], ['MVS', 'Moving Screens'],
+    ].map(([abbr, name], i) => ({ i, abbr, name, prof: Array.from({ length: 9 }, () => gauss() * 0.9) }));
+    const N = 12, WEEKS = 6;
+    const dates = ['Oct 20–25', 'Oct 26–Nov 1', 'Nov 2–8', 'Nov 9–15', 'Nov 16–22', 'Nov 23–29'];
+    // Round-robin schedule (circle method).
+    const sched = [];
+    for (let w = 0; w < WEEKS; w++) {
+      const ring = [0, ...Array.from({ length: N - 1 }, (_, k) => 1 + ((k + w) % (N - 1)))];
+      const opp = new Array(N);
+      for (let k = 0; k < N / 2; k++) { const a = ring[k], b = ring[N - 1 - k]; opp[a] = b; opp[b] = a; }
+      sched.push(opp);
+    }
+    const lines = [];
+    for (let w = 0; w < WEEKS; w++) {
+      lines.push(teams.map((t) => {
+        const p = t.prof, z = () => gauss();
+        const fga = Math.round(430 + z() * 30), fta = Math.round(150 + z() * 22);
+        return {
+          fga, fgm: Math.round(fga * (0.472 + p[0] * 0.012 + z() * 0.012)),
+          fta, ftm: Math.round(fta * (0.78 + p[1] * 0.03 + z() * 0.03)),
+          fg3m: Math.round(56 + p[2] * 9 + z() * 8), pts: Math.round(540 + p[3] * 40 + z() * 38),
+          reb: Math.round(215 + p[4] * 18 + z() * 18), ast: Math.round(122 + p[5] * 12 + z() * 12),
+          stl: Math.round(36 + p[6] * 4 + z() * 5), blk: Math.round(24 + p[7] * 4 + z() * 5),
+          tov: Math.round(64 + p[8] * 6 + z() * 7),
+        };
+      }));
+    }
+    return { teams, sched, lines, dates, N, WEEKS };
+  }
+
+  cats(l) {
+    return [l.fgm / l.fga, l.ftm / l.fta, l.fg3m, l.pts, l.reb, l.ast, l.stl, l.blk, l.tov];
+  }
+
+  // Categories for `a` against `b`: W/L/T per category plus the score.
+  compare(a, b) {
+    const x = this.cats(a), y = this.cats(b);
+    let w = 0, l = 0, t = 0;
+    const res = x.map((v, k) => {
+      const d = k < 2 ? Math.round(v * 1000) - Math.round(y[k] * 1000) : v - y[k];
+      const r = (k === 8 ? -d : d) > 0 ? 'W' : (k === 8 ? -d : d) < 0 ? 'L' : 'T';
+      if (r === 'W') w++; else if (r === 'L') l++; else t++;
+      return r;
+    });
+    return { res, w, l, t, r: w > l ? 'W' : w < l ? 'L' : 'T' };
+  }
+
+  // All-play table for one week: each team against every other team.
+  weekTable(wi) {
+    const { teams, lines, sched, N } = this.data;
+    const L = lines[wi];
+    const rows = teams.map((t) => {
+      let cw = 0, cl = 0, ct = 0, mw = 0, ml = 0, mt = 0;
+      const vs = teams.map((o) => {
+        if (o.i === t.i) return null;
+        const c = this.compare(L[t.i], L[o.i]);
+        cw += c.w; cl += c.l; ct += c.t;
+        if (c.r === 'W') mw++; else if (c.r === 'L') ml++; else mt++;
+        return c;
+      });
+      return { t, cw, cl, ct, mw, ml, mt, vs, pct: (cw + ct / 2) / (cw + cl + ct), opp: sched[wi][t.i] };
+    });
+    rows.sort((a, b) => b.pct - a.pct || b.mw - a.mw);
+    rows.forEach((r, k) => { r.rank = k + 1; });
+    return { rows, catRank: this.catRanks(L), N };
+  }
+
+  // Each team's rank in each category (TO: fewer is better).
+  catRanks(L) {
+    const catRank = L.map(() => []);
+    for (let k = 0; k < 9; k++) {
+      const v = L.map((l) => this.cats(l)[k]);
+      v.forEach((x, i) => {
+        const mine = k < 2 ? Math.round(x * 1000) : x;
+        catRank[i][k] = 1 + v.filter((o) => { const ov = k < 2 ? Math.round(o * 1000) : o; return k === 8 ? ov < mine : ov > mine; }).length;
+      });
+    }
+    return catRank;
+  }
+
+  ord(n) { return n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'); }
+  tier(rank) { return rank <= 3 ? 't1' : rank <= 6 ? 't2' : rank <= 9 ? 't3' : 't4'; }
+  p3(x) { return x >= 1 ? '1.000' : x.toFixed(3).replace(/^0/, ''); }
+
+  renderVals() {
+    const { teams, lines, sched, dates, WEEKS } = this.data;
+    const view = this.state.view ?? this.props.view ?? 'week';
+    const isWeek = view === 'week';
+    const wi = this.state.week - 1;
+    const focus = this.state.focus;
+    const pickFor = (i) => () => this.setState({ focus: i });
+    const meIdx = 2;
+
+    const W = this.weekTable(wi);
+    const rowCls = (i) => (i === meIdx ? 'mine' : '') + (i === focus ? ' foc' : '');
+
+    // Season: sum the weekly all-play tables; standings from the real schedule.
+    const tables = Array.from({ length: WEEKS }, (_, k) => this.weekTable(k));
+    const season = teams.map((t) => {
+      const s = { t, cw: 0, cl: 0, ct: 0, mw: 0, ml: 0, mt: 0, aw: 0, al: 0, at: 0, ranks: [] };
+      tables.forEach((tb, k) => {
+        const r = tb.rows.find((x) => x.t.i === t.i);
+        s.cw += r.cw; s.cl += r.cl; s.ct += r.ct; s.mw += r.mw; s.ml += r.ml; s.mt += r.mt;
+        s.ranks.push(r.rank);
+        const a = this.compare(lines[k][t.i], lines[k][sched[k][t.i]]);
+        s.aw += a.w; s.al += a.l; s.at += a.t;
+      });
+      s.pct = (s.cw + s.ct / 2) / (s.cw + s.cl + s.ct);
+      s.apct = (s.aw + s.at / 2) / (s.aw + s.al + s.at);
+      return s;
+    });
+    const byStand = [...season].sort((a, b) => b.apct - a.apct);
+    byStand.forEach((s, k) => { s.stand = k + 1; });
+    const sRows = [...season].sort((a, b) => b.pct - a.pct || b.mw - a.mw);
+    sRows.forEach((s, k) => { s.rank = k + 1; });
+
+    const fmtVal = (k, v) => (k < 2 ? this.p3(v) : String(v));
+    const vals = (line, ranks) => this.cats(line).map((v, k) => ({ val: fmtVal(k, v), ord: this.ord(ranks[k]), tier: this.tier(ranks[k]) }));
+    const weekRows = W.rows.map((r) => ({
+      rank: r.rank, abbr: r.t.abbr, name: r.t.name, cls: rowCls(r.t.i), pick: pickFor(r.t.i),
+      pct: this.p3(r.pct), pctW: Math.round(r.pct * 100) + '%', beats: r.mw, games: 11,
+      vals: vals(lines[wi][r.t.i], W.catRank[r.t.i]),
+    }));
+
+    // Season category totals: counting stats summed, FG%/FT% from summed makes and attempts.
+    const totals = teams.map((t) => {
+      const sum = {};
+      lines.forEach((wk) => { for (const [k, v] of Object.entries(wk[t.i])) sum[k] = (sum[k] ?? 0) + v; });
+      return sum;
+    });
+    const seasonRank = this.catRanks(totals);
+    const seasonRows = sRows.map((s) => ({
+      rank: s.rank, abbr: s.t.abbr, name: s.t.name, cls: rowCls(s.t.i), pick: pickFor(s.t.i),
+      pct: this.p3(s.pct), pctW: Math.round(s.pct * 100) + '%', beats: s.mw, games: WEEKS * 11,
+      vals: vals(totals[s.t.i], seasonRank[s.t.i]),
+    }));
+
+    // Focus card: opponents in rank order, split into two columns.
+    const halves = (rows) => [{ rows: rows.slice(0, 6) }, { rows: rows.slice(6) }];
+    const ft = teams[focus];
+    const fRow = W.rows.find((r) => r.t.i === focus);
+    const S = season.find((s) => s.t.i === focus);
+    const names = ['FG%', 'FT%', '3PM', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO'];
+    const word = { W: 'win', L: 'loss', T: 'tie' };
+    const focusRows = W.rows.filter((r) => r.t.i !== focus).map((r) => {
+      const c = fRow.vs[r.t.i];
+      return {
+        abbr: r.t.abbr, name: r.t.name, actual: sched[wi][focus] === r.t.i, r: c.r,
+        score: `${c.w}–${c.l}${c.t ? '–' + c.t : ''}`,
+        res: c.res.map((x, k) => ({ r: x, t: `${names[k]}: ${word[x]}` })),
+        label: c.res.map((x, k) => `${names[k]} ${word[x]}`).join(', '),
+      };
+    });
+    const focusSeason = sRows.filter((s) => s.t.i !== focus).map((s) => {
+      let w = 0, l = 0, t = 0, cw = 0, cl = 0, ct = 0;
+      tables.forEach((tb) => {
+        const c = tb.rows.find((r) => r.t.i === focus).vs[s.t.i];
+        if (c.r === 'W') w++; else if (c.r === 'L') l++; else t++;
+        cw += c.w; cl += c.l; ct += c.t;
+      });
+      return { abbr: s.t.abbr, name: s.t.name, cats: `${cw}–${cl}–${ct}`, w, l, t, r: w > l ? 'W' : w < l ? 'L' : 'T', score: `${w}–${l}–${t}`, label: `Won ${w}, lost ${l}, tied ${t} of ${WEEKS} weeks` };
+    });
+    const focusSummary = isWeek
+      ? `Beats ${fRow.mw} of 11 · ${this.ord(fRow.rank)} this week · actually ${fRow.vs[sched[wi][focus]].r === 'W' ? 'won' : fRow.vs[sched[wi][focus]].r === 'L' ? 'lost' : 'tied'} vs ${teams[sched[wi][focus]].abbr}`
+      : `${S.mw}–${S.ml}–${S.mt} against everyone · ${this.ord(S.rank)} for the season`;
+
+    return {
+      isWeek, isSeason: !isWeek,
+      weekBtn: isWeek ? 'on' : '', seasonBtn: isWeek ? '' : 'on',
+      showWeek: () => this.setState({ view: 'week' }), showSeason: () => this.setState({ view: 'season' }),
+      prev: () => this.setState({ week: Math.max(1, this.state.week - 1) }),
+      next: () => this.setState({ week: Math.min(WEEKS, this.state.week + 1) }),
+      prevOff: this.state.week <= 1, nextOff: this.state.week >= WEEKS,
+      wk: { n: this.state.week, dates: dates[wi] }, lastWeek: WEEKS,
+      rankNote: isWeek ? 'Each team against all 11 others this week' : `Weeks 1–${WEEKS} added together`,
+      footNote: isWeek
+        ? 'Ranked by categories won against all 11 other teams this week (ties count half). Cells are shaded by this week’s category rank: darkest is top 3, grey is bottom 3.'
+        : 'Ranked by categories won against every other team, all weeks added up. Categories are season totals (FG% and FT% from total makes ÷ attempts), shaded by season rank.',
+      rankRows: isWeek ? weekRows : seasonRows,
+      focus: { abbr: ft.abbr, name: ft.name, summary: focusSummary },
+      focusNote: isWeek ? `Week ${this.state.week}` : `Weeks 1–${WEEKS}`,
+      focusCols: halves(focusRows), focusSeasonCols: halves(focusSeason),
+    };
+  }
+}
+</script>
+</body>
+</html>

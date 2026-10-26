@@ -1,0 +1,538 @@
+/* Power rankings: docs/design/rankings.mockup.html */
+
+.page {
+  min-height: 100vh;
+  padding: 12px 40px 48px;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 32px 0 8px;
+}
+
+.sub {
+  color: var(--ink-muted);
+  font-size: 15px;
+  margin: 0 0 20px;
+  max-width: 720px;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 20px;
+  color: var(--ink-muted);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.vs {
+  margin-top: 20px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 20px 10px;
+}
+
+.cardHead h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.when {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Week | Season */
+.seg {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 3px;
+}
+
+.seg a {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.seg a:hover {
+  color: var(--ink);
+}
+
+.seg a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.seg a:focus-visible,
+.pageBtn:focus-visible,
+.teamLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+a.pageBtn:hover {
+  border-color: var(--ink);
+}
+
+.pageBtn[aria-disabled="true"] {
+  color: var(--border-strong);
+}
+
+.pagerLabel {
+  min-width: 180px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pagerLabel b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pagerLabel small {
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.foot {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  padding: 12px 20px 16px;
+  margin: 0;
+  border-top: 1px solid var(--row-divider);
+}
+
+.footPlain {
+  border-top: 0;
+}
+
+/* Stack rank */
+
+.rank {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank th,
+.rank td {
+  padding: 4px 3px;
+  border-top: 1px solid var(--row-divider);
+  font-weight: inherit;
+  text-align: left;
+}
+
+.rank thead th {
+  height: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rank tr > :first-child {
+  padding-left: 20px;
+}
+
+.rank tr > :last-child {
+  padding-right: 20px;
+}
+
+.rank tbody tr.mine {
+  background: var(--accent-soft);
+}
+
+:global(:root:not([data-theme="dark"])) .rank tbody tr.mine {
+  background: #fff4ec;
+}
+
+.rank tbody tr.focused > :first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.pos {
+  width: 32px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+thead .pos {
+  font-family: var(--font-body);
+}
+
+.rank .num {
+  width: 70px;
+  text-align: right;
+}
+
+.teamLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  min-width: 0;
+  max-width: 260px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.teamLink span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teamLink:hover span {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.badge,
+.oppBadge,
+.focusBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.mine .badge,
+.focusBadge {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+/* A category value and its place, shaded by quarter of the league. */
+.cv {
+  display: block;
+  padding: 6px;
+  border-radius: 6px;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.cv small {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+}
+
+.t1 {
+  background: var(--rank-1-bg);
+  color: var(--rank-1-ink);
+  font-weight: 700;
+}
+
+.t1 small {
+  color: var(--rank-1-ink);
+}
+
+.t2 {
+  background: var(--rank-2-bg);
+}
+
+.t4 {
+  background: var(--rank-4-bg);
+  color: var(--ink-muted);
+}
+
+/* Versus the league */
+
+.focus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 12px;
+}
+
+.focusBadge {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+
+.focus div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.focus b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.focus small {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
+  column-gap: 32px;
+}
+
+.vr {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 252px) 52px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  min-height: 52px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vrHead {
+  min-height: 30px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vr .num {
+  text-align: right;
+}
+
+.opp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.oppBadge {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.opp > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opp em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.opp em.cats {
+  color: var(--ink-subtle);
+  font-weight: 500;
+}
+
+.dots {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.dots > span {
+  height: 20px;
+  border-radius: 4px;
+}
+
+.vrHead .dots > span {
+  height: auto;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.catsLabel {
+  display: none;
+}
+
+/* Phones: too narrow for a label over each square. */
+@media (max-width: 560px) {
+  .vrHead .dots {
+    display: none;
+  }
+
+  .catsLabel {
+    display: inline;
+  }
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.win {
+  background: var(--accent);
+}
+
+.loss {
+  background: var(--border);
+}
+
+.tie {
+  background: var(--surface);
+  border: 1px dashed var(--ink-subtle);
+}
+
+.score {
+  font-weight: 700;
+  background: none;
+  border: 0;
+}
+
+.score.win {
+  color: var(--accent-ink);
+}
+
+.score.loss,
+.score.tie {
+  color: var(--ink-muted);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 14px 20px 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 8px 16px 32px;
+  }
+
+  .title {
+    font-size: 36px;
+    margin-top: 20px;
+  }
+
+  .controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pagerLabel {
+    min-width: 0;
+  }
+}

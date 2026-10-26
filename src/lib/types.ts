@@ -360,6 +360,54 @@ export interface LeagueOverview {
   playoffs?: PlayoffsView;
 }
 
+// Power rankings (/rankings)
+
+/** One week on its own, or every regular-season week played added together. */
+export type RankingsPeriod = "week" | "season";
+
+/** A team in the stack rank. */
+export interface RankingsRow extends FantasyTeamSummary {
+  /** 1 = best all-play record; ties keep the same rank. */
+  rank: number;
+  /** Category totals for the period (FG%/FT% = summed makes / summed attempts). */
+  stats: CategoryLine;
+  /** Place among the league's teams in each category, 1 = best (fewest TO); ties share a place. */
+  catRanks: Record<CategoryKey, number>;
+  /** Categories won, lost and tied against every other team, each week (the ranking). */
+  allPlay: MatchupScore;
+  isMine: boolean;
+}
+
+/** The focused team against one other team. */
+export interface VersusRow {
+  opponent: FantasyTeamSummary;
+  /** Categories won, lost and tied (season: summed over the weeks). */
+  score: MatchupScore;
+  /** Week only: each category's outcome. */
+  results: Record<CategoryKey, CategoryResult> | null;
+  /** Season only: weeks won, lost and tied (a week is won by winning more categories). */
+  weeks: MatchupScore | null;
+  /** Week only: the real pairing that week. */
+  isActual: boolean;
+}
+
+/** The /rankings page: ?view=week|season, ?week=N, ?team=ID. */
+export interface RankingsView {
+  season: number;
+  period: RankingsPeriod;
+  /** The week shown (week view), or null in the season view. */
+  week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean; status: MatchupWeek["status"] } | null;
+  weekCount: number;
+  /** Season view: regular-season weeks added up, the live one included. */
+  weeksCounted: number;
+  includesLiveWeek: boolean;
+  /** Ranked; empty before the period has started. */
+  rows: RankingsRow[];
+  /** The team in Versus the league: ?team=, else the manager's, else first place. */
+  focus: { team: FantasyTeamSummary; rank: number; matchups: MatchupScore; versus: VersusRow[] } | null;
+  myTeam: FantasyTeamSummary | null;
+}
+
 // Playoffs and the toilet bowl (src/lib/playoffs/bracket.ts)
 
 /**
