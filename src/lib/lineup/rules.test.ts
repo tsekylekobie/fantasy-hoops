@@ -13,32 +13,27 @@ import {
   type SlotCounts,
 } from "./rules";
 
-const IL: IlRules = { il: { statuses: ["Out"], minDays: 0 }, ilPlus: { statuses: ["Out", "Day-To-Day"], minDays: 0 } };
+const IL: IlRules = { il: { statuses: ["Out"] }, ilPlus: { statuses: ["Out", "Day-To-Day"] } };
 const COUNTS: SlotCounts = { PG: 1, SG: 1, G: 1, SF: 1, PF: 1, F: 1, C: 2, UTIL: 2, BN: 3, IL: 2 };
 
 function p(id: number, position: string, slot: LineupSlot, over: Partial<AutoPlayer> = {}): AutoPlayer {
   return { id, slot, eligible: eligibleSlots(position, []), locked: false, plays: true, value: 0, ...over };
 }
 
-const out = (date: string) => ({ status: "Out", date });
-const dtd = (date: string) => ({ status: "Day-To-Day", date });
-
 test("eligibility: G-F fills guard and forward slots, IL needs an Out status", () => {
-  assert.deepEqual(eligibleSlots("G-F", ilEligibility([], IL, "2026-10-25")), ["PG", "SG", "G", "SF", "PF", "F", "UTIL", "BN"]);
-  assert.deepEqual(eligibleSlots("C", ilEligibility([out("2026-10-25")], IL, "2026-10-25")), ["C", "UTIL", "BN", "IL", "IL+"]);
-  assert.deepEqual(eligibleSlots("C", ilEligibility([dtd("2026-10-25")], IL, "2026-10-25")), ["C", "UTIL", "BN", "IL+"]);
+  assert.deepEqual(eligibleSlots("G-F", ilEligibility(null, IL)), ["PG", "SG", "G", "SF", "PF", "F", "UTIL", "BN"]);
+  assert.deepEqual(eligibleSlots("C", ilEligibility("Out", IL)), ["C", "UTIL", "BN", "IL", "IL+"]);
+  assert.deepEqual(eligibleSlots("C", ilEligibility("Day-To-Day", IL)), ["C", "UTIL", "BN", "IL+"]);
   assert.deepEqual(eligibleSlots(null, []), ["UTIL", "BN"]);
 });
 
-test("IL rule: minimum days count from the start of the qualifying run, to the lineup's date", () => {
-  const rule: IlRules = { il: { statuses: ["Out"], minDays: 3 }, ilPlus: { statuses: ["Out", "Day-To-Day"], minDays: 3 } };
-  // Day-To-Day since the 20th, Out since the 23rd.
-  const stint = [dtd("2026-10-20"), out("2026-10-23")];
-  assert.deepEqual(ilEligibility(stint, rule, "2026-10-25"), ["IL+"]);
-  assert.deepEqual(ilEligibility(stint, rule, "2026-10-26"), ["IL", "IL+"]);
-  // Back to Day-To-Day: IL no longer applies, IL+ keeps the unbroken run.
-  assert.deepEqual(ilEligibility([...stint, dtd("2026-10-26")], rule, "2026-10-27"), ["IL+"]);
-  assert.deepEqual(ilEligibility([{ status: "Probable", date: "2026-10-01" }], rule, "2026-10-27"), []);
+test("IL rule: only the current status counts", () => {
+  assert.deepEqual(ilEligibility("Out", IL), ["IL", "IL+"]);
+  assert.deepEqual(ilEligibility("Day-To-Day", IL), ["IL+"]);
+  assert.deepEqual(ilEligibility("Probable", IL), []);
+  assert.deepEqual(ilEligibility(null, IL), []);
+  // A league with no qualifying statuses: nobody, whatever his status.
+  assert.deepEqual(ilEligibility("Out", { il: { statuses: [] }, ilPlus: { statuses: [] } }), []);
 });
 
 test("roster problems: a healthy player on IL, and too many active players", () => {

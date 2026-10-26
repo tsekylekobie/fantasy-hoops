@@ -26,8 +26,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
-- `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (league data: `il_statuses`,
-  `il_min_days` and the IL+ pair); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
+- `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
+  status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; the others (my team, matchup, league, rankings, claim, nav map, phone) are later-milestone exploration.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
