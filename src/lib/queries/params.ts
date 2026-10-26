@@ -1,14 +1,17 @@
 // Query-string parsing for the /api/players endpoints. Pure, unit tested.
 import {
   CURRENT_SEASON,
+  PLAY_DAYS,
   SORT_KEYS,
   defaultSortDir,
+  type PlayDay,
   type PlayerScope,
   type PositionFilter,
   type SortDir,
   type SortKey,
   type StatMode,
   type StatRange,
+  type WaiverFilter,
 } from "../types";
 
 export class BadRequest extends Error {}
@@ -22,6 +25,9 @@ export interface PlayersQuery {
   scope: PlayerScope;
   q: string;
   pos: PositionFilter;
+  /** Empty = any day. Deduplicated, in PLAY_DAYS order. */
+  plays: PlayDay[];
+  waivers: WaiverFilter;
   page: number;
   perPage: number;
 }
@@ -55,6 +61,12 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   if (scope !== "fa" && scope !== "all") throw new BadRequest("scope must be fa or all");
   const pos = params.get("pos")?.trim().toUpperCase() || "ALL";
   if (!["ALL", "G", "F", "C"].includes(pos)) throw new BadRequest("pos must be all, G, F or C");
+  const plays = (params.get("plays") ?? "").split(",").map((d) => d.trim()).filter(Boolean);
+  for (const d of plays) {
+    if (!(PLAY_DAYS as readonly string[]).includes(d)) throw new BadRequest(`plays must be a list of ${PLAY_DAYS.join(", ")}`);
+  }
+  const waivers = params.get("waivers")?.trim() || "any";
+  if (waivers !== "any" && waivers !== "on" && waivers !== "clears") throw new BadRequest("waivers must be any, on or clears");
   return {
     season: parseSeason(params),
     range,
@@ -64,6 +76,8 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     scope,
     q: (params.get("q") ?? "").trim().slice(0, 100),
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,
+    plays: PLAY_DAYS.filter((d) => plays.includes(d)),
+    waivers,
     page: intParam(params, "page", 1, 1, 100000),
     perPage: intParam(params, "perPage", DEFAULT_PER_PAGE, 1, MAX_PER_PAGE),
   };

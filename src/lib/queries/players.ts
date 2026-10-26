@@ -1,6 +1,7 @@
 // Season-averages queries behind GET /api/players and GET /api/players/:id.
 // Aggregation happens in SQL; valuation (value.ts) and filtering run in TS on
-// the ~500 aggregated rows of one season.
+// the ~500 aggregated rows of one season. The streaming filters' sets (teams
+// with a scheduled game on the chosen days, players on waivers) come from SQL.
 //
 // Rules: games played = stat rows with min > 0 (DNP rows have min 0);
 // only regular-season games count (games.game_type = 'regular': no playoffs,
@@ -9,9 +10,11 @@ import type { Pool } from "pg";
 import type {
   CategoryLine,
   GameLogRow,
+  PlayDay,
   PlayerDetailResponse,
   PlayerOwner,
   PlayerRow,
+  PlayerUpcomingGame,
   PlayersResponse,
   SeasonRow,
   SortKey,
@@ -19,7 +22,8 @@ import type {
 } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals } from "./value";
-import { getWaiverStatus } from "./waiverStatus";
+import { playDates, streamDates, clearsByTomorrow } from "./streaming";
+import { ISO, getWaiverStatus } from "./waiverStatus";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -46,7 +50,7 @@ const SEASON_TOTALS_SQL = `
     GROUP BY s.player_id
   )
   SELECT t.*, p.first_name, p.last_name, nullif(p.position, '') AS position,
-         p.nba_person_id, tm.abbreviation AS team_abbr
+         p.nba_person_id, p.team_id, tm.abbreviation AS team_abbr
   FROM t
   JOIN players p ON p.id = t.player_id
   LEFT JOIN teams tm ON tm.id = p.team_id`;
@@ -73,6 +77,7 @@ interface SeasonPlayerRow extends TotalsRow {
   last_name: string;
   position: string | null;
   nba_person_id: number | null;
+  team_id: number | null;
   team_abbr: string | null;
 }
 
@@ -124,6 +129,35 @@ async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOw
   return new Map(rows.map((r) => [r.player_id, { teamId: r.team_id, abbreviation: r.abbreviation }]));
 }
 
+// Each team's scheduled games on the given dates: not started, not finished, not postponed.
+const UPCOMING_GAMES_SQL = `
+  SELECT to_char(g.date, 'YYYY-MM-DD') AS date, t.team_id, t.home, opp.abbreviation AS opponent_abbr,
+         ${ISO("g.datetime")} AS tipoff
+  FROM games g
+  CROSS JOIN LATERAL (VALUES (g.home_team_id, g.visitor_team_id, true),
+                             (g.visitor_team_id, g.home_team_id, false)) t(team_id, opp_id, home)
+  LEFT JOIN teams opp ON opp.id = t.opp_id
+  WHERE g.date = ANY($1::date[]) AND g.status_state = 'scheduled' AND NOT g.postponed
+    AND (g.datetime IS NULL OR g.datetime > now()) AND t.team_id IS NOT NULL
+  ORDER BY g.date, g.datetime NULLS LAST, g.id`;
+
+async function getUpcomingGames(
+  db: Pool, days: PlayDay[], dates: Record<PlayDay, string>,
+): Promise<Map<number, PlayerUpcomingGame[]>> {
+  const byTeam = new Map<number, PlayerUpcomingGame[]>();
+  if (days.length === 0) return byTeam;
+  const dayOf = new Map(days.map((d) => [dates[d], d]));
+  const { rows } = await db.query<{ date: string; team_id: number; home: boolean; opponent_abbr: string | null; tipoff: string | null }>(
+    UPCOMING_GAMES_SQL, [playDates(days, dates)],
+  );
+  for (const r of rows) {
+    const list = byTeam.get(r.team_id) ?? [];
+    list.push({ day: dayOf.get(r.date)!, date: r.date, opponentAbbr: r.opponent_abbr ?? "", home: r.home, tipoff: r.tipoff });
+    byTeam.set(r.team_id, list);
+  }
+  return byTeam;
+}
+
 /** Sort key for a column (not "value"), from unrounded numbers in the requested mode. */
 export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) => number | string | null {
   const per = (x: number, gp: number) => (mode === "avg" && gp > 0 ? x / gp : x);
@@ -168,11 +202,22 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
   // Value and rank over every player with a game in the range, before scope/q/pos.
   const values = valuePlayers(rows.map(toTotals));
 
+  // Streaming filters, in the league's time zone.
+  const now = new Date();
+  const dates = streamDates(now, waivers.timeZone);
+  const upcoming = await getUpcomingGames(db, q.plays, dates);
+  const onWaivers = (id: number) => !owners.has(id) && waivers.players.has(id);
+
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
     .filter((r) => q.scope === "all" || !owners.has(r.player_id))
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
+    .filter((r) => q.plays.length === 0 || (r.team_id !== null && upcoming.has(r.team_id)))
+    .filter((r) =>
+      q.waivers === "any" ? true
+      : q.waivers === "on" ? onWaivers(r.player_id)
+      : onWaivers(r.player_id) && clearsByTomorrow(waivers.players.get(r.player_id)!.clearsAt, waivers.timeZone, now))
     .map((r) => {
       const v = values.get(r.player_id)!;
       return { r, v, k: key ? key(r) : v.value };
@@ -201,6 +246,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       value: Math.round(v.value * 100) / 100,
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
+      games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
     };
   });
 
@@ -213,6 +259,9 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     to: window?.to ?? null,
     mode: q.mode,
     scope: q.scope,
+    plays: q.plays,
+    playDates: dates,
+    waivers: q.waivers,
     page: q.page,
     perPage: q.perPage,
     total: matching.length,

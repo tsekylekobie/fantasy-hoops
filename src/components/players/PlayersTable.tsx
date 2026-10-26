@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
+import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -143,6 +143,11 @@ function Row({
               {fullName(p)}
             </button>
             <span className={styles.team}>{teamPos(p.teamAbbr, p.position)}</span>
+            {p.games.length > 0 && (
+              <span className={styles.games}>
+                {p.games.map((g) => fmtUpcomingGame(g, timeZone)).join(" · ")}
+              </span>
+            )}
           </span>
         </span>
       </td>

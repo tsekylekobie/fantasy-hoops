@@ -24,6 +24,13 @@ export type PlayerScope = "fa" | "all";
 /** Position filter values for GET /api/players?pos=. "all" means no filter. */
 export type PositionFilter = "all" | "G" | "F" | "C";
 
+/** Streaming filter GET /api/players?plays=tomorrow,in2: days (league time) the player's NBA team has a scheduled game. */
+export const PLAY_DAYS = ["today", "tomorrow", "in2"] as const;
+export type PlayDay = (typeof PLAY_DAYS)[number];
+
+/** GET /api/players?waivers=: everyone (any), free agents on waivers (on), or on waivers and clearing by the end of tomorrow (clears). */
+export type WaiverFilter = "any" | "on" | "clears";
+
 /**
  * The nine categories plus the makes/attempts behind the percentages.
  * Per-game averages or season totals, depending on the request's mode.
@@ -68,10 +75,24 @@ export interface PlayerRow extends PlayerSummary {
   owner: PlayerOwner | null;
   /** Set when he's a free agent on waivers: adding him is a claim. */
   waiver: PlayerWaiver | null;
+  /** His team's scheduled games on the requested `plays` days, in date order; empty without `plays`. */
+  games: PlayerUpcomingGame[];
+}
+
+/** A scheduled (not started, not postponed) NBA game, for the streaming filter. */
+export interface PlayerUpcomingGame {
+  /** Which requested day it falls on. */
+  day: PlayDay;
+  /** ISO date, yyyy-mm-dd (the league-time day). */
+  date: string;
+  opponentAbbr: string;
+  home: boolean;
+  /** Tip-off, ISO UTC; null when the time is not set yet. */
+  tipoff: string | null;
 }
 
 /**
- * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&page=1&perPage=50
+ * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&plays=&waivers=any&page=1&perPage=50
  * GP, stats, value and rank all cover `range`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */
@@ -85,6 +106,10 @@ export interface PlayersResponse {
   to: string | null;
   mode: StatMode;
   scope: PlayerScope;
+  /** Days filtered on (empty = any day), and the league-time date each stands for. */
+  plays: PlayDay[];
+  playDates: Record<PlayDay, string>;
+  waivers: WaiverFilter;
   page: number;
   perPage: number;
   total: number;
