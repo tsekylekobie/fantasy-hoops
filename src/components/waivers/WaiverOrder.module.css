@@ -16,6 +16,29 @@
   letter-spacing: 0.05em;
   margin: 0;
   padding: 16px 20px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Commissioner only: to /league/settings. */
+.card h3 .edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -12px 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.card h3 .edit:hover {
+  text-decoration: underline;
 }
 
 .sub,

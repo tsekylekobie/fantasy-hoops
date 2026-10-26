@@ -1,7 +1,7 @@
 // The League page's waiver order: who gets the first claim at the next waiver
 // run, each team's pending claim count, and the league's waiver rules. In FAAB
 // leagues it's each team's remaining budget, in the priority order that breaks
-// tied bids.
+// tied bids. The commissioner gets an Edit link to /league/settings.
 import Link from "next/link";
 import { fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import type { WaiverOrder as Data } from "@/lib/types";
@@ -14,12 +14,17 @@ const TYPE_TEXT: Record<Data["type"], string> = {
   faab: "FAAB: blind bids, highest bid wins and pays. Tied bids go to the team higher in this order, which then moves to the back.",
 };
 
-export default function WaiverOrder({ data, myTeamId }: { data: Data | null; myTeamId: number | null }) {
+export default function WaiverOrder({
+  data, myTeamId, canEdit = false,
+}: { data: Data | null; myTeamId: number | null; canEdit?: boolean }) {
   if (!data) return null;
   const next = fmtWaiverTime(data.nextRunAt, data.timeZone, "long");
   return (
     <section className={styles.card} aria-labelledby="waiver-order-heading">
-      <h3 id="waiver-order-heading">{data.type === "faab" ? "FAAB budgets" : "Waiver order"}</h3>
+      <h3 id="waiver-order-heading">
+        {data.type === "faab" ? "FAAB budgets" : "Waiver order"}
+        {canEdit && <Link href="/league/settings" className={styles.edit}>Edit rules</Link>}
+      </h3>
       <p className={styles.sub}>
         Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {next.split(" · ")[1]}. Next run {next.split(" · ")[0]}.
         {data.type === "faab" && ` $${data.faabBudget} per team for the season${data.faabMinBid > 0 ? `, $${data.faabMinBid} minimum bid` : ""}.`}
