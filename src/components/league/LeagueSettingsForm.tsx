@@ -219,18 +219,15 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
       <section className={styles.card} aria-labelledby="set-il">
         <h3 id="set-il">Injured list</h3>
         {([
-          ["IL", "ilSlots", "ilStatuses", "ilMinDays"],
-          ["IL+", "ilPlusSlots", "ilPlusStatuses", "ilPlusMinDays"],
-        ] as const).map(([name, slots, statuses, minDays]) => (
+          ["IL", "ilSlots", "ilStatuses"],
+          ["IL+", "ilPlusSlots", "ilPlusStatuses"],
+        ] as const).map(([name, slots, statuses]) => (
           <div key={name} className={styles.group}>
             <Field label={`${name} slots`} htmlFor={`set-${slots}`}>
               <input id={`set-${slots}`} type="number" min={0} max={5} required value={draft[slots]} onChange={num(slots)} />
             </Field>
-            <Field label={`Who can use ${name}`} help="Injury report statuses.">
+            <Field label={`Who can use ${name}`} help="A player can move in whenever his status today is one of these.">
               <Chips label={`${name} statuses`} options={INJURY_STATUSES} value={draft[statuses]} onChange={(v) => set(statuses, v)} />
-            </Field>
-            <Field label="Minimum days on the report" help="Listed with one of those statuses without a break. 0 = right away." htmlFor={`set-${minDays}`}>
-              <input id={`set-${minDays}`} type="number" min={0} max={60} required value={draft[minDays]} onChange={num(minDays)} />
             </Field>
           </div>
         ))}

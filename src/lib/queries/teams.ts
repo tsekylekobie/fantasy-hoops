@@ -15,11 +15,11 @@ export async function getTeamById(
     waiver_priority: number | null; owner_user_id: number | null;
     league_id: number; league_name: string; season: number; roster_slots: SlotCounts;
     lineup_lock: "game_time" | "first_game"; il_statuses: string[]; il_plus_statuses: string[];
-    il_min_days: number; il_plus_min_days: number; today: string;
+    today: string;
   }>(
     `SELECT ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.logo_updated_at, ft.waiver_priority, ft.owner_user_id::int,
             l.id::int AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
-            l.il_statuses, l.il_plus_statuses, l.il_min_days, l.il_plus_min_days,
+            l.il_statuses, l.il_plus_statuses,
             to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
        LEFT JOIN users u ON u.id = ft.owner_user_id
@@ -32,6 +32,6 @@ export async function getTeamById(
     logoUrl: teamLogoUrl(teamId, r.logo_updated_at),
     ownerUserId: r.owner_user_id, leagueId: r.league_id, leagueName: r.league_name, season: r.season,
     rosterSlots: r.roster_slots, lineupLock: r.lineup_lock, ilStatuses: r.il_statuses,
-    ilPlusStatuses: r.il_plus_statuses, ilMinDays: r.il_min_days, ilPlusMinDays: r.il_plus_min_days, today: r.today,
+    ilPlusStatuses: r.il_plus_statuses, today: r.today,
   };
 }

@@ -13,50 +13,27 @@ export function isStarting(slot: LineupSlot): boolean {
 export interface IlSlotRule {
   /** Injury statuses (player_injuries.status) that qualify. */
   statuses: string[];
-  /** Days he must have been listed with a qualifying status, without a break. 0 = right away. */
-  minDays: number;
 }
 
-/** The league's IL eligibility rule (leagues.il_statuses, il_min_days, and the IL+ pair). */
+/** The league's IL eligibility rule (leagues.il_statuses and il_plus_statuses). */
 export interface IlRules {
   il: IlSlotRule;
   ilPlus: IlSlotRule;
 }
 
 /**
- * One injury report entry from the player's current stint on the report
- * (since he was last off it), oldest first. `date` is the league-local day it
- * was observed, yyyy-mm-dd.
+ * THE IL eligibility rule: which IL slots a player may move into. A slot
+ * qualifies when his current injury status (the latest report; null when
+ * healthy) is one of its statuses.
  */
-export interface InjuryReport {
-  status: string;
-  date: string;
+export function ilEligibility(status: string | null, il: IlRules): LineupSlot[] {
+  if (status == null) return [];
+  return ([["IL", il.il], ["IL+", il.ilPlus]] as const).filter(([, rule]) => rule.statuses.includes(status)).map(([slot]) => slot);
 }
 
-const dayNumber = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000;
-
-/**
- * THE IL eligibility rule: which IL slots a player may move into on `onDate`.
- * A slot qualifies when his current status is one of its statuses and he's
- * been listed with one of them, without a break, for at least its minDays.
- * An empty stint means he's healthy.
- */
-export function ilEligibility(stint: InjuryReport[], il: IlRules, onDate: string): LineupSlot[] {
-  const out: LineupSlot[] = [];
-  for (const [slot, rule] of [["IL", il.il], ["IL+", il.ilPlus]] as const) {
-    let i = stint.length - 1;
-    if (i < 0 || !rule.statuses.includes(stint[i].status)) continue;
-    while (i > 0 && rule.statuses.includes(stint[i - 1].status)) i--;
-    const days = Math.max(0, dayNumber(onDate) - dayNumber(stint[i].date));
-    if (days >= rule.minDays) out.push(slot);
-  }
-  return out;
-}
-
-/** "Out, 3+ days on the injury report" */
+/** "Out or Day-To-Day" */
 export function describeIlRule(rule: IlSlotRule): string {
-  const statuses = rule.statuses.length > 0 ? rule.statuses.join(" or ") : "Nobody";
-  return rule.minDays > 0 ? `${statuses}, ${rule.minDays}+ day${rule.minDays > 1 ? "s" : ""} on the injury report` : statuses;
+  return rule.statuses.length > 0 ? rule.statuses.join(" or ") : "Nobody";
 }
 
 /**
