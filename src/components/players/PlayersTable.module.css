@@ -149,6 +149,16 @@
   color: var(--ink-subtle);
 }
 
+/* Streaming filter: his games on the chosen days, under the team line. */
+.games {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Loading / empty / error */
 .messageRow td {
   border-bottom: 0;

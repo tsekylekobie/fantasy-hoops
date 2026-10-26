@@ -1,4 +1,4 @@
-// GET /api/players?season=2026&mode=avg&scope=fa&q=&pos=all&page=1&perPage=50
+// GET /api/players?season=2026&mode=avg&scope=fa&q=&pos=all&plays=tomorrow,in2&waivers=clears&page=1&perPage=50
 // Contract: PlayersResponse in src/lib/types.ts.
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";

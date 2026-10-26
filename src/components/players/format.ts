@@ -1,4 +1,5 @@
 // Number and label formatting shared by the players table and the player modal.
+import type { PlayerUpcomingGame } from "@/lib/types";
 
 /** 0.492 -> ".492"; 1 -> "1.000"; null -> "—" */
 export function fmtPct(value: number | null): string {
@@ -79,6 +80,17 @@ export function fmtWaiverTime(iso: string, timeZone: string, style: "short" | "l
   if (style === "date") return `${weekday}, ${date}`;
   if (style === "sentence") return `${weekday} at ${time} ${zone}`.trim();
   return `${weekday}, ${date} · ${time} ${zone}`.trim();
+}
+
+/** A streaming-filter game: "Tomorrow vs LAL 7:30 PM", "Tue @ BOS 8:00 PM" (in the league's time zone). */
+export function fmtUpcomingGame(g: PlayerUpcomingGame, timeZone: string): string {
+  const [y, m, d] = g.date.split("-").map(Number);
+  const day =
+    g.day === "today" ? "Today"
+    : g.day === "tomorrow" ? "Tomorrow"
+    : new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  const time = g.tipoff ? new Date(g.tipoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }) : "TBD";
+  return `${day} ${g.home ? "vs" : "@"} ${g.opponentAbbr} ${time}`;
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

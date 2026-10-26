@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange } from "@/lib/types";
-import { CURRENT_SEASON, SORT_KEYS, defaultSortDir } from "@/lib/types";
+import type {
+  PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter,
+} from "@/lib/types";
+import { CURRENT_SEASON, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
+import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
@@ -37,12 +40,26 @@ const MODES: SegmentedOption<StatMode>[] = [
   { value: "total", label: "Totals" },
 ];
 
+const PLAYS: SegmentedOption<PlayDay>[] = [
+  { value: "today", label: "Today" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "in2", label: "In 2 days" },
+];
+
+const WAIVERS: SegmentedOption<WaiverFilter>[] = [
+  { value: "any", label: "Any" },
+  { value: "on", label: "On waivers" },
+  { value: "clears", label: "Clears by tomorrow" },
+];
+
 interface UrlState {
   q: string;
   scope: PlayerScope;
   pos: PositionFilter;
   range: StatRange;
   mode: StatMode;
+  plays: PlayDay[];
+  waivers: WaiverFilter;
   sort: SortKey;
   dir: SortDir;
   page: number;
@@ -56,12 +73,16 @@ function readUrlState(params: URLSearchParams): UrlState {
   const dir = params.get("dir");
   const page = Number(params.get("page"));
   const player = Number(params.get("player"));
+  const plays = (params.get("plays") ?? "").split(",");
+  const waivers = params.get("waivers");
   return {
     q: params.get("q") ?? "",
     scope: params.get("scope") === "all" ? "all" : "fa",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
     range: params.get("range") === "last14" ? "last14" : "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
+    plays: PLAY_DAYS.filter((d) => plays.includes(d)),
+    waivers: waivers === "on" || waivers === "clears" ? waivers : "any",
     sort,
     dir: dir === "asc" || dir === "desc" ? dir : defaultSortDir(sort),
     page: Number.isInteger(page) && page > 1 ? page : 1,
@@ -77,11 +98,14 @@ function toQueryString(s: UrlState): string {
   if (s.pos !== "all") p.set("pos", s.pos);
   if (s.range !== "season") p.set("range", s.range);
   if (s.mode !== "avg") p.set("mode", s.mode);
+  if (s.plays.length > 0) p.set("plays", s.plays.join(","));
+  if (s.waivers !== "any") p.set("waivers", s.waivers);
   if (s.sort !== "value") p.set("sort", s.sort);
   if (s.dir !== defaultSortDir(s.sort)) p.set("dir", s.dir);
   if (s.page > 1) p.set("page", String(s.page));
   if (s.player !== null) p.set("player", String(s.player));
-  const qs = p.toString();
+  // Commas are legal in a query; keep "plays=tomorrow,in2" readable.
+  const qs = p.toString().replace(/%2C/gi, ",");
   return qs ? `?${qs}` : "";
 }
 
@@ -95,7 +119,8 @@ export default function PlayersBrowser() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readUrlState(new URLSearchParams(searchParams.toString()));
-  const { q, scope, pos, range, mode, sort, dir, page, player } = state;
+  const { q, scope, pos, range, mode, plays, waivers, sort, dir, page, player } = state;
+  const playsKey = plays.join(",");
 
   const navigate = useCallback(
     (patch: Partial<UrlState>, how: "push" | "replace" = "push") => {
@@ -154,6 +179,8 @@ export default function PlayersBrowser() {
       scope,
       q,
       pos,
+      plays: playsKey,
+      waivers,
       page: String(page),
       perPage: String(PER_PAGE),
     });
@@ -168,7 +195,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, sort, dir, page, retryKey, movesKey]);
+  }, [q, scope, pos, range, mode, playsKey, waivers, sort, dir, page, retryKey, movesKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -197,7 +224,7 @@ export default function PlayersBrowser() {
   const hasNext = page * PER_PAGE < total;
   let summary = " ";
   if (data) {
-    if (total === 0) summary = scope === "fa" ? "No free agents" : "No players";
+    if (total === 0) summary = waivers !== "any" ? "No players on waivers" : scope === "fa" ? "No free agents" : "No players";
     else if (shown === 0) summary = `No players on this page · ${total.toLocaleString("en-US")} total`;
     else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${scope === "fa" ? "free agents" : "players"}`;
   }
@@ -227,6 +254,18 @@ export default function PlayersBrowser() {
           <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
           <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
+        </div>
+
+        {/* Streaming: who plays soon, and who comes off waivers soon. */}
+        <div className={`${styles.bar} ${styles.stream}`}>
+          <span className={styles.filter}>
+            <span className={styles.filterLabel} aria-hidden="true">Plays</span>
+            <MultiToggle label="Plays" anyLabel="Any day" options={PLAYS} value={plays} onChange={(v) => navigate({ plays: v, page: 1 })} />
+          </span>
+          <span className={styles.filter}>
+            <span className={styles.filterLabel} aria-hidden="true">Waivers</span>
+            <SegmentedToggle label="Waivers" options={WAIVERS} value={waivers} onChange={(v) => navigate({ waivers: v, page: 1 })} />
+          </span>
         </div>
 
         <PlayersTable

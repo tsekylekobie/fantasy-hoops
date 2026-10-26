@@ -1,0 +1,8 @@
+/* Pressed options stay clickable: clicking one again turns it off. */
+.toggle[aria-pressed="true"] {
+  cursor: pointer;
+}
+
+.group {
+  max-width: 100%;
+}

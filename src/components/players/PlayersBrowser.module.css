@@ -34,6 +34,26 @@
   align-items: center;
 }
 
+/* The streaming row sits right under the main filters. */
+.stream {
+  margin-top: -6px;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.filterLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
 .search {
   height: 44px;
   width: 280px;
@@ -100,5 +120,22 @@
 
   .search {
     width: 100%;
+  }
+
+  /* Streaming pills: label on top, the pill spans the row and its options share it. */
+  .filter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .filter > [role="group"] {
+    width: 100%;
+  }
+
+  .filter > [role="group"] > button {
+    flex: 1 1 auto;
+    padding: 0 8px;
   }
 }
