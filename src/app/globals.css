@@ -39,6 +39,8 @@
   --rank-4-bg: #efece4;
   --on-ink: #ffffff;
   --backdrop: rgba(22, 24, 29, 0.55);
+  /* A value that just changed in a live update. */
+  --flash: #fde68a;
   color-scheme: light;
   --radius: 10px;
   --radius-card: 12px;
@@ -78,6 +80,7 @@
   --rank-4-bg: #23262b;
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
+  --flash: #5b4a12;
   color-scheme: dark;
 }
 
@@ -110,4 +113,19 @@ input {
   body {
     padding-bottom: calc(58px + env(safe-area-inset-bottom));
   }
+}
+
+/* Live updates: a value that just changed (components/live/Flash). An inset
+   shadow, so it shows over a cell's own background without replacing it. */
+@keyframes flash {
+  from {
+    box-shadow: inset 0 0 0 100vmax var(--flash);
+  }
+  to {
+    box-shadow: inset 0 0 0 100vmax transparent;
+  }
+}
+
+[data-flash] {
+  animation: flash 1.8s ease-out;
 }

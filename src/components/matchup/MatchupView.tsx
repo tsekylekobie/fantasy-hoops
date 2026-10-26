@@ -1,4 +1,6 @@
 // The /matchup page: docs/design/matchup.mockup.html.
+// While games are live and the page shows today or the live week's totals, it
+// re-renders with fresh stats (LiveRefresh) and changed numbers flash (Flash).
 import Link from "next/link";
 import type {
   CategoryKey,
@@ -18,6 +20,8 @@ import Avatar from "@/components/Avatar";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import Flash from "@/components/live/Flash";
+import LiveRefresh from "@/components/live/LiveRefresh";
 import styles from "./MatchupView.module.css";
 
 const LABELS: Record<CategoryKey, string> = {
@@ -102,7 +106,11 @@ export default function MatchupView({ data, signedIn }: { data: MatchupWeek | nu
       <div className={styles.inner}>
         <SiteHeader />
         <PlayerModalHost>
-          {data ? <Week data={data} signedIn={signedIn} /> : (
+          {data ? (
+            // Keyed by what's shown, so moving to another week, team or day remounts
+            // the cells instead of flashing them all.
+            <Week key={`${data.week}:${data.matchup?.team.id ?? ""}:${data.statsDate ?? "week"}`} data={data} signedIn={signedIn} />
+          ) : (
             <p className={styles.empty}>No league schedule for this season yet.</p>
           )}
         </PlayerModalHost>
@@ -118,8 +126,10 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
     team: m && !m.isMine ? m.team.id : null,
     stats: data.statsDate ?? "week",
   };
+  const live = data.live && data.status === "live" && (data.statsDate === null || data.statsDate === data.today);
   return (
     <>
+      <LiveRefresh active={live} />
       <div className={styles.wk}>
         <h1>{weekTitle(data)}</h1>
         <nav className={styles.pager} aria-label="Weeks">
@@ -180,9 +190,9 @@ function Scoreboard({ m }: { m: Matchup }) {
         <p>{sub(m.team)}</p>
         {m.isMine && <Link href="/my-team">Set lineup</Link>}
       </div>
-      <div className={styles.score} aria-label={`Categories won, lost, tied: ${fmtScore(m.score)}`}>
+      <Flash as="div" className={styles.score} value={fmtScore(m.score)} aria-label={`Categories won, lost, tied: ${fmtScore(m.score)}`}>
         {fmtScore(m.score)}
-      </div>
+      </Flash>
       <div className={`${styles.side} ${styles.r}`}>
         <div className={styles.t}><TeamBadge team={m.opponent} /><h2>{m.opponent.name}</h2></div>
         <p>{sub(m.opponent)}</p>
@@ -198,6 +208,11 @@ function Stat({ k, line }: { k: CategoryKey; line: CategoryLine }) {
     return <>{fmtPct(line[k])}<small>{m}/{a}</small></>;
   }
   return <>{fmtInt(line[k])}</>;
+}
+
+/** What a Stat cell shows, for spotting changes. */
+function statValue(k: CategoryKey, line: CategoryLine): string {
+  return k === "fgPct" ? `${line.fgm}/${line.fga}` : k === "ftPct" ? `${line.ftm}/${line.fta}` : String(line[k]);
 }
 
 function Categories({ m }: { m: Matchup }) {
@@ -220,10 +235,10 @@ function Categories({ m }: { m: Matchup }) {
           <div className={`${styles.cs} ${styles.csRow}`} role="row" key={side.id}>
             <span role="rowheader" className={styles.tn}>{side.name}</span>
             {CATEGORY_KEYS.map((k) => (
-              <span role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`}>
+              <Flash role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`} value={statValue(k, side.stats)}>
                 <Stat k={k} line={side.stats} />
                 {results[k] === "win" && <span className={styles.sr}> (leads)</span>}
-              </span>
+              </Flash>
             ))}
           </div>
         ))}
@@ -245,7 +260,7 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
           <>
             {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
             <span>{o.teamA.name}</span>
-            <b>{o.teamB ? fmtScore(o.score) : "Bye"}</b>
+            <Flash as="b" value={o.teamB ? fmtScore(o.score) : null}>{o.teamB ? fmtScore(o.score) : "Bye"}</Flash>
             <span>{o.teamB?.name ?? ""}</span>
           </>
         );
@@ -318,7 +333,9 @@ function Roster({ side, data }: { side: MatchupSide; data: MatchupWeek }) {
         <div className={`${styles.g} ${styles.gTotal}`} role="row">
           <span role="cell" />
           <span role="rowheader">{day ? "Starters" : "Week"}</span>
-          {CATEGORY_KEYS.map((k) => <span role="cell" className={styles.n} key={k}><Stat k={k} line={total} /></span>)}
+          {CATEGORY_KEYS.map((k) => (
+            <Flash role="cell" className={styles.n} key={k} value={statValue(k, total)}><Stat k={k} line={total} /></Flash>
+          ))}
         </div>
       </div>
     </section>
@@ -377,7 +394,9 @@ function PlayerRow({ p, day, timeZone }: { p: MatchupPlayer; day: boolean; timeZ
         <span role="cell" className={styles.dnp}>DNP</span>
       ) : (
         CATEGORY_KEYS.map((k) => (
-          <span role="cell" className={styles.n} key={k}>{p.stats && <Stat k={k} line={p.stats} />}</span>
+          <Flash role="cell" className={styles.n} key={k} value={p.stats && statValue(k, p.stats)}>
+            {p.stats && <Stat k={k} line={p.stats} />}
+          </Flash>
         ))
       )}
     </div>

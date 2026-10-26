@@ -11,11 +11,13 @@
 // Game limits (when the week has them): games used against the total and each
 // capped slot, warning before starts that won't count (GameLimits.tsx).
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
+// While today's games are live, today's lineup refetches every 30s and changed
+// stats flash (components/live).
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
 // Edit team (EditTeamSheet) renames the team and sets its logo: your own team,
 // or any team for the commissioner; /my-team?edit=team opens it (user menu).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
@@ -25,6 +27,8 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
+import Flash from "@/components/live/Flash";
+import { useLivePoll } from "@/components/live/useLivePoll";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
@@ -145,22 +149,27 @@ function sumLines(lines: CategoryLine[]): CategoryLine {
   return { ...t, fgPct: pct(t.fgm, t.fga), ftPct: pct(t.ftm, t.fta) };
 }
 
-/** The ten stat cells: MIN, FG%, FT%, then the counting stats. Percentages show makes/attempts below. */
-function statCells(line: CategoryLine | null, min: number | null, dnp: boolean) {
+/**
+ * The ten stat cells: MIN, FG%, FT%, then the counting stats. Percentages show
+ * makes/attempts below. Cells flash when a live update changes them; `scope`
+ * is whose line it is (see Flash).
+ */
+function statCells(line: CategoryLine | null, min: number | null, dnp: boolean, scope: string) {
   if (dnp) return [<span key="min" className={`${styles.num} ${styles.dnp}`}>DNP</span>, ...blankCells(9)];
   if (!line) return blankCells(10);
   const shooting = (p: number | null, m: number, a: number, k: string) => (
-    <span key={k} className={styles.num}>
+    <Flash key={k} className={styles.num} value={`${m}/${a}`} scope={scope}>
       {fmtPct(p)}
       <small className={styles.shots}>{m}/{a}</small>
-    </span>
+    </Flash>
   );
   return [
+    // Minutes tick up all game, so they don't flash.
     <span key="min" className={styles.num}>{min === null ? "" : Math.round(min)}</span>,
     shooting(line.fgPct, line.fgm, line.fga, "fg"),
     shooting(line.ftPct, line.ftm, line.fta, "ft"),
     ...([line.fg3m, line.pts, line.reb, line.ast, line.stl, line.blk, line.tov] as number[]).map((v, i) => (
-      <span key={i} className={styles.num}>{v}</span>
+      <Flash key={i} className={styles.num} value={v} scope={scope}>{v}</Flash>
     )),
   ];
 }
@@ -209,6 +218,20 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
       });
     return () => ctrl.abort();
   }, [urlDate, retryKey, readOnly, teamId]);
+
+  // Live stats: refetch today's lineup quietly. A save bumps `edits`, so a poll
+  // that started before it can't overwrite the saved lineup.
+  const edits = useRef(0);
+  useLivePoll(!!data && data.live && data.date === data.today, () => {
+    if (saving) return;
+    const started = edits.current;
+    const base = readOnly ? `/api/teams/${teamId}/lineup` : "/api/team/lineup";
+    fetchJson<TeamLineupResponse>(`${base}${urlDate ? `?date=${encodeURIComponent(urlDate)}` : ""}`)
+      .then((next) => {
+        if (edits.current === started) setData((d) => (d && d.date === next.date ? next : d));
+      })
+      .catch(() => {}); // the next poll tries again
+  });
 
   const pickDay = useCallback(
     (date: string, today: string) => {
@@ -264,10 +287,14 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
     bench.some((s) => s.player && !s.player.lock && plays(s.player));
   const starterLines = starters.flatMap((s) => (s.player?.dayStats ? [s.player.dayStats] : []));
   const totals = sumLines(starterLines);
+  // Who the total is from: a lineup move changes it without a live update.
+  const starterIds = starters.map((s) => s.player?.id ?? "").join(",");
+  const date = data.date;
 
   async function save(next: TeamLineupResponse, message: string) {
     if (!data) return;
     const before = data;
+    edits.current++;
     setData(next); // optimistic
     setSelected(null);
     setSaving(true);
@@ -308,6 +335,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
 
   async function autoSet(scope: AutoLineupRequest["scope"]) {
     if (!data) return;
+    edits.current++;
     setSaving(true);
     setSelected(null);
     try {
@@ -408,7 +436,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
             </span>
           )}
         </span>
-        {statCells(day, day?.min ?? null, dnp)}
+        {statCells(day, day?.min ?? null, dnp, p ? `${date}:${p.id}` : "")}
       </div>
     );
   }
@@ -534,7 +562,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
           </span>
           <span className={styles.game} />
           <span className={styles.weekCell} />
-          {statCells(starterLines.length > 0 ? totals : null, null, false)}
+          {statCells(starterLines.length > 0 ? totals : null, null, false, `${date}:${starterIds}`)}
         </div>
         <Group label="Bench" hint="Stats count only from starting slots" />
         {bench.map(row)}

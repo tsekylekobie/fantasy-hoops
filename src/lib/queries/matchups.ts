@@ -26,6 +26,7 @@ import type {
   MatchupWeek,
 } from "../types";
 import { CATEGORY_KEYS, LINEUP_SLOTS } from "../types";
+import { gamesInProgress } from "./live";
 import { bracketTag, configOf, type BracketRow } from "./playoffs";
 import { toTeamSummary } from "./teamLogo";
 
@@ -473,7 +474,7 @@ export async function getMatchupWeek(
 
   const params = [league.id, w.starts_on, w.ends_on, today];
   const limits = toGameLimits(w.game_limits);
-  const [starts, upcoming, pairs] = await Promise.all([
+  const [starts, upcoming, pairs, live] = await Promise.all([
     db.query<PlayedStartRow>(PLAYED_SQL, [...params, null]),
     db.query<StartRow>(UPCOMING_SQL, [...params, null]),
     db.query<Pick<BracketRow, "team_a_id" | "team_b_id" | "bracket" | "bracket_round">>(
@@ -481,6 +482,7 @@ export async function getMatchupWeek(
         ORDER BY bracket NULLS FIRST, bracket_round, bracket_slot, id`,
       [league.id, w.week],
     ),
+    gamesInProgress(db),
   ]);
   const played = countedRows(starts.rows, limits);
   const totals = new Map<number, Totals>();
@@ -542,5 +544,6 @@ export async function getMatchupWeek(
     matchup,
     myTeam: mine ? summary(mine.id) : null,
     others,
+    live,
   };
 }
