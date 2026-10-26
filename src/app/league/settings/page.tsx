@@ -22,7 +22,15 @@ export default async function LeagueSettingsPage() {
       <div className={styles.inner}>
         <SiteHeader />
         <Link href="/league" className={styles.back}>← League</Link>
-        <h1 className={styles.title}>League settings</h1>
+        <h1 className={styles.title}>
+          League settings{found?.isCommissioner && <small className={styles.pill}>COMMISSIONER</small>}
+        </h1>
+        {found?.isCommissioner && (
+          <p className={styles.sub}>
+            Only you can change these. A change applies from the next action on: lineups already locked and moves already
+            processed stay as they were. Managers see the rules read-only on the League page.
+          </p>
+        )}
         {!session ? (
           <p className={styles.empty}>Sign in to see league settings.</p>
         ) : !found ? (

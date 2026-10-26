@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "League · Fantasy Hoops" };
 export const dynamic = "force-dynamic";
 
 // Server-rendered from our DB: standings, this week's scoreboard, recent transactions and the waiver order.
-// The commissioner also gets a link to /league/settings.
+// The commissioner also gets links to /league/settings (header, and Edit on the waiver rules).
 export default async function LeaguePage() {
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
   const userId = session?.user.id ?? null;
@@ -31,7 +31,7 @@ export default async function LeaguePage() {
     <LeagueView data={data} isCommissioner={settings?.isCommissioner ?? false}>
       <div className={waiverStyles.below}>
         <RecentTransactions data={transactions} myTeamId={myTeamId} />
-        <WaiverOrder data={waivers} myTeamId={myTeamId} />
+        <WaiverOrder data={waivers} myTeamId={myTeamId} canEdit={settings?.isCommissioner ?? false} />
       </div>
     </LeagueView>
   );

@@ -274,10 +274,12 @@ export interface MatchupSide extends FantasyTeamSummary {
   managerName: string | null;
   /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
   stats: CategoryLine;
-  /** Starter games played so far this week. */
+  /** Starter games played so far this week (that counted, under game limits). */
   gamesPlayed: number;
-  /** Starter games still to tip off this week (current lineup and NBA teams). */
+  /** Starter games still to tip off this week (current lineup and NBA teams) that will count under game limits. */
   gamesLeft: number;
+  /** The week's game limit total, when the week has game limits. */
+  gameLimit?: number;
   /** Slot order (starters, BN, IL, IL+), then players who left the roster. */
   players: MatchupPlayer[];
 }
@@ -372,6 +374,54 @@ export interface LeagueOverview {
   toiletBowlTeams?: number;
   /** The Standings card's Playoffs view. */
   playoffs?: PlayoffsView;
+}
+
+// Power rankings (/rankings)
+
+/** One week on its own, or every regular-season week played added together. */
+export type RankingsPeriod = "week" | "season";
+
+/** A team in the stack rank. */
+export interface RankingsRow extends FantasyTeamSummary {
+  /** 1 = best all-play record; ties keep the same rank. */
+  rank: number;
+  /** Category totals for the period (FG%/FT% = summed makes / summed attempts). */
+  stats: CategoryLine;
+  /** Place among the league's teams in each category, 1 = best (fewest TO); ties share a place. */
+  catRanks: Record<CategoryKey, number>;
+  /** Categories won, lost and tied against every other team, each week (the ranking). */
+  allPlay: MatchupScore;
+  isMine: boolean;
+}
+
+/** The focused team against one other team. */
+export interface VersusRow {
+  opponent: FantasyTeamSummary;
+  /** Categories won, lost and tied (season: summed over the weeks). */
+  score: MatchupScore;
+  /** Week only: each category's outcome. */
+  results: Record<CategoryKey, CategoryResult> | null;
+  /** Season only: weeks won, lost and tied (a week is won by winning more categories). */
+  weeks: MatchupScore | null;
+  /** Week only: the real pairing that week. */
+  isActual: boolean;
+}
+
+/** The /rankings page: ?view=week|season, ?week=N, ?team=ID. */
+export interface RankingsView {
+  season: number;
+  period: RankingsPeriod;
+  /** The week shown (week view), or null in the season view. */
+  week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean; status: MatchupWeek["status"] } | null;
+  weekCount: number;
+  /** Season view: regular-season weeks added up, the live one included. */
+  weeksCounted: number;
+  includesLiveWeek: boolean;
+  /** Ranked; empty before the period has started. */
+  rows: RankingsRow[];
+  /** The team in Versus the league: ?team=, else the manager's, else first place. */
+  focus: { team: FantasyTeamSummary; rank: number; matchups: MatchupScore; versus: VersusRow[] } | null;
+  myTeam: FantasyTeamSummary | null;
 }
 
 // Playoffs and the toilet bowl (src/lib/playoffs/bracket.ts)
@@ -577,7 +627,7 @@ export interface TeamLineupResponse {
     lineupLock: "game_time" | "first_game";
     /** Slot counts in display order; slots with 0 are left out. */
     slots: { slot: LineupSlot; count: number }[];
-    /** Who may use each IL slot the league has, e.g. "Out, 3+ days on the injury report". */
+    /** Who may use each IL slot the league has, e.g. "Out or Day-To-Day". */
     ilRules: { slot: LineupSlot; text: string }[];
   };
   /**
@@ -594,6 +644,8 @@ export interface TeamLineupResponse {
   /** Each day of that week (or the Mon–Sun around `date`) with its NBA game count. */
   days: { date: string; nbaGames: number }[];
   players: LineupPlayer[];
+  /** Starters' games against that week's game limits; null when the week has none (or outside the schedule). */
+  gameLimits: GameLimitUsage | null;
 }
 
 /** PUT /api/team/lineup: the whole lineup for one day (today or later). Responds with TeamLineupResponse. */
@@ -932,10 +984,8 @@ export interface LeagueSettings {
   /** Count of IL and IL+ slots (leagues.roster_slots). */
   ilSlots: number;
   ilStatuses: string[];
-  ilMinDays: number;
   ilPlusSlots: number;
   ilPlusStatuses: string[];
-  ilPlusMinDays: number;
   tradeReview: TradeReview;
   tradeReviewDays: number;
   tradeVetoVotes: number;
@@ -951,6 +1001,42 @@ export interface LeagueSettings {
   /** Bottom teams play a loser-advances bracket; its final's loser is last place. */
   toiletBowl: boolean;
   toiletBowlTeams: number;
+  /**
+   * Caps on starters' games per matchup week; null = no limits. A change
+   * applies from the next matchup week (league_weeks.game_limits); the current
+   * week keeps its limits.
+   */
+  gameLimits: GameLimits | null;
+}
+
+/**
+ * Games a team's starters may play in one matchup week (lineup/gameLimits.ts).
+ * Games count in tip-off order; once the team total or a slot's cap is
+ * reached, later starts (for the team / in that slot) score nothing that week.
+ */
+export interface GameLimits {
+  /** All starting slots together. */
+  total: number;
+  /** Per starting slot, shared by all of that slot's spots (C x2 = one cap). Missing = only the total applies. */
+  slots: Partial<Record<LineupSlot, number>>;
+}
+
+/** One game limit's tally for a week. */
+export interface GameLimitCount {
+  limit: number;
+  /** Games that counted so far. */
+  used: number;
+  /** What it will reach if the lineups as set now play out (scheduled games assumed played). */
+  planned: number;
+  /** Days (yyyy-mm-dd) with upcoming starts that won't count because of this limit. */
+  blockedDays: string[];
+}
+
+/** A team's games against its week's limits (TeamLineupResponse.gameLimits). */
+export interface GameLimitUsage {
+  total: GameLimitCount;
+  /** Capped slots only, in slot order. */
+  slots: (GameLimitCount & { slot: LineupSlot })[];
 }
 
 export interface LeagueSettingsResponse {
@@ -964,6 +1050,10 @@ export interface LeagueSettingsResponse {
   weeks?: { week: number; startsOn: string; endsOn: string }[];
   /** Playoff matchups exist: the playoff settings can't change any more. */
   playoffsStarted?: boolean;
+  /** The league's starting slots and counts, for the per-position game limits. */
+  startingSlots?: { slot: LineupSlot; count: number }[];
+  /** The first week a game limits change would apply to (the next one to start); null = none left. */
+  gameLimitsFromWeek?: number | null;
 }
 
 // Team profile (/api/team/profile)

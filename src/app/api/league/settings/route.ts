@@ -3,6 +3,7 @@
 // Contract: LeagueSettings and LeagueSettingsResponse in src/lib/types.ts.
 // 401 signed out, 403 not the commissioner, 400 bad input, 409 IL slots in use or playoff
 // settings that can no longer change (bracket matchups exist, or regular matchups in the new playoff weeks).
+// Game limits changes start with the next matchup week (gameLimitsFromWeek in the response).
 // Logic: src/lib/queries/settings.ts.
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

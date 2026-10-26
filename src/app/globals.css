@@ -32,6 +32,11 @@
   --games-1-ink: #ffffff;
   --games-0-bg: #7f1d1d;
   --games-0-ink: #ffffff;
+  /* Power rankings: a category value's place, top quarter of the league to bottom. */
+  --rank-1-bg: #fdba74;
+  --rank-1-ink: #16181d;
+  --rank-2-bg: #ffe7d6;
+  --rank-4-bg: #efece4;
   --on-ink: #ffffff;
   --backdrop: rgba(22, 24, 29, 0.55);
   color-scheme: light;
@@ -67,6 +72,10 @@
   --ok-ink: #bbf7d0;
   --games-4-bg: #166534;
   --games-0-bg: #991b1b;
+  --rank-1-bg: #9a3412;
+  --rank-1-ink: #ffffff;
+  --rank-2-bg: #3d2416;
+  --rank-4-bg: #23262b;
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
   color-scheme: dark;

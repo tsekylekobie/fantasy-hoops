@@ -1,6 +1,5 @@
-/* League settings (/league/settings). No mockup of its own: the page, cards
-   and headings follow LeagueView (docs/design/league.mockup.html), chips its
-   .chip, buttons Trades.module.css. */
+/* League settings (/league/settings): docs/design/league-settings.mockup.html.
+   Page, cards and headings follow LeagueView (docs/design/league.mockup.html). */
 
 .page {
   min-height: 100vh;
@@ -8,37 +7,56 @@
 }
 
 .inner {
-  max-width: 880px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .back {
-  display: inline-block;
-  margin-top: 24px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 12px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--ink-muted);
+  color: var(--accent);
   text-decoration: none;
 }
 
 .back:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 48px;
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.01em;
-  margin: 8px 0 8px;
+  margin: 4px 0 8px;
+}
+
+.pill {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
 }
 
 .sub {
   color: var(--ink-muted);
   font-size: 15px;
-  margin: 0 0 20px;
+  line-height: 1.5;
+  max-width: 760px;
+  margin: 0 0 24px;
 }
 
 .empty {
@@ -46,7 +64,75 @@
   color: var(--ink-muted);
 }
 
-.form {
+/* Section nav on the left, cards on the right; stacks when narrow. */
+.cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.side {
+  flex: 1 1 220px;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 16px;
+}
+
+.side a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.side a:hover {
+  background: var(--rank-4-bg);
+}
+
+.side a[aria-current] {
+  background: var(--surface);
+  border-color: var(--border);
+  font-weight: 600;
+}
+
+.side em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  text-align: right;
+}
+
+.side hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+  width: 100%;
+}
+
+.who {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0;
+  padding: 0 4px;
+  line-height: 1.5;
+}
+
+.main {
+  flex: 999 1 600px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -56,221 +142,442 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  padding: 4px 24px 8px;
   min-width: 0;
+  scroll-margin-top: 16px;
 }
 
-.card h3 {
+.card h2 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 22px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0;
-  padding: 16px 20px 10px;
+  margin: 16px 0 4px;
 }
 
-/* A line under a card's heading (e.g. playoff settings locked). */
-.note {
-  margin: 0;
-  padding: 0 20px 12px;
+.lede {
   font-size: 13px;
   color: var(--ink-muted);
+  margin: 0 0 8px;
+  line-height: 1.5;
 }
 
-.group + .group {
-  border-top: 2px solid var(--row-divider);
+.lede b {
+  color: var(--ink);
 }
 
-.field {
+/* One setting: label and help on the left, controls on the right. */
+.row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
   gap: 8px 24px;
-  align-items: center;
-  padding: 14px 20px;
+  padding: 16px 0;
   border-top: 1px solid var(--row-divider);
+  align-items: start;
 }
 
-.label {
+.lb {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   font-size: 14px;
   font-weight: 600;
+  padding-top: 12px;
 }
 
-.label small {
-  font-size: 13px;
+.lb small {
+  font-size: 12px;
   font-weight: 400;
-  color: var(--ink-muted);
+  color: var(--ink-subtle);
+  margin-top: 4px;
+  line-height: 1.45;
 }
 
-.control {
+.ctl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
 }
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }
 
-.control input[type="number"],
-.control input[type="time"],
-.control input[type="date"],
-.control select {
-  height: 40px;
-  padding: 0 12px;
+.inp,
+.num {
+  height: 44px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
+  padding: 0 12px;
+  font-size: 14px;
   background: var(--surface);
   color: var(--ink);
-  font: inherit;
-  font-size: 14px;
   max-width: 100%;
+  min-width: 0;
 }
 
-.control input[type="number"] {
-  width: 120px;
+.num {
+  width: 96px;
   font-variant-numeric: tabular-nums;
 }
 
-.control select {
-  min-width: 0;
+.num.wide {
+  width: 128px;
 }
 
-.control input:disabled {
-  opacity: 0.5;
+.unit {
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
-.control input:focus-visible,
-.control select:focus-visible,
-.chip:focus-visible,
-.btn:focus-visible,
-.back:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.money {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.chips {
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  flex-basis: 100%;
+}
+
+.pair label {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
 }
 
-.chip {
-  height: 36px;
-  min-width: 52px;
-  padding: 0 14px;
+/* Segmented buttons (waiver type, trade review). */
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  max-width: 100%;
+}
+
+.seg button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-left: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
 }
 
-.chip:hover {
-  border-color: var(--ink);
+.seg button:first-child {
+  border-left: 0;
 }
 
-.chip[aria-pressed="true"] {
+.seg button:hover:not([aria-pressed="true"]) {
+  background: var(--surface-muted);
+}
+
+.seg button[aria-pressed="true"],
+.day[aria-pressed="true"] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--bg);
+  font-weight: 600;
 }
 
-.check {
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day {
+  width: 52px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.day:hover:not([aria-pressed="true"]) {
+  border-color: var(--ink);
+}
+
+.chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--surface);
+}
+
+.chk input,
+.switch input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.chk:has(input:checked) {
+  border-color: var(--ink);
+}
+
+.switch {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
   cursor: pointer;
+  min-height: 44px;
 }
 
-.check input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
-}
-
-/* Save bar: stays in view at the bottom while the form scrolls. */
-.bar {
-  position: sticky;
-  bottom: 0;
+.ilgrid {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
+  flex-direction: column;
+  gap: 12px;
+  flex-basis: 100%;
+}
+
+.ilrow {
+  display: flex;
   flex-wrap: wrap;
-  padding: 14px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.next {
-  margin: 0;
-  font-size: 14px;
-  color: var(--ink-muted);
-  min-width: 0;
-}
-
-.next b {
-  color: var(--ink);
-}
-
-.next b.ok {
-  color: var(--ok-ink);
-}
-
-.next b.error {
-  color: var(--danger-ink);
-  display: block;
-  margin-bottom: 4px;
-}
-
-.actions {
-  display: flex;
   gap: 8px;
+  align-items: center;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: var(--radius);
+.ilrow b {
+  width: 48px;
+  font-size: 13px;
+}
+
+/* Per-position game limits. */
+.glgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  flex-basis: 100%;
+}
+
+.glgrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.glgrid .num {
+  width: 100%;
+}
+
+.hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--ink-subtle);
+  margin: 2px 0 0;
+  line-height: 1.45;
+}
+
+/* A hint standing alone in the controls column, lined up with the label. */
+.hint.text {
+  margin-top: 12px;
+}
+
+.warn {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.lock {
+  font-size: 13px;
+  color: var(--ink-muted);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  line-height: 1.45;
+}
+
+.clear {
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
 }
 
-.btn:hover:not(:disabled) {
+.clear:hover {
   border-color: var(--ink);
 }
 
-.btn.primary {
+/* Regular season vs playoff weeks under the start week. */
+.bracket {
+  display: flex;
+  gap: 4px;
+  flex-basis: 100%;
+  margin-top: 4px;
+}
+
+.bracket span {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bracket .reg {
+  background: var(--rank-4-bg);
+  color: var(--ink-muted);
+}
+
+.bracket .po {
+  flex-shrink: 0;
+  flex-basis: auto;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Save bar: stays in view at the bottom while the form scrolls. */
+.save {
+  position: sticky;
+  bottom: 16px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: var(--radius-card);
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 12px 32px rgba(22, 24, 29, 0.24);
+}
+
+.what {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.what b {
+  display: block;
+  font-size: 15px;
+}
+
+.what ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.ok {
+  font-size: 14px;
+}
+
+.error {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.bt {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primary {
   background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-ink);
+  border: 1px solid var(--accent);
+  color: #fff;
 }
 
-.btn.primary:hover:not(:disabled) {
-  filter: brightness(0.9);
+.primary:hover:not(:disabled) {
+  filter: brightness(0.92);
 }
 
-.btn:disabled {
+.ghost {
+  background: transparent;
+  border: 1px solid var(--ink-subtle);
+  color: inherit;
+}
+
+.bt:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.page :is(a, button, input, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.page :is(input, select, button):disabled,
+.fields:disabled label {
   cursor: not-allowed;
-  opacity: 0.5;
+}
+
+.fields:disabled .ctl {
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .side {
+    position: static;
+    max-width: none;
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -282,26 +589,39 @@
     font-size: 40px;
   }
 
-  .field {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 12px 16px;
+  .card {
+    padding: 4px 16px 8px;
   }
 
-  .card h3 {
-    padding: 14px 16px 8px;
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 0;
+  }
+
+  .lb {
+    padding-top: 0;
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hint.text {
+    margin-top: 0;
   }
 
   /* Above the phone tab bar (body padding-bottom in globals.css). */
-  .bar {
-    bottom: calc(58px + env(safe-area-inset-bottom));
+  .save {
+    bottom: calc(66px + env(safe-area-inset-bottom));
     padding: 12px 16px;
   }
 
-  .actions {
-    width: 100%;
+  .what ul {
+    max-height: 30vh;
+    overflow-y: auto;
   }
 
-  .actions .btn {
+  .bt {
     flex: 1;
   }
 }

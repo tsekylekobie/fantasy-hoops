@@ -24,7 +24,6 @@ import {
   rosterProblems,
   validateLineup,
   type IlRules,
-  type InjuryReport,
   type SlotCounts,
 } from "../lineup/rules";
 import {
@@ -37,6 +36,7 @@ import {
   type TeamLineupResponse,
 } from "../types";
 import { getInjuries } from "./injuries";
+import { teamGameLimitUsage } from "./matchups";
 import { getSeasonValues } from "./players";
 import { teamLogoUrl } from "./teamLogo";
 
@@ -63,11 +63,9 @@ export interface TeamContext {
   season: number;
   rosterSlots: SlotCounts;
   lineupLock: "game_time" | "first_game";
-  /** IL eligibility rule: qualifying statuses and minimum days on the report, per IL slot. */
+  /** IL eligibility rule: the injury statuses that qualify, per IL slot. */
   ilStatuses: string[];
   ilPlusStatuses: string[];
-  ilMinDays: number;
-  ilPlusMinDays: number;
   /** The league's today, yyyy-mm-dd, in its time zone. */
   today: string;
 }
@@ -78,11 +76,11 @@ export async function getUserTeam(db: Db, userId: number, season: number): Promi
     team_id: string; team_name: string; manager_name: string | null; abbreviation: string; logo_updated_at: Date | null;
     waiver_priority: number | null; league_id: string; league_name: string; season: number; roster_slots: SlotCounts;
     lineup_lock: "game_time" | "first_game"; il_statuses: string[]; il_plus_statuses: string[];
-    il_min_days: number; il_plus_min_days: number; today: string;
+    today: string;
   }>(
     `SELECT ft.id AS team_id, ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.logo_updated_at, ft.waiver_priority,
             l.id AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
-            l.il_statuses, l.il_plus_statuses, l.il_min_days, l.il_plus_min_days,
+            l.il_statuses, l.il_plus_statuses,
             to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
        LEFT JOIN users u ON u.id = ft.owner_user_id
@@ -98,36 +96,15 @@ export async function getUserTeam(db: Db, userId: number, season: number): Promi
     logoUrl: teamLogoUrl(Number(r.team_id), r.logo_updated_at),
     waiverPriority: r.waiver_priority, leagueId: Number(r.league_id), leagueName: r.league_name,
     season: r.season, rosterSlots: r.roster_slots, lineupLock: r.lineup_lock,
-    ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, ilMinDays: r.il_min_days,
-    ilPlusMinDays: r.il_plus_min_days, today: r.today,
+    ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, today: r.today,
   };
 }
 
 export function ilRules(team: TeamContext): IlRules {
   return {
-    il: { statuses: team.ilStatuses, minDays: team.ilMinDays },
-    ilPlus: { statuses: team.ilPlusStatuses, minDays: team.ilPlusMinDays },
+    il: { statuses: team.ilStatuses },
+    ilPlus: { statuses: team.ilPlusStatuses },
   };
-}
-
-/**
- * Each player's current stint on the injury report (the rows since his last
- * "left the report" row), oldest first, dated in the league's time zone.
- * Healthy players are missing from the map.
- */
-async function loadInjuryStints(db: Db, leagueId: number, playerIds: number[]): Promise<Map<number, InjuryReport[]>> {
-  const { rows } = await db.query<{ player_id: number; status: string; date: string }>(
-    `SELECT pi.player_id, pi.status, to_char((pi.observed_at AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS date
-       FROM player_injuries pi JOIN leagues l ON l.id = $2
-      WHERE pi.player_id = ANY($1)
-        AND pi.observed_at > coalesce((SELECT max(x.observed_at) FROM player_injuries x
-                                        WHERE x.player_id = pi.player_id AND x.status IS NULL), '-infinity')
-      ORDER BY pi.player_id, pi.observed_at`,
-    [playerIds, leagueId],
-  );
-  const out = new Map<number, InjuryReport[]>();
-  for (const r of rows) out.set(r.player_id, [...(out.get(r.player_id) ?? []), { status: r.status, date: r.date }]);
-  return out;
 }
 
 /** Season averages and 9CAT values. Auto-set falls back to last season for players with no games yet. */
@@ -271,13 +248,12 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
     for (const r of rosterRes.rows) slots.set(r.player_id, fromRows.get(r.player_id) ?? "BN");
   }
 
-  const [infoRes, dayRes, stints, injuries] = await Promise.all([
+  const [infoRes, dayRes, injuries] = await Promise.all([
     db.query<DayPlayerRow>(DAY_PLAYERS_SQL, [[...slots.keys()], date]),
     db.query<{ started: boolean }>(
       `SELECT coalesce(bool_or(${started("g")}), false) AS started FROM games g WHERE g.date = $1 AND NOT g.postponed`,
       [date],
     ),
-    loadInjuryStints(db, team.leagueId, [...slots.keys()]),
     getInjuries(db, [...slots.keys()]),
   ]);
   const dayStarted = dayRes.rows[0]?.started ?? false;
@@ -296,7 +272,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
       position: r.position,
       nbaPersonId: r.nba_person_id,
       slot: slots.get(r.id)!,
-      eligible: eligibleSlots(r.position, ilEligibility(stints.get(r.id) ?? [], il, date)),
+      eligible: eligibleSlots(r.position, ilEligibility(injuries.get(r.id)?.status ?? null, il)),
       lock,
       injury: injuries.get(r.id) ?? null,
       game: toGame(r),
@@ -562,7 +538,10 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
     [start, end],
   );
   const byDate = new Map(counts.map((c) => [c.date, c.n]));
-  const gamesById = await getWeekGames(pool, day.players.map((p) => p.id), start, end);
+  const [gamesById, gameLimits] = await Promise.all([
+    getWeekGames(pool, day.players.map((p) => p.id), start, end),
+    week ? teamGameLimitUsage(pool, team.leagueId, team.teamId, week, team.today) : null,
+  ]);
   const days: TeamLineupResponse["days"] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) days.push({ date: d, nbaGames: byDate.get(d) ?? 0 });
 
@@ -587,5 +566,6 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
     week,
     days,
     players: day.players.map((p) => ({ ...p, weekGames: gamesById.get(p.id) ?? { remaining: 0, total: 0 } })),
+    gameLimits,
   };
 }

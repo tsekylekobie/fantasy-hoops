@@ -5,14 +5,19 @@
 // the latest lineup_slots rows on or before that day (current roster only,
 // newcomers on BN, plus departed players on past days with their own rows),
 // or the standing lineup (roster_players.slot) before a team's first edit.
-// BN, IL and IL+ don't score. FG%/FT% = summed makes / summed attempts; TO is
-// lower-is-better. Scores are computed on read (no scoring job yet).
+// BN, IL and IL+ don't score. Under the week's game limits
+// (league_weeks.game_limits, lineup/gameLimits.ts) starts past a limit don't
+// count either. FG%/FT% = summed makes / summed attempts of the games that
+// count; TO is lower-is-better. Scores are computed on read (no scoring job yet).
 import type { Pool } from "pg";
+import { countStarts, gameLimitUsage, parseGameLimits, type Start } from "../lineup/gameLimits";
 import type {
   CategoryKey,
   CategoryLine,
   CategoryResult,
   FantasyTeamSummary,
+  GameLimitUsage,
+  GameLimits,
   LineupGame,
   LineupSlot,
   MatchupPlayer,
@@ -49,7 +54,7 @@ const LINEUP_CTE = `
       AND NOT EXISTS (SELECT 1 FROM roster_players rp
                       WHERE rp.fantasy_team_id = s.team_id AND rp.player_id = ls.player_id)
   ),
-  starters AS (SELECT team_id, date, player_id FROM lineup WHERE slot NOT IN ${NON_SCORING})`;
+  starters AS (SELECT team_id, date, player_id, slot FROM lineup WHERE slot NOT IN ${NON_SCORING})`;
 
 const SUMS = `
          coalesce(sum(s.fgm), 0)::int      AS fgm,
@@ -64,28 +69,34 @@ const SUMS = `
          coalesce(sum(s.blk), 0)::int      AS blk,
          coalesce(sum(s.turnover), 0)::int AS tov`;
 
-// Starters' games with minutes, one row per team and player.
+// Starters' games with minutes, one row per start (team, player, game), for
+// the game limits to count in tip-off order. $5: one team id, or null for all.
+const START = `st.team_id::int AS team_id, st.player_id::int AS player_id, st.slot,
+         to_char(st.date, 'YYYY-MM-DD') AS date, g.id::int AS game_id,
+         to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff`;
 const PLAYED_SQL = `
   WITH ${LINEUP_CTE}
-  SELECT st.team_id::int AS team_id, st.player_id::int AS player_id,
-         count(*)::int AS gp, coalesce(sum(s.min), 0)::float8 AS min, ${SUMS}
+  SELECT ${START}, 1 AS gp, coalesce(s.min, 0)::float8 AS min, ${SUMS}
   FROM starters st
   JOIN games g ON g.date = st.date AND g.game_type = 'regular'
   JOIN player_game_stats s ON s.game_id = g.id AND s.player_id = st.player_id AND s.min > 0
   -- Redundant with the join, but it lets the planner start from the week's games.
-  WHERE g.date BETWEEN $2::date AND $3::date
-  GROUP BY st.team_id, st.player_id`;
+  WHERE g.date BETWEEN $2::date AND $3::date AND ($5::bigint IS NULL OR st.team_id = $5)
+  GROUP BY st.team_id, st.player_id, st.slot, st.date, g.id, s.id`;
 
-// Games not yet started, from $4 (today) on, for each day's starters' current NBA teams.
-const LEFT_SQL = `
+// Games not yet started, from $4 (today) on, for each day's starters' current
+// NBA teams, one row per start. $5 as above. A game the provider hasn't marked
+// started but that has his minutes is already in PLAYED_SQL, so it's left out.
+const UPCOMING_SQL = `
   WITH ${LINEUP_CTE}
-  SELECT st.team_id::int AS team_id, count(*)::int AS left
+  SELECT ${START}
   FROM starters st
   JOIN players p ON p.id = st.player_id
   JOIN games g ON g.date = st.date AND p.team_id IN (g.home_team_id, g.visitor_team_id)
   WHERE st.date >= $4::date AND g.game_type = 'regular' AND NOT g.postponed
     AND coalesce(g.status_state, 'scheduled') = 'scheduled'
-  GROUP BY st.team_id`;
+    AND NOT EXISTS (SELECT 1 FROM player_game_stats s WHERE s.game_id = g.id AND s.player_id = st.player_id AND s.min > 0)
+    AND ($5::bigint IS NULL OR st.team_id = $5)`;
 
 // $5 team ids, $6 a date in the week: each team's lineup that day, with each
 // player's NBA game and stat line (whether or not he started).
@@ -175,6 +186,57 @@ export function compareLines(a: CategoryLine, b: CategoryLine): { results: Recor
   return { results, score };
 }
 
+/** A week's game limits as stored (league_weeks.game_limits); null = none. */
+export function toGameLimits(v: unknown): GameLimits | null {
+  const parsed = parseGameLimits(v);
+  return "limits" in parsed ? parsed.limits : null;
+}
+
+const toStart = (r: StartRow): Start => ({ slot: r.slot, date: r.date, tipoff: r.tipoff, gameId: r.game_id });
+
+function byTeam<T extends { team_id: number }>(rows: T[]): Map<number, T[]> {
+  const out = new Map<number, T[]>();
+  for (const r of rows) out.set(r.team_id, [...(out.get(r.team_id) ?? []), r]);
+  return out;
+}
+
+/** The starts that count under `limits`, summed per team and player. */
+function countedRows(starts: PlayedStartRow[], limits: GameLimits | null): PlayedRow[] {
+  const out = new Map<string, PlayedRow>();
+  for (const rows of byTeam(starts).values()) {
+    const outcomes = countStarts(rows.map(toStart), limits);
+    rows.forEach((r, i) => {
+      if (outcomes[i] !== "counted") return;
+      const key = `${r.team_id}:${r.player_id}`;
+      const prev = out.get(key);
+      out.set(key, prev
+        ? { ...addTotals(prev, r), team_id: r.team_id, player_id: r.player_id, min: prev.min + r.min }
+        : { ...addTotals(ZERO, r), team_id: r.team_id, player_id: r.player_id, min: r.min });
+    });
+  }
+  return [...out.values()];
+}
+
+/** Each team's starts still to tip off that will count under `limits`. */
+function countedLeft(played: PlayedStartRow[], upcoming: StartRow[], limits: GameLimits | null): Map<number, number> {
+  const playedByTeam = byTeam(played);
+  const out = new Map<number, number>();
+  for (const [team, rows] of byTeam(upcoming)) {
+    const before = playedByTeam.get(team) ?? [];
+    const outcomes = countStarts([...before, ...rows].map(toStart), limits);
+    out.set(team, outcomes.slice(before.length).filter((o) => o === "counted").length);
+  }
+  return out;
+}
+
+async function weekLimits(db: Pool, leagueId: number, startsOn: string): Promise<GameLimits | null> {
+  const { rows: [w] } = await db.query<{ game_limits: unknown }>(
+    `SELECT game_limits FROM league_weeks WHERE league_id = $1 AND starts_on = $2::date`,
+    [leagueId, startsOn],
+  );
+  return toGameLimits(w?.game_limits ?? null);
+}
+
 /** Each team's week totals for one league week, keyed by team id. Teams with no games are left out. */
 export async function weekLines(
   db: Pool,
@@ -182,7 +244,11 @@ export async function weekLines(
   week: { startsOn: string; endsOn: string },
   today: string,
 ): Promise<Map<number, CategoryLine>> {
-  const { rows } = await db.query<PlayedRow>(PLAYED_SQL, [leagueId, week.startsOn, week.endsOn, today]);
+  const [{ rows: starts }, limits] = await Promise.all([
+    db.query<PlayedStartRow>(PLAYED_SQL, [leagueId, week.startsOn, week.endsOn, today, null]),
+    weekLimits(db, leagueId, week.startsOn),
+  ]);
+  const rows = countedRows(starts, limits);
   const totals = new Map<number, Totals>();
   for (const r of rows) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
   return new Map([...totals].map(([id, t]) => [id, weekLine(t)]));
@@ -190,6 +256,28 @@ export async function weekLines(
 
 /** A team's week line, or all zeros when it has no games yet. */
 export const emptyLine = (): CategoryLine => weekLine(ZERO);
+
+/**
+ * One team's starters' games against its week's game limits (for My team):
+ * games counted so far, what the lineups as set will reach, and the days whose
+ * starts won't count. Null when the week has no limits.
+ */
+export async function teamGameLimitUsage(
+  db: Pool,
+  leagueId: number,
+  teamId: number,
+  week: { startsOn: string; endsOn: string },
+  today: string,
+): Promise<GameLimitUsage | null> {
+  const limits = await weekLimits(db, leagueId, week.startsOn);
+  if (!limits) return null;
+  const params = [leagueId, week.startsOn, week.endsOn, today, teamId];
+  const [played, upcoming] = await Promise.all([
+    db.query<PlayedStartRow>(PLAYED_SQL, params),
+    db.query<StartRow>(UPCOMING_SQL, params),
+  ]);
+  return gameLimitUsage(played.rows.map(toStart), upcoming.rows.map(toStart), limits);
+}
 
 interface TeamRow {
   id: number;
@@ -205,6 +293,7 @@ interface WeekRow {
   starts_on: string;
   ends_on: string;
   is_playoffs: boolean;
+  game_limits: unknown;
 }
 
 interface PlayerInfoRow {
@@ -217,6 +306,17 @@ interface PlayerInfoRow {
 }
 
 type PlayedRow = Totals & { team_id: number; player_id: number; min: number };
+
+interface StartRow {
+  team_id: number;
+  player_id: number;
+  slot: LineupSlot;
+  date: string;
+  game_id: number;
+  tipoff: string | null;
+}
+
+type PlayedStartRow = StartRow & Totals & { min: number };
 
 interface DayRow extends Totals {
   team_id: number;
@@ -341,7 +441,8 @@ export async function getMatchupWeek(
   const { today } = league;
 
   const { rows: weeks } = await db.query<WeekRow>(
-    `SELECT week, to_char(starts_on, 'YYYY-MM-DD') AS starts_on, to_char(ends_on, 'YYYY-MM-DD') AS ends_on, is_playoffs
+    `SELECT week, to_char(starts_on, 'YYYY-MM-DD') AS starts_on, to_char(ends_on, 'YYYY-MM-DD') AS ends_on, is_playoffs,
+            game_limits
      FROM league_weeks WHERE league_id = $1 ORDER BY week`,
     [league.id],
   );
@@ -371,18 +472,20 @@ export async function getMatchupWeek(
   const refDate = today < w.starts_on ? w.starts_on : today > w.ends_on ? w.ends_on : today;
 
   const params = [league.id, w.starts_on, w.ends_on, today];
-  const [played, left, pairs] = await Promise.all([
-    db.query<PlayedRow>(PLAYED_SQL, params),
-    db.query<{ team_id: number; left: number }>(LEFT_SQL, params),
+  const limits = toGameLimits(w.game_limits);
+  const [starts, upcoming, pairs] = await Promise.all([
+    db.query<PlayedStartRow>(PLAYED_SQL, [...params, null]),
+    db.query<StartRow>(UPCOMING_SQL, [...params, null]),
     db.query<Pick<BracketRow, "team_a_id" | "team_b_id" | "bracket" | "bracket_round">>(
       `SELECT team_a_id::int, team_b_id::int, bracket, bracket_round FROM matchups WHERE league_id = $1 AND week = $2
         ORDER BY bracket NULLS FIRST, bracket_round, bracket_slot, id`,
       [league.id, w.week],
     ),
   ]);
+  const played = countedRows(starts.rows, limits);
   const totals = new Map<number, Totals>();
-  for (const r of played.rows) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
-  const gamesLeft = new Map(left.rows.map((r) => [r.team_id, r.left]));
+  for (const r of played) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
+  const gamesLeft = countedLeft(starts.rows, upcoming.rows, limits);
   const line = (id: number) => weekLine(totals.get(id) ?? ZERO);
   const cfg = configOf({ ...league, team_count: teams.length });
 
@@ -397,10 +500,10 @@ export async function getMatchupWeek(
     // The manager's team goes on the left when it plays; otherwise the team asked for.
     const leftId = involves(shown, mine?.id) ? mine!.id : focusId!;
     const rightId = shown.team_a_id === leftId ? shown.team_b_id : shown.team_a_id;
-    const players = await loadPlayers(db, params, [leftId, rightId], statsDate, refDate, played.rows);
+    const players = await loadPlayers(db, params, [leftId, rightId], statsDate, refDate, played);
     const side = (id: number): MatchupSide => ({
       ...summary(id), managerName: teamById.get(id)!.manager_name, stats: line(id), gamesPlayed: totals.get(id)?.gp ?? 0,
-      gamesLeft: gamesLeft.get(id) ?? 0, players: players.get(id) ?? [],
+      gamesLeft: gamesLeft.get(id) ?? 0, players: players.get(id) ?? [], ...(limits && { gameLimit: limits.total }),
     });
     const team = side(leftId);
     const opponent = side(rightId);
