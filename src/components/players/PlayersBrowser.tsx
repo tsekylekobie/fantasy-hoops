@@ -12,7 +12,7 @@ import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
-import PuntWeights, { isDefaultWeights, weightsParam } from "./PuntWeights";
+import PuntWeights, { isDefaultWeights, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
 import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
 import styles from "./PlayersBrowser.module.css";
 
@@ -111,6 +111,22 @@ function toQueryString(s: UrlState): string {
   return qs ? `?${qs}` : "";
 }
 
+const POSITION_NAMES: Record<Exclude<PositionFilter, "all">, string> = { G: "Guards", F: "Forwards", C: "Centers" };
+
+/** One phrase per folded filter, for the closed Filters button. `changed` marks a non-default pick. */
+function filterSummary(s: UrlState): { text: string; changed: boolean }[] {
+  const playLabels = PLAYS.filter((o) => s.plays.includes(o.value)).map((o) => o.label.toLowerCase());
+  return [
+    { text: s.scope === "all" ? "All players" : "Free agents", changed: s.scope !== "fa" },
+    { text: s.pos === "all" ? "All positions" : POSITION_NAMES[s.pos], changed: s.pos !== "all" },
+    { text: `Plays ${playLabels.length > 0 ? playLabels.join(" or ") : "any day"}`, changed: playLabels.length > 0 },
+    {
+      text: s.waivers === "any" ? "Any waiver status" : WAIVERS.find((o) => o.value === s.waivers)!.label,
+      changed: s.waivers !== "any",
+    },
+  ];
+}
+
 type Load =
   | { status: "loading"; data: PlayersResponse | null }
   | { status: "ready"; data: PlayersResponse }
@@ -154,6 +170,8 @@ export default function PlayersBrowser() {
     return () => clearTimeout(t);
   }, [search, navigate]);
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // Add sheet (over the table or the modal), and the manager's team for "mine" chips.
   const [adding, setAdding] = useState<number | null>(null);
   const [myTeamId, setMyTeamId] = useState<number | null>(null);
@@ -167,27 +185,39 @@ export default function PlayersBrowser() {
   }, []);
 
   // Punt weights: per user, not in the URL. `weights` follows the sliders;
-  // `applied` (what the table is fetched with, and what gets saved) trails it
-  // by a pause. The table waits for the saved weights before its first fetch.
+  // `applied` (what the table is fetched with, cached and saved) trails it by
+  // a pause. The browser cache lets the table load with them right away;
+  // signed in, the account's saved weights then win (they follow the user
+  // across devices) unless the sliders were already touched. Without a cache
+  // the table waits for the account's weights before its first fetch.
   const [weights, setWeights] = useState<CategoryWeights>(DEFAULT_WEIGHTS);
   const [applied, setApplied] = useState<CategoryWeights | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [showWeights, setShowWeights] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const touchedWeights = useRef(false);
   useEffect(() => {
+    const cached = readCachedWeights();
+    if (cached) {
+      setWeights(cached);
+      setApplied(cached);
+    }
     const ctrl = new AbortController();
     fetchJson<WeightsResponse>("/api/me/weights", ctrl.signal)
       .then((res) => {
+        setSignedIn(res.signedIn);
+        if (touchedWeights.current || (!res.signedIn && cached)) return;
         setWeights(res.weights);
         setApplied(res.weights);
-        setSignedIn(res.signedIn);
+        writeCachedWeights(res.weights);
       })
       .catch(() => {
-        if (!ctrl.signal.aborted) setApplied(DEFAULT_WEIGHTS);
+        if (!ctrl.signal.aborted) setApplied((prev) => prev ?? DEFAULT_WEIGHTS);
       });
     return () => ctrl.abort();
   }, []);
   const changeWeights = (next: CategoryWeights) => {
+    touchedWeights.current = true;
     setWeights(next);
     setSaveError(null);
   };
@@ -195,6 +225,7 @@ export default function PlayersBrowser() {
     if (!applied || weightsParam(weights) === weightsParam(applied)) return;
     const t = setTimeout(() => {
       setApplied(weights);
+      writeCachedWeights(weights);
       if (!signedIn) return;
       fetch("/api/me/weights", {
         method: "PUT",
@@ -292,6 +323,8 @@ export default function PlayersBrowser() {
         )}
 
         <div className={styles.bar}>
+          <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
+          <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
           <input
             type="search"
             className={styles.search}
@@ -300,10 +333,6 @@ export default function PlayersBrowser() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <SegmentedToggle label="Players" options={SCOPES} value={scope} onChange={(v) => navigate({ scope: v, page: 1 })} />
-          <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
-          <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
-          <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
           <button
             type="button"
             className={styles.weightsBtn}
@@ -318,16 +347,49 @@ export default function PlayersBrowser() {
           <PuntWeights weights={weights} onChange={changeWeights} signedIn={signedIn} saveError={saveError} />
         )}
 
-        {/* Streaming: who plays soon, and who comes off waivers soon. */}
-        <div className={`${styles.bar} ${styles.stream}`}>
-          <span className={styles.filter}>
-            <span className={styles.filterLabel} aria-hidden="true">Plays</span>
-            <MultiToggle label="Plays" anyLabel="Any day" options={PLAYS} value={plays} onChange={(v) => navigate({ plays: v, page: 1 })} />
-          </span>
-          <span className={styles.filter}>
-            <span className={styles.filterLabel} aria-hidden="true">Waivers</span>
-            <SegmentedToggle label="Waivers" options={WAIVERS} value={waivers} onChange={(v) => navigate({ waivers: v, page: 1 })} />
-          </span>
+        {/* The rest of the filters fold away; closed, the button sums up what's selected. */}
+        <div className={styles.filters}>
+          <button
+            type="button"
+            className={styles.filtersToggle}
+            aria-expanded={filtersOpen}
+            aria-controls="player-filters"
+            onClick={() => setFiltersOpen((o) => !o)}
+          >
+            <span className={styles.chevron} aria-hidden="true" />
+            <span className={styles.filtersTitle}>Filters</span>
+            {!filtersOpen && (
+              <span className={styles.filtersSummary}>
+                <span className={styles.summaryParts}>
+                  {filterSummary(state).map((part) => (
+                    <span key={part.text} className={part.changed ? styles.changed : undefined}>
+                      {part.text}
+                    </span>
+                  ))}
+                </span>
+              </span>
+            )}
+          </button>
+
+          <div id="player-filters" className={styles.filtersPanel} hidden={!filtersOpen}>
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Players</span>
+              <SegmentedToggle label="Players" options={SCOPES} value={scope} onChange={(v) => navigate({ scope: v, page: 1 })} />
+            </span>
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Position</span>
+              <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
+            </span>
+            {/* Streaming: who plays soon, and who comes off waivers soon. */}
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Plays</span>
+              <MultiToggle label="Plays" anyLabel="Any day" options={PLAYS} value={plays} onChange={(v) => navigate({ plays: v, page: 1 })} />
+            </span>
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Waivers</span>
+              <SegmentedToggle label="Waivers" options={WAIVERS} value={waivers} onChange={(v) => navigate({ waivers: v, page: 1 })} />
+            </span>
+          </div>
         </div>
 
         <PlayersTable
