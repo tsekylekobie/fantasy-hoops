@@ -1,6 +1,8 @@
 // The /league page: docs/design/league.mockup.html (standings), plus this
 // week's scoreboard. Team names open that team's roster (yours is /my-team);
-// a score opens that matchup. Trades in review (and yours) sit below.
+// a score opens that matchup. Trades in review (and yours) sit below. The
+// Standings card switches to the Playoffs view (PlayoffsBracket): projected
+// from today's standings, or the real bracket once it exists (and then first).
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
@@ -8,6 +10,8 @@ import SiteHeader from "@/components/SiteHeader";
 import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import PlayoffsBracket from "./PlayoffsBracket";
+import StandingsCard from "./StandingsCard";
 import styles from "./LeagueView.module.css";
 
 /** 5–3–1 */
@@ -55,7 +59,11 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
         {data.name} · {data.teamCount} teams · Head-to-head, 9 categories · {season}
       </p>
       <div className={styles.cols}>
-        <Standings data={data} />
+        <StandingsCard
+          standings={<Standings data={data} />}
+          playoffs={data.playoffs ? <PlayoffsBracket data={data.playoffs} myTeam={data.myTeam} /> : null}
+          initial={data.playoffs && !data.playoffs.projected ? "playoffs" : "standings"}
+        />
         <Scoreboard data={data} />
       </div>
       <TradesPanel scope="league" />
@@ -67,9 +75,9 @@ function Standings({ data }: { data: LeagueOverview }) {
   const counted = data.includesLiveWeek
     ? `${data.weeksCounted - 1} finished week${data.weeksCounted === 2 ? "" : "s"} plus this week’s live score`
     : `${data.weeksCounted} week${data.weeksCounted === 1 ? "" : "s"}`;
+  const bottom = data.toiletBowlTeams ? data.teamCount - data.toiletBowlTeams : -1;
   return (
-    <section className={styles.card}>
-      <h3>Standings</h3>
+    <>
       <div role="table" aria-label="Standings">
         <div className={`${styles.s} ${styles.h}`} role="row">
           <span role="columnheader">#</span>
@@ -83,7 +91,7 @@ function Standings({ data }: { data: LeagueOverview }) {
           <div
             key={t.id}
             role="row"
-            className={[styles.s, t.isMine && styles.mine, i === data.playoffTeams && styles.cut].filter(Boolean).join(" ")}
+            className={[styles.s, t.isMine && styles.mine, (i === data.playoffTeams || i === bottom) && styles.cut].filter(Boolean).join(" ")}
           >
             <span role="cell">{t.rank}</span>
             <span role="cell" className={styles.tn}>
@@ -99,9 +107,12 @@ function Standings({ data }: { data: LeagueOverview }) {
       </div>
       <p className={styles.foot}>
         Category record across {data.weeksCounted === 0 ? "every week (none played yet)" : counted}.
-        {" "}Top {data.playoffTeams} make the playoffs (dashed line). Team names open that team’s roster.
+        {" "}Top {data.playoffTeams} make the playoffs
+        {data.toiletBowlTeams ? `; the bottom ${data.toiletBowlTeams} play the toilet bowl` : ""}
+        {bottom >= 0 && bottom !== data.playoffTeams ? " (dashed lines)" : " (dashed line)"}.
+        {" "}Team names open that team’s roster.
       </p>
-    </section>
+    </>
   );
 }
 
@@ -128,9 +139,11 @@ function ScoreRow({ m, week }: { m: OtherMatchup; week: number }) {
       <span>{t.name}</span>
     </span>
   );
+  const tag = m.bracket && <small className={styles.tag}>{m.bracket.label}</small>;
   if (!m.teamB) {
     return (
       <div className={styles.m}>
+        {tag}
         {side(m.teamA)}
         <b>Bye</b>
         <span />
@@ -143,8 +156,9 @@ function ScoreRow({ m, week }: { m: OtherMatchup; week: number }) {
     <Link
       href={href}
       className={`${styles.m} ${styles.link} ${m.isMine ? styles.mine : ""}`}
-      aria-label={`${m.teamA.name} ${fmtScore(m.score)} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
+      aria-label={`${m.bracket ? `${m.bracket.label}: ` : ""}${m.teamA.name} ${fmtScore(m.score)} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
     >
+      {tag}
       {side(m.teamA)}
       <b>{fmtScore(m.score)}</b>
       {side(m.teamB, true)}

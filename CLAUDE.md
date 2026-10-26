@@ -17,6 +17,10 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   `POST /api/dev/waivers?at=...` (dev only).
 - `src/lib/queries/settings.ts` + `/api/league/settings` + `/league/settings`: the commissioner's league settings
   (`leagues.commissioner_user_id` only). Waivers run on `leagues.waiver_days_of_week` (ISO weekdays, migration 0009).
+- `src/lib/playoffs/bracket.ts`: playoff and toilet bowl rules (seeding, pairings, who advances, ties go to the better
+  seed). `src/lib/queries/playoffs.ts` `syncPlayoffs` is the one place that creates bracket matchups (worker task
+  `playoffs`; by hand `npm run playoffs -- --today <yyyy-mm-dd>` or `POST /api/dev/playoffs?today=...`, dev only).
+  Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (league data: `il_statuses`,
   `il_min_days` and the IL+ pair); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
 - `src/components/`: UI. `Avatar` must fall back to initials.

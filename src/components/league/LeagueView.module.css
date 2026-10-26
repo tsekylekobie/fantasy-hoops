@@ -98,6 +98,20 @@
   gap: 12px;
 }
 
+/* A card heading with a control beside it (Standings | Playoffs). */
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 20px 10px 0;
+}
+
+.card .cardHead h3 {
+  padding: 6px 20px 0;
+}
+
 .when {
   font-family: var(--font-body);
   font-weight: 500;
@@ -247,6 +261,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* "Playoffs · Semifinal" above a bracket pairing. */
+.tag {
+  grid-column: 1 / -1;
+  margin: 8px 0 -6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
 .side {
   display: flex;
   align-items: center;
@@ -289,5 +314,13 @@
 
   .opt {
     display: none;
+  }
+
+  .cardHead {
+    padding-right: 14px;
+  }
+
+  .card .cardHead h3 {
+    padding-left: 14px;
   }
 }

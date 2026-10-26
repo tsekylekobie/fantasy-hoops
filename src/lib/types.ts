@@ -228,6 +228,8 @@ export interface Matchup {
   score: MatchupScore;
   /** Whether `team` is the signed-in manager's. */
   isMine: boolean;
+  /** Set for playoff and toilet bowl matchups (absent in the regular season). */
+  bracket?: BracketTag;
 }
 
 /** Another pairing this week, scored for teamA. teamB null = playoff bye. */
@@ -237,6 +239,8 @@ export interface OtherMatchup {
   score: MatchupScore;
   /** Contains the signed-in manager's team. */
   isMine: boolean;
+  /** Set for playoff and toilet bowl matchups (absent in the regular season). */
+  bracket?: BracketTag;
 }
 
 /** The /matchup page: one league week from the signed-in manager's side. */
@@ -301,6 +305,78 @@ export interface LeagueOverview {
   /** That week's pairings, the manager's first. */
   matchups: OtherMatchup[];
   myTeam: FantasyTeamSummary | null;
+  /** Bottom teams in the toilet bowl; 0 when it's off. */
+  toiletBowlTeams?: number;
+  /** The Standings card's Playoffs view. */
+  playoffs?: PlayoffsView;
+}
+
+// Playoffs and the toilet bowl (src/lib/playoffs/bracket.ts)
+
+/**
+ * "playoffs": the winner advances, the final's winner is champion.
+ * "toilet_bowl": the loser advances, the final's loser is last place.
+ */
+export type BracketKind = "playoffs" | "toilet_bowl";
+
+/** Which bracket game a matchup is, e.g. "Playoffs · Semifinal" or "Toilet bowl · Round 1". */
+export interface BracketTag {
+  kind: BracketKind;
+  round: number;
+  /** "Quarterfinal", "Semifinal", "Final", "Round 1", ... */
+  roundName: string;
+  /** "Playoffs · Semifinal" */
+  label: string;
+}
+
+export interface BracketTeam extends FantasyTeamSummary {
+  /** Final (or, projected, current) regular-season seed: 1 = first place. */
+  seed: number;
+  /** Regular-season category record. */
+  record: MatchupScore;
+  isMine: boolean;
+}
+
+/** One bracket game. a/b null = not decided yet (TBD); b null with bye = a bye. */
+export interface BracketGame {
+  slot: number;
+  a: BracketTeam | null;
+  b: BracketTeam | null;
+  bye: boolean;
+  /** Categories for `a`, once the week has started; null before (and for byes). */
+  score: MatchupScore | null;
+  status: "upcoming" | "live" | "final";
+  /** Final games: who won (a tie goes to the better seed). */
+  winnerId: number | null;
+  /** Who moves on: the winner in the playoffs, the loser in the toilet bowl, the team with a bye. */
+  advancesId: number | null;
+}
+
+export interface BracketRound {
+  round: number;
+  name: string;
+  /** The league week this round is played in; null without a playoff schedule. */
+  week: { week: number; startsOn: string; endsOn: string } | null;
+  games: BracketGame[];
+}
+
+export interface Bracket {
+  kind: BracketKind;
+  teams: number;
+  rounds: BracketRound[];
+  /** Champion (playoffs) or last place (toilet bowl), once the final is final. */
+  result: BracketTeam | null;
+}
+
+/**
+ * The League page's Playoffs view. projected: seeded from today's standings
+ * ("if the season ended today"); otherwise the real bracket, from matchups.
+ */
+export interface PlayoffsView {
+  projected: boolean;
+  playoffs: Bracket;
+  /** Null when the league has no toilet bowl. */
+  toiletBowl: Bracket | null;
 }
 
 /** transactions.type: every kind of roster move the league records. */
@@ -733,6 +809,13 @@ export interface LeagueSettings {
   /** null = unlimited. */
   maxAddsPerWeek: number | null;
   maxAddsPerSeason: number | null;
+  /** Teams in the playoff bracket (top seeds; byes when not a power of two). */
+  playoffTeams: number;
+  /** First playoff week (league_weeks.week); one week per round. */
+  playoffStartWeek: number;
+  /** Bottom teams play a loser-advances bracket; its final's loser is last place. */
+  toiletBowl: boolean;
+  toiletBowlTeams: number;
 }
 
 export interface LeagueSettingsResponse {
@@ -742,6 +825,10 @@ export interface LeagueSettingsResponse {
   /** The next waiver run on the saved schedule. */
   nextRunAt: string;
   updatedAt: string;
+  /** The league's schedule, for the playoff start week. */
+  weeks?: { week: number; startsOn: string; endsOn: string }[];
+  /** Playoff matchups exist: the playoff settings can't change any more. */
+  playoffsStarted?: boolean;
 }
 
 // Team profile (/api/team/profile)

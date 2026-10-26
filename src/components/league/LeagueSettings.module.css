@@ -69,6 +69,14 @@
   padding: 16px 20px 10px;
 }
 
+/* A line under a card's heading (e.g. playoff settings locked). */
+.note {
+  margin: 0;
+  padding: 0 20px 12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
 .group + .group {
   border-top: 2px solid var(--row-divider);
 }

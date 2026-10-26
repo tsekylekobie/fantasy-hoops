@@ -17,6 +17,7 @@ import {
   type TradeReview,
   type WaiverOrder,
 } from "../types";
+import { bracketRounds } from "../playoffs/bracket";
 import { LineupError } from "./lineup";
 import { ISO } from "./waiverStatus";
 
@@ -31,6 +32,8 @@ export const LIMITS = {
   ilMinDays: [0, 60],
   tradeReviewDays: [0, 7],
   maxAdds: [0, 200],
+  playoffTeams: [2, 16],
+  toiletBowlTeams: [2, 8],
 } as const;
 
 interface LeagueRow {
@@ -55,6 +58,12 @@ interface LeagueRow {
   trade_deadline: string | null;
   max_adds_per_week: number | null;
   max_adds_per_season: number | null;
+  playoff_teams: number;
+  playoff_start_week: number | null;
+  toilet_bowl: boolean;
+  toilet_bowl_teams: number;
+  weeks: { week: number; startsOn: string; endsOn: string }[];
+  playoffs_started: boolean;
   next_run_at: string;
   updated_at: string;
 }
@@ -67,6 +76,10 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
             l.waiver_days, l.waivers_after_game_start, l.roster_slots, l.il_statuses, l.il_min_days,
             l.il_plus_statuses, l.il_plus_min_days, l.trade_review, l.trade_review_days, l.trade_veto_votes,
             to_char(l.trade_deadline, 'YYYY-MM-DD') AS trade_deadline, l.max_adds_per_week, l.max_adds_per_season,
+            l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams,
+            coalesce((SELECT json_agg(json_build_object('week', w.week, 'startsOn', w.starts_on, 'endsOn', w.ends_on) ORDER BY w.week)
+                        FROM league_weeks w WHERE w.league_id = l.id), '[]') AS weeks,
+            EXISTS (SELECT 1 FROM matchups m WHERE m.league_id = l.id AND m.bracket IS NOT NULL) AS playoffs_started,
             ${ISO("next_waiver_run(l.id, now())")} AS next_run_at, ${ISO("l.updated_at")} AS updated_at
        FROM leagues l WHERE l.season = $1 ORDER BY l.id DESC LIMIT 1`,
     [season],
@@ -74,12 +87,17 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
   return r ?? null;
 }
 
+/** The default first playoff week: as late as the schedule allows. */
+const lastStart = (r: LeagueRow) => Math.max(2, r.weeks.length - bracketRounds(Math.min(r.playoff_teams, r.team_count)) + 1);
+
 function toResponse(r: LeagueRow): LeagueSettingsResponse {
   return {
     leagueName: r.name,
     teamCount: r.team_count,
     nextRunAt: r.next_run_at,
     updatedAt: r.updated_at,
+    weeks: r.weeks,
+    playoffsStarted: r.playoffs_started,
     settings: {
       waiverType: r.waiver_type,
       waiverTime: r.waiver_time,
@@ -99,6 +117,10 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
       tradeDeadline: r.trade_deadline,
       maxAddsPerWeek: r.max_adds_per_week,
       maxAddsPerSeason: r.max_adds_per_season,
+      playoffTeams: r.playoff_teams,
+      playoffStartWeek: r.playoff_start_week ?? lastStart(r),
+      toiletBowl: r.toilet_bowl,
+      toiletBowlTeams: r.toilet_bowl_teams,
     },
   };
 }
@@ -132,8 +154,12 @@ function statuses(v: unknown): string[] | null {
 /**
  * Checks a PUT body; returns the settings (normalised: weekdays and statuses
  * sorted, duplicates dropped) or the first problem, worded for the commissioner.
+ * `weekCount` is the length of the schedule (league_weeks), which the playoff
+ * rounds (one week each) must fit in after at least one regular-season week.
  */
-export function parseSettings(body: unknown, teamCount: number): { settings: LeagueSettings } | { error: string } {
+export function parseSettings(
+  body: unknown, teamCount: number, weekCount: number,
+): { settings: LeagueSettings } | { error: string } {
   if (typeof body !== "object" || body === null) return { error: "Send the settings as a JSON object." };
   const b = body as Record<string, unknown>;
 
@@ -174,6 +200,29 @@ export function parseSettings(body: unknown, teamCount: number): { settings: Lea
     if (v !== null && !isInt(v, LIMITS.maxAdds)) return { error: `Adds per ${label} must be ${LIMITS.maxAdds.join("–")} or unlimited.` };
   }
 
+  if (!isInt(b.playoffTeams, [LIMITS.playoffTeams[0], Math.min(LIMITS.playoffTeams[1], teamCount)])) {
+    return { error: `Playoff teams must be ${LIMITS.playoffTeams[0]}–${Math.min(LIMITS.playoffTeams[1], teamCount)}.` };
+  }
+  if (typeof b.toiletBowl !== "boolean") return { error: "toiletBowl must be true or false." };
+  if (!isInt(b.toiletBowlTeams, LIMITS.toiletBowlTeams)) {
+    return { error: `Toilet bowl teams must be ${LIMITS.toiletBowlTeams.join("–")}.` };
+  }
+  const playoffRounds = bracketRounds(b.playoffTeams);
+  if (b.toiletBowl) {
+    if (b.playoffTeams + b.toiletBowlTeams > teamCount) {
+      return { error: `Playoff and toilet bowl teams add up to more than the league's ${teamCount}.` };
+    }
+    if (bracketRounds(b.toiletBowlTeams) > playoffRounds) {
+      return { error: "The toilet bowl can't have more rounds than the playoffs." };
+    }
+  }
+  // One week per round, after at least one regular-season week.
+  const latest = weekCount - playoffRounds + 1;
+  if (latest < 2) return { error: `The schedule's ${weekCount} weeks are too few for ${playoffRounds} playoff rounds.` };
+  if (!isInt(b.playoffStartWeek, [2, latest])) {
+    return { error: `The playoffs take ${playoffRounds} weeks, so they must start in week 2–${latest}.` };
+  }
+
   return {
     settings: {
       waiverType: b.waiverType as WaiverOrder["type"],
@@ -194,6 +243,10 @@ export function parseSettings(body: unknown, teamCount: number): { settings: Lea
       tradeDeadline: deadline as string | null,
       maxAddsPerWeek: b.maxAddsPerWeek as number | null,
       maxAddsPerSeason: b.maxAddsPerSeason as number | null,
+      playoffTeams: b.playoffTeams,
+      playoffStartWeek: b.playoffStartWeek,
+      toiletBowl: b.toiletBowl,
+      toiletBowlTeams: b.toiletBowlTeams,
     },
   };
 }
@@ -209,7 +262,7 @@ export async function updateLeagueSettings(
   const current = await loadLeague(pool, season);
   if (!current) throw new LineupError("No league for this season.", 404);
   if (current.commissioner_user_id !== userId) throw new LineupError("Only the commissioner can change league settings.", 403);
-  const parsed = parseSettings(body, current.team_count);
+  const parsed = parseSettings(body, current.team_count, current.weeks.length);
   if ("error" in parsed) throw new LineupError(parsed.error, 400);
   const s = parsed.settings;
 
@@ -243,6 +296,23 @@ export async function updateLeagueSettings(
       throw new LineupError(`Some teams are using more IL slots than that: ${list}. They need to move those players first.`, 409);
     }
 
+    // Playoff settings are fixed once bracket matchups exist, and the playoff
+    // weeks can't already hold regular-season matchups.
+    const playoffsChanged =
+      s.playoffTeams !== current.playoff_teams || s.playoffStartWeek !== current.playoff_start_week ||
+      s.toiletBowl !== current.toilet_bowl || s.toiletBowlTeams !== current.toilet_bowl_teams;
+    if (playoffsChanged) {
+      const { rows: [m] } = await client.query<{ started: boolean; regular: number | null }>(
+        `SELECT bool_or(bracket IS NOT NULL) AS started, min(week) FILTER (WHERE bracket IS NULL AND week >= $2) AS regular
+           FROM matchups WHERE league_id = $1`,
+        [current.id, s.playoffStartWeek],
+      );
+      if (m?.started) throw new LineupError("The playoffs have started, so the playoff settings can't change.", 409);
+      if (m?.regular != null) {
+        throw new LineupError(`Week ${m.regular} has regular-season matchups, so the playoffs can't start in week ${s.playoffStartWeek}.`, 409);
+      }
+    }
+
     const slots: SlotCounts = { ...current.roster_slots, IL: s.ilSlots, "IL+": s.ilPlusSlots };
     for (const k of ["IL", "IL+"] as const) if (slots[k] === 0) delete slots[k];
     await client.query(
@@ -251,6 +321,7 @@ export async function updateLeagueSettings(
          waivers_after_game_start = $7, roster_slots = $8, il_statuses = $9, il_min_days = $10,
          il_plus_statuses = $11, il_plus_min_days = $12, trade_review = $13, trade_review_days = $14,
          trade_veto_votes = $15, trade_deadline = $16, max_adds_per_week = $17, max_adds_per_season = $18,
+         playoff_teams = $19, playoff_start_week = $20, toilet_bowl = $21, toilet_bowl_teams = $22,
          updated_at = now()
        WHERE id = $1`,
       [
@@ -258,8 +329,15 @@ export async function updateLeagueSettings(
         s.waiversAfterGameStart, JSON.stringify(slots), s.ilStatuses, s.ilMinDays,
         s.ilPlusStatuses, s.ilPlusMinDays, s.tradeReview, s.tradeReviewDays,
         s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
+        s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
       ],
     );
+    if (playoffsChanged) {
+      await client.query(
+        `UPDATE league_weeks SET is_playoffs = (week >= $2) WHERE league_id = $1 AND is_playoffs <> (week >= $2)`,
+        [current.id, s.playoffStartWeek],
+      );
+    }
 
     const scheduleChanged =
       s.waiverTime !== current.waiver_time ||

@@ -20,6 +20,9 @@
 //                processes due claims and clears waivers (queries/waivers.ts). Each
 //                daily run is recorded in waiver_runs, so it happens exactly once
 //                even across restarts; a worker that was down runs the missed one.
+//   playoffs     Every 15 min and just after midnight (league time): once the regular
+//                season has ended, creates the playoff and toilet bowl rounds that are
+//                due and records finished bracket weeks (queries/playoffs.ts). Database only.
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
@@ -30,6 +33,7 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
 import { freezeSeasonLineups } from "../src/lib/queries/lineup";
+import { syncPlayoffs } from "../src/lib/queries/playoffs";
 import { processDueTrades } from "../src/lib/queries/trades";
 import { processDueWaivers } from "../src/lib/queries/waivers";
 import { CURRENT_SEASON } from "../src/lib/types";
@@ -179,6 +183,15 @@ async function waivers(): Promise<Result> {
   return { summary, nextInMs };
 }
 
+/** Creates due playoff and toilet bowl rounds; see syncPlayoffs. */
+async function playoffs(): Promise<Result> {
+  const { log: lines, waiting } = await syncPlayoffs(db, season);
+  return {
+    summary: waiting ?? (lines.length ? lines.join("; ") : "nothing due"),
+    nextInMs: Math.min(15 * MIN, msUntilLocalHour(0) + MIN),
+  };
+}
+
 interface Task {
   name: string;
   run: () => Promise<Result>;
@@ -205,6 +218,7 @@ const TASKS: Task[] = [
   { name: "rosters", run: rosters, firstDue: (last) => (last ? last.getTime() + 12 * HOUR : now()), nextAt: 0 },
   { name: "lineups", run: lineups, firstDue: () => now(), nextAt: 0 },
   { name: "waivers", run: waivers, firstDue: () => now(), nextAt: 0 },
+  { name: "playoffs", run: playoffs, firstDue: () => now(), nextAt: 0 },
 ];
 
 let stopping = false;

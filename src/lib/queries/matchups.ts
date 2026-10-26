@@ -21,6 +21,7 @@ import type {
   MatchupWeek,
 } from "../types";
 import { CATEGORY_KEYS, LINEUP_SLOTS } from "../types";
+import { bracketTag, configOf, type BracketRow } from "./playoffs";
 import { toTeamSummary } from "./teamLogo";
 
 const NON_SCORING = `('BN','IL','IL+')`;
@@ -329,8 +330,10 @@ export async function getMatchupWeek(
 ): Promise<MatchupWeek | null> {
   const { rows: [league] } = await db.query<{
     id: number; today: string; time_zone: string; roster_slots: Partial<Record<LineupSlot, number>>;
+    playoff_teams: number; toilet_bowl: boolean; toilet_bowl_teams: number;
   }>(
-    `SELECT id::int, time_zone, roster_slots, to_char((now() AT TIME ZONE time_zone)::date, 'YYYY-MM-DD') AS today
+    `SELECT id::int, time_zone, roster_slots, playoff_teams, toilet_bowl, toilet_bowl_teams,
+            to_char((now() AT TIME ZONE time_zone)::date, 'YYYY-MM-DD') AS today
      FROM leagues WHERE season = $1 ORDER BY id LIMIT 1`,
     [season],
   );
@@ -371,8 +374,9 @@ export async function getMatchupWeek(
   const [played, left, pairs] = await Promise.all([
     db.query<PlayedRow>(PLAYED_SQL, params),
     db.query<{ team_id: number; left: number }>(LEFT_SQL, params),
-    db.query<{ team_a_id: number; team_b_id: number | null }>(
-      `SELECT team_a_id::int, team_b_id::int FROM matchups WHERE league_id = $1 AND week = $2 ORDER BY id`,
+    db.query<Pick<BracketRow, "team_a_id" | "team_b_id" | "bracket" | "bracket_round">>(
+      `SELECT team_a_id::int, team_b_id::int, bracket, bracket_round FROM matchups WHERE league_id = $1 AND week = $2
+        ORDER BY bracket NULLS FIRST, bracket_round, bracket_slot, id`,
       [league.id, w.week],
     ),
   ]);
@@ -380,6 +384,7 @@ export async function getMatchupWeek(
   for (const r of played.rows) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
   const gamesLeft = new Map(left.rows.map((r) => [r.team_id, r.left]));
   const line = (id: number) => weekLine(totals.get(id) ?? ZERO);
+  const cfg = configOf({ ...league, team_count: teams.length });
 
   // The pairing to show: the requested team's, else the manager's. Byes have nothing to show.
   const involves = (p: { team_a_id: number; team_b_id: number | null }, id: number | undefined) =>
@@ -399,17 +404,22 @@ export async function getMatchupWeek(
     });
     const team = side(leftId);
     const opponent = side(rightId);
-    matchup = { team, opponent, ...compareLines(team.stats, opponent.stats), isMine: leftId === mine?.id };
+    const bracket = bracketTag(shown, cfg);
+    matchup = { team, opponent, ...compareLines(team.stats, opponent.stats), isMine: leftId === mine?.id, ...(bracket && { bracket }) };
   }
 
   const others: MatchupWeek["others"] = pairs.rows
     .filter((p) => p !== shown)
-    .map((p) => ({
-      teamA: summary(p.team_a_id),
-      teamB: p.team_b_id === null ? null : summary(p.team_b_id),
-      score: p.team_b_id === null ? { wins: 0, losses: 0, ties: 0 } : compareLines(line(p.team_a_id), line(p.team_b_id)).score,
-      isMine: mine !== undefined && (p.team_a_id === mine.id || p.team_b_id === mine.id),
-    }));
+    .map((p) => {
+      const bracket = bracketTag(p, cfg);
+      return {
+        teamA: summary(p.team_a_id),
+        teamB: p.team_b_id === null ? null : summary(p.team_b_id),
+        score: p.team_b_id === null ? { wins: 0, losses: 0, ties: 0 } : compareLines(line(p.team_a_id), line(p.team_b_id)).score,
+        isMine: mine !== undefined && (p.team_a_id === mine.id || p.team_b_id === mine.id),
+        ...(bracket && { bracket }),
+      };
+    });
 
   const dayMs = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
   return {

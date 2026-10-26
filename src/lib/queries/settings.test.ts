@@ -10,19 +10,20 @@ const valid: LeagueSettings = {
   ilSlots: 2, ilStatuses: ["Out"], ilMinDays: 0, ilPlusSlots: 0, ilPlusStatuses: [], ilPlusMinDays: 0,
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
   maxAddsPerWeek: 4, maxAddsPerSeason: null,
+  playoffTeams: 8, playoffStartWeek: 22, toiletBowl: true, toiletBowlTeams: 4,
 };
 
 const error = (over: Partial<Record<keyof LeagueSettings, unknown>>) => {
-  const r = parseSettings({ ...valid, ...over }, 12);
+  const r = parseSettings({ ...valid, ...over }, 12, 24);
   return "error" in r ? r.error : null;
 };
 
 test("the seeded settings are valid", () => {
-  assert.deepEqual(parseSettings(valid, 12), { settings: valid });
+  assert.deepEqual(parseSettings(valid, 12, 24), { settings: valid });
 });
 
 test("weekdays and statuses come back sorted and deduplicated", () => {
-  const r = parseSettings({ ...valid, waiverDaysOfWeek: [5, 2, 5], ilStatuses: ["Day-To-Day", "Out"] }, 12);
+  const r = parseSettings({ ...valid, waiverDaysOfWeek: [5, 2, 5], ilStatuses: ["Day-To-Day", "Out"] }, 12, 24);
   assert.ok("settings" in r);
   assert.deepEqual(r.settings.waiverDaysOfWeek, [2, 5]);
   assert.deepEqual(r.settings.ilStatuses, ["Out", "Day-To-Day"]);
@@ -62,4 +63,27 @@ test("add limits are a count or unlimited", () => {
   assert.equal(error({ maxAddsPerWeek: null, maxAddsPerSeason: 50 }), null);
   assert.ok(error({ maxAddsPerWeek: -1 }));
   assert.ok(error({ maxAddsPerSeason: 1.5 }));
+});
+
+test("playoff and toilet bowl teams fit the league", () => {
+  assert.ok(error({ playoffTeams: 9 }));
+  // 9 teams is 4 rounds (byes for the top 7), so it starts by week 21.
+  assert.equal(error({ playoffTeams: 9, toiletBowl: false, playoffStartWeek: 21 }), null);
+  assert.equal(error({ playoffTeams: 6, toiletBowlTeams: 6 }), null);
+  assert.ok(error({ playoffTeams: 13, toiletBowl: false }));
+  assert.ok(error({ playoffTeams: 1 }));
+  assert.ok(error({ toiletBowlTeams: 1 }));
+  // 8 toilet bowl teams would be 3 rounds against the 4-team playoffs' 2.
+  assert.ok(error({ playoffTeams: 4, toiletBowlTeams: 8 }));
+  assert.ok(error({ toiletBowl: "yes" }));
+});
+
+test("the playoff weeks fit the schedule", () => {
+  // 8 teams = 3 rounds: weeks 22-24 of 24 at the latest.
+  assert.ok(error({ playoffStartWeek: 23 }));
+  assert.equal(error({ playoffStartWeek: 20 }), null);
+  assert.equal(error({ playoffTeams: 4, playoffStartWeek: 23 }), null);
+  assert.ok(error({ playoffStartWeek: 1 }));
+  assert.ok(error({ playoffStartWeek: null }));
+  assert.ok("error" in parseSettings(valid, 12, 3));
 });

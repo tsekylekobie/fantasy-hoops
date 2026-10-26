@@ -40,7 +40,9 @@ function fmtRange(from: string, to: string): string {
 }
 
 function weekTitle(d: MatchupWeek): string {
-  const parts = [`${d.isPlayoffs ? "Playoffs · " : ""}Week ${d.week}`, fmtRange(d.startsOn, d.endsOn)];
+  // "Playoffs · Semifinal · Week 23", "Toilet bowl · Round 1 · Week 23"
+  const lead = d.matchup?.bracket ? `${d.matchup.bracket.label} · ` : d.isPlayoffs ? "Playoffs · " : "";
+  const parts = [`${lead}Week ${d.week}`, fmtRange(d.startsOn, d.endsOn)];
   if (d.status === "live") parts.push(`Day ${d.day} of ${d.days}`);
   else parts.push(d.status === "final" ? "Final" : "Upcoming");
   return parts.join(" · ");
@@ -241,6 +243,7 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
       {data.others.map((o) => {
         const body = (
           <>
+            {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
             <span>{o.teamA.name}</span>
             <b>{o.teamB ? fmtScore(o.score) : "Bye"}</b>
             <span>{o.teamB?.name ?? ""}</span>

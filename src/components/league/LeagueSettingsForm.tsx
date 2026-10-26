@@ -4,7 +4,8 @@
 // Commissioner > Edit League Settings). Saves the whole form at once with
 // PUT /api/league/settings and shows the next waiver run on the saved schedule.
 import { useState, type ReactNode } from "react";
-import { fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
+import { fmtGameDate, fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
+import { bracketRounds } from "@/lib/playoffs/bracket";
 import { INJURY_STATUSES, type LeagueSettings, type LeagueSettingsResponse } from "@/lib/types";
 import styles from "./LeagueSettings.module.css";
 
@@ -102,6 +103,13 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
   const dirty = JSON.stringify(fromDraft(draft)) !== JSON.stringify(saved.settings);
   const zones = TIME_ZONES.includes(draft.timeZone) ? TIME_ZONES : [draft.timeZone, ...TIME_ZONES];
   const maxVotes = Math.max(1, saved.teamCount - 2);
+  // Playoffs: one week per round, ending by the schedule's last week.
+  const weeks = saved.weeks ?? [];
+  const rounds = bracketRounds(Number(draft.playoffTeams) || 0);
+  const lastStart = weeks.length - rounds + 1;
+  const startWeeks = weeks.filter((w) => w.week >= 2 && (w.week <= lastStart || w.week === draft.playoffStartWeek));
+  const endWeek = weeks.find((w) => w.week === draft.playoffStartWeek + rounds - 1);
+  const locked = saved.playoffsStarted ?? false;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -236,6 +244,63 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
               <button type="button" className={styles.btn} onClick={() => set("tradeDeadline", "")}>Clear</button>
             )}
           </div>
+        </Field>
+      </section>
+
+      <section className={styles.card} aria-labelledby="set-playoffs">
+        <h3 id="set-playoffs">Playoffs</h3>
+        {locked && <p className={styles.note}>The playoffs have started, so these are fixed for the season.</p>}
+        <Field label="Playoff teams" help={`Top seeds by the standings; byes when it isn’t a power of two. Up to ${Math.min(16, saved.teamCount)}.`} htmlFor="set-pteams">
+          <input
+            id="set-pteams"
+            type="number"
+            min={2}
+            max={Math.min(16, saved.teamCount)}
+            required
+            disabled={locked}
+            value={draft.playoffTeams}
+            onChange={num("playoffTeams")}
+          />
+        </Field>
+        <Field
+          label="First playoff week"
+          help={endWeek
+            ? `${rounds} round${rounds === 1 ? "" : "s"}, one week each: weeks ${draft.playoffStartWeek}–${endWeek.week} (ends ${fmtGameDate(endWeek.endsOn)}).`
+            : `${rounds} rounds, one week each, have to fit in the schedule.`}
+          htmlFor="set-pstart"
+        >
+          <select
+            id="set-pstart"
+            disabled={locked}
+            value={draft.playoffStartWeek}
+            onChange={(e) => set("playoffStartWeek", Number(e.target.value))}
+          >
+            {startWeeks.map((w) => (
+              <option key={w.week} value={w.week}>Week {w.week} · {fmtGameDate(w.startsOn)}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Toilet bowl" help="The bottom teams play a bracket where the loser advances; the loser of its final finishes last. It ends with the playoff final.">
+          <label className={styles.check}>
+            <input type="checkbox" disabled={locked} checked={draft.toiletBowl} onChange={(e) => set("toiletBowl", e.target.checked)} />
+            Bottom teams play the toilet bowl
+          </label>
+        </Field>
+        <Field
+          label="Toilet bowl teams"
+          help={`Playoff and toilet bowl teams can add up to ${saved.teamCount} at most; anyone in neither is done after the regular season.`}
+          htmlFor="set-tteams"
+        >
+          <input
+            id="set-tteams"
+            type="number"
+            min={2}
+            max={8}
+            required
+            disabled={locked || !draft.toiletBowl}
+            value={draft.toiletBowlTeams}
+            onChange={num("toiletBowlTeams")}
+          />
         </Field>
       </section>
 
