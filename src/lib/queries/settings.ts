@@ -15,10 +15,18 @@
 // difference to every team's remaining balance (never below $0), so money
 // already spent stays spent and everyone keeps the same gap. A new minimum bid
 // applies to bids placed or changed from then on.
+//
+// Game limits are the exception to "from now on": a change applies from the
+// next matchup week. Saving copies them onto every week that hasn't started
+// (league_weeks.game_limits, what scoring reads), so the current week keeps its own.
 import type { Pool } from "pg";
+import { parseGameLimits } from "../lineup/gameLimits";
 import type { SlotCounts } from "../lineup/rules";
+import { toGameLimits } from "./matchups";
 import {
   INJURY_STATUSES,
+  LINEUP_SLOTS,
+  STARTING_SLOTS,
   type LeagueSettings,
   type LeagueSettingsResponse,
   type TradeReview,
@@ -72,7 +80,10 @@ interface LeagueRow {
   playoff_start_week: number | null;
   toilet_bowl: boolean;
   toilet_bowl_teams: number;
+  game_limits: unknown;
   weeks: { week: number; startsOn: string; endsOn: string }[];
+  /** The first week that starts after the league's today (game limits changes start there). */
+  next_week: number | null;
   playoffs_started: boolean;
   next_run_at: string;
   updated_at: string;
@@ -86,7 +97,9 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
             l.waiver_days, l.waivers_after_game_start, l.faab_budget, l.faab_min_bid, l.roster_slots, l.il_statuses, l.il_min_days,
             l.il_plus_statuses, l.il_plus_min_days, l.trade_review, l.trade_review_days, l.trade_veto_votes,
             to_char(l.trade_deadline, 'YYYY-MM-DD') AS trade_deadline, l.max_adds_per_week, l.max_adds_per_season,
-            l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams,
+            l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams, l.game_limits,
+            (SELECT min(w.week)::int FROM league_weeks w
+              WHERE w.league_id = l.id AND w.starts_on > (now() AT TIME ZONE l.time_zone)::date) AS next_week,
             coalesce((SELECT json_agg(json_build_object('week', w.week, 'startsOn', w.starts_on, 'endsOn', w.ends_on) ORDER BY w.week)
                         FROM league_weeks w WHERE w.league_id = l.id), '[]') AS weeks,
             EXISTS (SELECT 1 FROM matchups m WHERE m.league_id = l.id AND m.bracket IS NOT NULL) AS playoffs_started,
@@ -108,6 +121,9 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
     updatedAt: r.updated_at,
     weeks: r.weeks,
     playoffsStarted: r.playoffs_started,
+    startingSlots: LINEUP_SLOTS.filter((s) => STARTING_SLOTS.includes(s) && (r.roster_slots[s] ?? 0) > 0)
+      .map((slot) => ({ slot, count: r.roster_slots[slot]! })),
+    gameLimitsFromWeek: r.next_week,
     settings: {
       waiverType: r.waiver_type,
       waiverTime: r.waiver_time,
@@ -133,6 +149,7 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
       playoffStartWeek: r.playoff_start_week ?? lastStart(r),
       toiletBowl: r.toilet_bowl,
       toiletBowlTeams: r.toilet_bowl_teams,
+      gameLimits: toGameLimits(r.game_limits),
     },
   };
 }
@@ -236,6 +253,8 @@ export function parseSettings(
   if (!isInt(b.playoffStartWeek, [2, latest])) {
     return { error: `The playoffs take ${playoffRounds} weeks, so they must start in week 2–${latest}.` };
   }
+  const gameLimits = parseGameLimits(b.gameLimits);
+  if ("error" in gameLimits) return gameLimits;
 
   return {
     settings: {
@@ -263,6 +282,7 @@ export function parseSettings(
       playoffStartWeek: b.playoffStartWeek,
       toiletBowl: b.toiletBowl,
       toiletBowlTeams: b.toiletBowlTeams,
+      gameLimits: gameLimits.limits,
     },
   };
 }
@@ -338,7 +358,7 @@ export async function updateLeagueSettings(
          il_plus_statuses = $11, il_plus_min_days = $12, trade_review = $13, trade_review_days = $14,
          trade_veto_votes = $15, trade_deadline = $16, max_adds_per_week = $17, max_adds_per_season = $18,
          playoff_teams = $19, playoff_start_week = $20, toilet_bowl = $21, toilet_bowl_teams = $22,
-         faab_budget = $23, faab_min_bid = $24, updated_at = now()
+         faab_budget = $23, faab_min_bid = $24, game_limits = $25, updated_at = now()
        WHERE id = $1`,
       [
         current.id, s.waiverType, s.waiverTime, s.timeZone, s.waiverDaysOfWeek, s.waiverDays,
@@ -346,9 +366,18 @@ export async function updateLeagueSettings(
         s.ilPlusStatuses, s.ilPlusMinDays, s.tradeReview, s.tradeReviewDays,
         s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
         s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
-        s.faabBudget, s.faabMinBid,
+        s.faabBudget, s.faabMinBid, s.gameLimits && JSON.stringify(s.gameLimits),
       ],
     );
+
+    // Game limits start with the next matchup week: every week that hasn't
+    // started takes the new ones; the current and past weeks keep theirs.
+    if (JSON.stringify(s.gameLimits) !== JSON.stringify(toGameLimits(current.game_limits))) {
+      await client.query(
+        `UPDATE league_weeks SET game_limits = $2 WHERE league_id = $1 AND starts_on > (now() AT TIME ZONE $3)::date`,
+        [current.id, s.gameLimits && JSON.stringify(s.gameLimits), current.time_zone],
+      );
+    }
 
     const toFaab = s.waiverType === "faab" && current.waiver_type !== "faab";
     if (toFaab) {

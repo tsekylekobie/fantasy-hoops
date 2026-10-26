@@ -12,6 +12,7 @@ const valid: LeagueSettings = {
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
   maxAddsPerWeek: 4, maxAddsPerSeason: null,
   playoffTeams: 8, playoffStartWeek: 22, toiletBowl: true, toiletBowlTeams: 4,
+  gameLimits: null,
 };
 
 const error = (over: Partial<Record<keyof LeagueSettings, unknown>>) => {
@@ -98,4 +99,13 @@ test("FAAB budget and minimum bid: whole dollars, the minimum within the budget"
   assert.match(error({ faabMinBid: -1 })!, /minimum bid/);
   assert.match(error({ faabMinBid: 101 })!, /minimum bid must be \$0–\$100/);
   assert.match(error({ faabMinBid: undefined })!, /minimum bid/);
+});
+
+test("game limits: off, or a total with optional per-slot caps", () => {
+  assert.equal(error({ gameLimits: { total: 40, slots: { C: 8 } } }), null);
+  assert.ok(error({ gameLimits: { total: 0, slots: {} } }));
+  assert.ok(error({ gameLimits: { total: 40, slots: { IL: 2 } } }));
+  const r = parseSettings({ ...valid, gameLimits: { total: 40, slots: { UTIL: null, C: 8, PG: 5 } } }, 12, 24);
+  assert.ok("settings" in r);
+  assert.deepEqual(r.settings.gameLimits, { total: 40, slots: { PG: 5, C: 8 } });
 });

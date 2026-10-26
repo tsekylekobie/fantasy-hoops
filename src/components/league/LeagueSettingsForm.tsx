@@ -6,7 +6,14 @@
 import { useState, type ReactNode } from "react";
 import { fmtGameDate, fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import { bracketRounds } from "@/lib/playoffs/bracket";
-import { INJURY_STATUSES, type LeagueSettings, type LeagueSettingsResponse } from "@/lib/types";
+import {
+  INJURY_STATUSES,
+  STARTING_SLOTS,
+  type GameLimits,
+  type LeagueSettings,
+  type LeagueSettingsResponse,
+  type LineupSlot,
+} from "@/lib/types";
 import styles from "./LeagueSettings.module.css";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -28,28 +35,57 @@ const TRADE_REVIEWS: { value: LeagueSettings["tradeReview"]; label: string }[] =
   { value: "none", label: "None" },
 ];
 
-type Draft = Omit<LeagueSettings, "maxAddsPerWeek" | "maxAddsPerSeason" | "tradeDeadline"> & {
-  // Blank = unlimited / no deadline.
+type Draft = Omit<LeagueSettings, "maxAddsPerWeek" | "maxAddsPerSeason" | "tradeDeadline" | "gameLimits"> & {
+  // Blank = unlimited / no deadline / only the total.
   maxAddsPerWeek: string;
   maxAddsPerSeason: string;
   tradeDeadline: string;
+  // Game limits: the numbers are kept while switched off, so switching back restores them.
+  gameLimitsOn: boolean;
+  gameTotal: string;
+  gameSlots: Partial<Record<LineupSlot, string>>;
 };
 
-const toDraft = (s: LeagueSettings): Draft => ({
+/** Suggested total when a league first switches game limits on. */
+const DEFAULT_GAME_TOTAL = 40;
+
+const toDraft = ({ gameLimits, ...s }: LeagueSettings): Draft => ({
   ...s,
   maxAddsPerWeek: s.maxAddsPerWeek === null ? "" : String(s.maxAddsPerWeek),
   maxAddsPerSeason: s.maxAddsPerSeason === null ? "" : String(s.maxAddsPerSeason),
   tradeDeadline: s.tradeDeadline ?? "",
+  gameLimitsOn: gameLimits !== null,
+  gameTotal: String(gameLimits?.total ?? DEFAULT_GAME_TOTAL),
+  gameSlots: Object.fromEntries(Object.entries(gameLimits?.slots ?? {}).map(([k, v]) => [k, String(v)])),
 });
 
 const optionalInt = (v: string) => (v.trim() === "" ? null : Number(v));
 
-const fromDraft = (d: Draft): LeagueSettings => ({
-  ...d,
-  maxAddsPerWeek: optionalInt(d.maxAddsPerWeek),
-  maxAddsPerSeason: optionalInt(d.maxAddsPerSeason),
-  tradeDeadline: d.tradeDeadline || null,
-});
+function draftLimits(d: Draft): GameLimits | null {
+  if (!d.gameLimitsOn) return null;
+  const slots: GameLimits["slots"] = {};
+  for (const s of STARTING_SLOTS) {
+    const v = optionalInt(d.gameSlots[s] ?? "");
+    if (v !== null) slots[s] = v;
+  }
+  // A blank total goes as null for the server to refuse.
+  return { total: optionalInt(d.gameTotal) as number, slots };
+}
+
+function fromDraft(d: Draft): LeagueSettings {
+  const { gameLimitsOn: _on, gameTotal: _total, gameSlots: _slots, ...rest } = d;
+  return {
+    ...rest,
+    maxAddsPerWeek: optionalInt(d.maxAddsPerWeek),
+    maxAddsPerSeason: optionalInt(d.maxAddsPerSeason),
+    tradeDeadline: d.tradeDeadline || null,
+    gameLimits: draftLimits(d),
+  };
+}
+
+/** When a saved game limits change starts (LeagueSettingsResponse.gameLimitsFromWeek). */
+const fromWeek = (week: number | null | undefined) =>
+  week == null ? "No weeks are left to start, so it won’t apply this season." : `It starts next week, week ${week}; this week keeps its current limits.`;
 
 function toggle<T>(list: T[], item: T, order: readonly T[]): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : order.filter((x) => x === item || list.includes(x));
@@ -110,6 +146,8 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
   const startWeeks = weeks.filter((w) => w.week >= 2 && (w.week <= lastStart || w.week === draft.playoffStartWeek));
   const endWeek = weeks.find((w) => w.week === draft.playoffStartWeek + rounds - 1);
   const locked = saved.playoffsStarted ?? false;
+  const startingSlots = saved.startingSlots ?? STARTING_SLOTS.map((slot) => ({ slot, count: 1 }));
+  const slotSpots = startingSlots.filter((s) => s.count > 1).map((s) => `${s.slot} has ${s.count}`).join(", ");
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -123,9 +161,13 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
       });
       const body = (await res.json().catch(() => ({}))) as LeagueSettingsResponse & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status}).`);
+      const limitsChanged = JSON.stringify(body.settings.gameLimits) !== JSON.stringify(saved.settings.gameLimits);
       setSaved(body);
       setDraft(toDraft(body.settings));
-      setStatus({ ok: true, text: "Saved." });
+      setStatus({
+        ok: true,
+        text: limitsChanged ? `Saved. ${body.settings.gameLimits ? "Game limits changed" : "Game limits are off"}. ${fromWeek(body.gameLimitsFromWeek)}` : "Saved.",
+      });
     } catch (err) {
       setStatus({ ok: false, text: err instanceof Error ? err.message : "Save failed." });
     } finally {
@@ -234,6 +276,61 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
             </Field>
           </div>
         ))}
+      </section>
+
+      <section className={styles.card} aria-labelledby="set-games">
+        <h3 id="set-games">Game limits</h3>
+        <p className={styles.note}>Caps on how many games a team’s starters can play in one matchup week. Bench and IL games never count.</p>
+        <Field label="Limit games" help="Changes start with the next matchup week; this week keeps its current limits.">
+          <label className={styles.check}>
+            <input type="checkbox" checked={draft.gameLimitsOn} onChange={(e) => set("gameLimitsOn", e.target.checked)} />
+            Cap games per matchup week
+          </label>
+        </Field>
+        {draft.gameLimitsOn && (
+          <>
+            <Field label="Total games" help="All starting slots together." htmlFor="set-gtotal">
+              <div className={styles.row}>
+                <input
+                  id="set-gtotal"
+                  type="number"
+                  min={1}
+                  max={200}
+                  required
+                  value={draft.gameTotal}
+                  onChange={(e) => set("gameTotal", e.target.value)}
+                />
+                games per week
+              </div>
+            </Field>
+            <Field
+              label="Per position"
+              help={`Per slot, summed across that slot’s spots${slotSpots ? ` (${slotSpots})` : ""}. Blank = only the total applies.`}
+            >
+              <div className={styles.glGrid}>
+                {startingSlots.map(({ slot }) => (
+                  <label key={slot}>
+                    {slot}
+                    <input
+                      type="number"
+                      min={0}
+                      max={200}
+                      placeholder="—"
+                      value={draft.gameSlots[slot] ?? ""}
+                      onChange={(e) => set("gameSlots", { ...draft.gameSlots, [slot]: e.target.value })}
+                    />
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Past the limit" help="Games are counted in tip-off order.">
+              <p className={styles.hint}>
+                Once a slot or the team is at its limit, later starts in it score nothing for the rest of the week.
+                Managers see their games used on My team and are warned before starts that won’t count.
+              </p>
+            </Field>
+          </>
+        )}
       </section>
 
       <section className={styles.card} aria-labelledby="set-trades">
