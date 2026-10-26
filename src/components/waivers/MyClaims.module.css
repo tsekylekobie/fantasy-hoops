@@ -83,6 +83,11 @@
   font-size: 14px;
 }
 
+/* FAAB: a heavier rule where the bid changes; arrows only move claims within a group. */
+.newBid {
+  border-top: 2px solid var(--border);
+}
+
 .rank {
   font-family: var(--font-display);
   font-weight: 700;

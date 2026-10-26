@@ -72,7 +72,7 @@ test("FAAB: a team's claims run in bid order across players; later ones are chec
   assert.deepEqual(winners(r.outcomes), [big.id]);
   const failed = r.outcomes.find((o) => o.claim === first)!;
   assert.ok(!failed.won);
-  assert.equal(failed.reason, "You bid $30 but had $20 left after winning earlier claims in this run.");
+  assert.equal(failed.reason, "Couldn't afford the $30 bid: $20 left after winning earlier claims in this run.");
   assert.equal(r.balances.get(1), 20);
 });
 
@@ -82,7 +82,7 @@ test("FAAB: when the high bidder can't afford it, the next bid gets the player",
   const r = await resolveClaims([broke, next], state("faab", { 1: 40 }), attempts().attempt);
   assert.deepEqual(winners(r.outcomes), [next.id]);
   const failed = r.outcomes.find((o) => o.claim === broke)!;
-  assert.ok(!failed.won && failed.reason === "You bid $50 but had $40 left.");
+  assert.ok(!failed.won && failed.reason === "Couldn't afford the $50 bid: $40 left.");
 });
 
 test("FAAB: a claim that fails on the roster passes the player to the next bid", async () => {
@@ -115,6 +115,26 @@ test("FAAB: $0 bids are fine, and equal bids from one team go by its own ranking
   assert.deepEqual(calls.map((c) => c.claim.id), [firstRanked.id, second.id]);
   assert.deepEqual(winners(r.outcomes), [firstRanked.id, second.id]);
   assert.equal(r.balances.get(1), 100);
+});
+
+test("FAAB: the manager's own order decides between their equal bids, and can decide which one they can afford", async () => {
+  // $25 left: the $15 bid goes first whatever its rank; of the two $10 bids,
+  // the one ranked higher gets the last $10 and the other can't be afforded.
+  const tenLow = claim(1, 10, 10, 2);
+  const tenHigh = claim(1, 11, 10, 1);
+  const fifteen = claim(1, 12, 15, 3);
+  const { attempt, calls } = attempts();
+  const r = await resolveClaims([tenLow, tenHigh, fifteen], state("faab", { 1: 25 }), attempt);
+  assert.deepEqual(calls.map((c) => c.claim.id), [fifteen.id, tenHigh.id]);
+  assert.deepEqual(winners(r.outcomes), [fifteen.id, tenHigh.id]);
+  const failed = r.outcomes.find((o) => o.claim === tenLow)!;
+  assert.ok(!failed.won && /\$0 left after winning earlier claims/.test(failed.reason));
+
+  // Swap the ranks and the other $10 claim wins instead.
+  const swapped = await resolveClaims(
+    [{ ...tenLow, rank: 1 }, { ...tenHigh, rank: 2 }, fifteen], state("faab", { 1: 25 }), attempts().attempt,
+  );
+  assert.deepEqual(winners(swapped.outcomes), [fifteen.id, tenLow.id]);
 });
 
 test("FAAB: equal bids for different players go by waiver priority, without moving anyone", async () => {

@@ -206,7 +206,7 @@ export async function resolveClaims(
       const spent = outcomes.some((o) => o.won && o.claim.teamId === claim.teamId && o.charge > 0);
       outcomes.push({
         claim, won: false,
-        reason: `You bid $${amount} but had $${balance(claim.teamId)} left${spent ? " after winning earlier claims in this run" : ""}.`,
+        reason: `Couldn't afford the $${amount} bid: $${balance(claim.teamId)} left${spent ? " after winning earlier claims in this run" : ""}.`,
       });
       continue;
     }
@@ -250,10 +250,11 @@ export interface WaiverRunSummary {
   log: string[];
 }
 
-async function failClaim(db: Db, id: number, reason: string): Promise<void> {
+async function failClaim(db: Db, id: number, reason: string, runId: string): Promise<void> {
   await db.query(
-    `UPDATE transactions SET status = 'failed', processed_at = now(), failure_reason = $2 WHERE id = $1 AND status = 'pending'`,
-    [id, reason],
+    `UPDATE transactions SET status = 'failed', processed_at = now(), failure_reason = $2, waiver_run_id = $3
+      WHERE id = $1 AND status = 'pending'`,
+    [id, reason, runId],
   );
 }
 
@@ -323,6 +324,7 @@ export async function processWaivers(
 
     const { outcomes } = await resolveClaims(due, state, async (claim, effects) =>
       completeClaim(pool, await context(claim.teamId), values, claim, async (db) => {
+        await db.query(`UPDATE transactions SET waiver_run_id = $2 WHERE id = $1`, [claim.id, run.id]);
         if (effects.order) {
           await db.query(
             `UPDATE fantasy_teams ft SET waiver_priority = o.ord
@@ -345,7 +347,7 @@ export async function processWaivers(
         const paid = faab ? ` for $${o.charge}${o.tie ? " (tie, won on priority)" : ""}` : "";
         summary.log.push(`${who}: won${paid}${o.claim.dropPlayerId ? ` (dropped #${o.claim.dropPlayerId})` : ""}`);
       } else {
-        await failClaim(pool, o.claim.id, o.reason);
+        await failClaim(pool, o.claim.id, o.reason, run.id);
         summary.failed++;
         summary.log.push(`${who}${faab ? ` ($${o.claim.bid ?? 0})` : ""}: failed (${o.reason})`);
       }
@@ -469,7 +471,9 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
     waiverPriority: tc.priority,
     teamCount: tc.n,
     faab,
-    pending: all.filter((c) => c.status === "pending").sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.id - b.id),
+    // The order the run tries them: FAAB by bid, then the team's own ranking.
+    pending: all.filter((c) => c.status === "pending")
+      .sort((a, b) => (faab ? (b.bid ?? 0) - (a.bid ?? 0) : 0) || (a.rank ?? 0) - (b.rank ?? 0) || a.id - b.id),
     recent: all.filter((c) => c.status !== "pending").sort((a, b) => (b.processedAt ?? "").localeCompare(a.processedAt ?? "") || b.id - a.id),
   };
 }

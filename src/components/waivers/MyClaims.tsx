@@ -3,8 +3,9 @@
 // My team's "My claims": the manager's pending waiver claims in the order the
 // waiver run tries them (reorder with the arrows, or cancel), and the claims
 // decided in the last week with why any failed. In FAAB leagues each pending
-// claim shows its bid, editable in place; the order only breaks ties between
-// the team's own equal bids. API: /api/team/claims.
+// claim shows its bid, editable in place, and the list is in bid order: the
+// arrows only reorder claims with the same bid, the one thing the manager's
+// own order decides. API: /api/team/claims.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchJson, fmtWaiverDays, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
@@ -50,6 +51,10 @@ export default function MyClaims() {
     }
   }
 
+  // FAAB: only claims with the same bid can swap (bids decide the rest).
+  const canSwap = (i: number, j: number) =>
+    !!data && j >= 0 && j < data.pending.length && (!data.faab || data.pending[i].bid === data.pending[j].bid);
+
   function move(index: number, by: -1 | 1) {
     if (!data) return;
     const ids = data.pending.map((c) => c.id);
@@ -94,25 +99,28 @@ export default function MyClaims() {
         <>
           <p className={styles.lede}>
             {faab
-              ? "Claims go to the highest bid, biggest bids first. Bids are blind and you pay only for claims you win; each is checked against what you have left when the run gets to it. This order only breaks ties between your own equal bids."
+              ? "Highest bids are tried first. Bids are blind, you pay only for claims you win, and each is checked against what you have left when the run gets to it. Use the arrows to choose which of your claims with the same bid goes first."
               : "When more than one of your claims processes in the same run, they’re tried top to bottom."}
           </p>
           <ol className={styles.list}>
             {data.pending.map((c, i) => (
-              <li key={c.id} className={styles.claim}>
+              <li
+                key={c.id}
+                className={`${styles.claim} ${faab && i > 0 && data.pending[i - 1].bid !== c.bid ? styles.newBid : ""}`}
+              >
                 <span className={styles.rank}>{i + 1}</span>
                 <Players c={c} />
                 <span className={styles.when}>Processes {fmtWaiverTime(c.processAt, tz, "long")}</span>
                 <span className={styles.actions}>
                   {faab && <BidInput claim={c} faab={faab} disabled={saving} onSave={(bid) => setBid(c.id, bid)} />}
-                  <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || i === 0} onClick={() => move(i, -1)}>
+                  <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || !canSwap(i, i - 1)} onClick={() => move(i, -1)}>
                     ↑
                   </button>
                   <button
                     type="button"
                     className={styles.icon}
                     aria-label={`Move ${fullName(c.add)} claim down`}
-                    disabled={saving || i === data.pending.length - 1}
+                    disabled={saving || !canSwap(i, i + 1)}
                     onClick={() => move(i, 1)}
                   >
                     ↓

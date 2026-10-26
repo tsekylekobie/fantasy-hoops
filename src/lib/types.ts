@@ -430,10 +430,40 @@ export interface LeagueTransaction {
   faabBid: number | null;
 }
 
+/** One claim in a waiver run summary. */
+export interface WaiverRunClaim {
+  team: FantasyTeamSummary;
+  /** FAAB bid; null in leagues without bidding. */
+  bid: number | null;
+  won: boolean;
+  drop: PlayerSummary | null;
+  /** Why it failed (outbid, couldn't afford it, roster full, ...); null when won. */
+  reason: string | null;
+}
+
+/**
+ * A waiver run that decided at least one claim, for Recent transactions: every
+ * claim, grouped by the player claimed. Its won claims aren't listed again as
+ * separate transactions.
+ */
+export interface WaiverRunEntry {
+  id: number;
+  /** When the run finished, ISO timestamp. */
+  at: string;
+  /** Any claim carried a bid (the league ran FAAB). */
+  faab: boolean;
+  won: number;
+  failed: number;
+  /** Players won first, then the rest; each player's claims winner first, then by bid (highest first). */
+  players: { player: PlayerSummary; claims: WaiverRunClaim[] }[];
+}
+
 /** The League page's Recent transactions: newest first, and the league's time zone for times. */
 export interface RecentTransactions {
   timeZone: string;
   transactions: LeagueTransaction[];
+  /** Recent waiver runs with claims, newest first; shown in time order among the transactions. */
+  waiverRuns: WaiverRunEntry[];
 }
 
 /** The signed-in user, as the UI sees it. */
