@@ -13,8 +13,10 @@
 //    where poolPct is the pool's summed makes / summed attempts, so a 60% shooter
 //    on 2 attempts matters less than a 52% shooter on 20. The impacts are then
 //    z-scored over the pool like the counting stats.
-// 5. Value = sum of the nine z-scores. Players outside the pool are scored
+// 5. Value = sum of the nine z-scores, each times its category weight (all 1
+//    unless the caller passes punt weights). Players outside the pool are scored
 //    with the pool's means and stdevs. A category with zero spread contributes 0.
+import type { Category, CategoryWeights } from "../types";
 
 export const POOL_SIZE = 156;
 export const MIN_GP_FRACTION = 0.25;
@@ -45,6 +47,14 @@ export interface Valuation {
 const COUNTING = ["fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
 type Cat = (typeof COUNTING)[number] | "fgImpact" | "ftImpact";
 const CATS: Cat[] = ["fgImpact", "ftImpact", ...COUNTING];
+const CATEGORY: Record<Cat, Category> = {
+  fgImpact: "fgPct", ftImpact: "ftPct", fg3m: "fg3m", pts: "pts", reb: "reb", ast: "ast", stl: "stl", blk: "blk", tov: "tov",
+};
+
+/** Every category counted fully: plain 9CAT value. */
+export const EQUAL_WEIGHTS: CategoryWeights = {
+  fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 1,
+};
 
 function meanSd(xs: number[]): { mean: number; sd: number } {
   if (xs.length === 0) return { mean: 0, sd: 0 };
@@ -63,8 +73,8 @@ export function selectPool(players: SeasonTotals[]): SeasonTotals[] {
     .slice(0, POOL_SIZE);
 }
 
-/** Returns a value and rank for every player with gp > 0. */
-export function valuePlayers(players: SeasonTotals[]): Map<number, Valuation> {
+/** Returns a value and rank for every player with gp > 0. The pool and its stats don't depend on the weights. */
+export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS): Map<number, Valuation> {
   const played = players.filter((p) => p.gp > 0);
   const pool = selectPool(played);
 
@@ -93,9 +103,10 @@ export function valuePlayers(players: SeasonTotals[]): Map<number, Valuation> {
     let value = 0;
     for (const c of CATS) {
       const { mean, sd } = stats[c];
-      if (sd === 0) continue;
+      const w = weights[CATEGORY[c]];
+      if (sd === 0 || w === 0) continue;
       const z = (line[c] - mean) / sd;
-      value += c === "tov" ? -z : z;
+      value += w * (c === "tov" ? -z : z);
     }
     return { p, value };
   });

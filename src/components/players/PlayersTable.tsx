@@ -19,7 +19,7 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "STL", sort: "stl" },
   { label: "BLK", sort: "blk" },
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
-  { label: "Value", sort: "value", title: "9CAT value: sum of the nine category z-scores" },
+  { label: "Value", sort: "value", title: "9CAT value: sum of the nine category z-scores, times your punt weights" },
 ];
 
 interface Props {

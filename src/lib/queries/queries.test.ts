@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BadRequest, nameMatches, normalizeName, parsePlayersQuery, positionMatches } from "./params";
 import { categoryLine } from "./players";
-import { POOL_SIZE, selectPool, valuePlayers, type SeasonTotals } from "./value";
+import { DEFAULT_WEIGHTS } from "../types";
+import { EQUAL_WEIGHTS, POOL_SIZE, selectPool, valuePlayers, type SeasonTotals } from "./value";
 
 function player(id: number, over: Partial<SeasonTotals> = {}): SeasonTotals {
   return {
@@ -59,6 +60,24 @@ test("players with zero GP are ignored; tiny early-season samples don't produce 
   assert.equal(v.get(1)!.value, 0);
 });
 
+test("punt weights: 0 ignores a category, other weights scale it", () => {
+  const players = [player(1, { pts: 300 }), player(2, { reb: 90 }), player(3, { tov: 60 })];
+  const plain = valuePlayers(players);
+  const punted = valuePlayers(players, { ...EQUAL_WEIGHTS, pts: 0 });
+  // Punting points drops the scorer below the rebounder.
+  assert.ok(plain.get(1)!.rank < plain.get(2)!.rank);
+  assert.ok(punted.get(2)!.rank < punted.get(1)!.rank);
+  // Turnovers at 0.25 cost the high-turnover player a quarter as much.
+  const quarter = valuePlayers([player(1), player(3, { tov: 60 })], { ...EQUAL_WEIGHTS, tov: 0.25 });
+  const full = valuePlayers([player(1), player(3, { tov: 60 })]);
+  assert.ok(Math.abs(quarter.get(3)!.value - full.get(3)!.value / 4) < 1e-9);
+});
+
+test("parsePlayersQuery: weights in CATEGORIES order", () => {
+  const q = parsePlayersQuery(new URLSearchParams("weights=0,1,1,1.5,1,1,1,0.333,0.25"));
+  assert.deepEqual(q.weights, { fgPct: 0, ftPct: 1, fg3m: 1, pts: 1.5, reb: 1, ast: 1, stl: 1, blk: 0.33, tov: 0.25 });
+});
+
 test("categoryLine: percentages from totals, null with no attempts, avg divides by GP", () => {
   const row = { player_id: 1, ...player(1, { fta: 0, ftm: 0 }), tov: 21 };
   const avg = categoryLine(row, "avg");
@@ -92,10 +111,11 @@ test("position filter matches any letter in a combined position", () => {
 
 test("parsePlayersQuery: defaults and validation", () => {
   const d = parsePlayersQuery(new URLSearchParams(""));
-  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", page: 1, perPage: 50 });
+  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
   const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20&plays=tomorrow&waivers=on"));
-  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", page: 3, perPage: 100 });
-  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5"]) {
+  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
+  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5",
+    "weights=1,1,1", "weights=1,1,1,1,1,1,1,1,2.5", "weights=1,1,1,1,1,1,1,1,-1", "weights=1,1,1,1,1,1,1,1,x"]) {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }
 });

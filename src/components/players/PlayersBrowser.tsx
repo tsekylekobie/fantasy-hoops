@@ -3,20 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
-  PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter,
+  CategoryWeights, PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter, WeightsResponse,
 } from "@/lib/types";
-import { CURRENT_SEASON, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
+import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
 import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
+import PuntWeights, { isDefaultWeights, weightsParam } from "./PuntWeights";
 import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
 import styles from "./PlayersBrowser.module.css";
 
 const PER_PAGE = 50;
 const SEARCH_DEBOUNCE_MS = 250;
+const WEIGHTS_DEBOUNCE_MS = 300;
 
 const SCOPES: SegmentedOption<PlayerScope>[] = [
   { value: "fa", label: "Free agents" },
@@ -164,10 +166,57 @@ export default function PlayersBrowser() {
     return () => ctrl.abort();
   }, []);
 
+  // Punt weights: per user, not in the URL. `weights` follows the sliders;
+  // `applied` (what the table is fetched with, and what gets saved) trails it
+  // by a pause. The table waits for the saved weights before its first fetch.
+  const [weights, setWeights] = useState<CategoryWeights>(DEFAULT_WEIGHTS);
+  const [applied, setApplied] = useState<CategoryWeights | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
+  const [showWeights, setShowWeights] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchJson<WeightsResponse>("/api/me/weights", ctrl.signal)
+      .then((res) => {
+        setWeights(res.weights);
+        setApplied(res.weights);
+        setSignedIn(res.signedIn);
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) setApplied(DEFAULT_WEIGHTS);
+      });
+    return () => ctrl.abort();
+  }, []);
+  const changeWeights = (next: CategoryWeights) => {
+    setWeights(next);
+    setSaveError(null);
+  };
+  useEffect(() => {
+    if (!applied || weightsParam(weights) === weightsParam(applied)) return;
+    const t = setTimeout(() => {
+      setApplied(weights);
+      if (!signedIn) return;
+      fetch("/api/me/weights", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weights }),
+      })
+        .then(async (res) => {
+          if (res.ok) return;
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          setSaveError(body?.error ?? `Request failed (${res.status}).`);
+        })
+        .catch(() => setSaveError("Network error."));
+    }, WEIGHTS_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [weights, applied, signedIn]);
+  const appliedKey = applied ? weightsParam(applied) : null;
+
   // Table data.
   const [load, setLoad] = useState<Load>({ status: "loading", data: null });
   const [retryKey, setRetryKey] = useState(0);
   useEffect(() => {
+    if (appliedKey === null) return;
     const ctrl = new AbortController();
     setLoad((prev) => ({ status: "loading", data: prev.data }));
     const params = new URLSearchParams({
@@ -181,6 +230,7 @@ export default function PlayersBrowser() {
       pos,
       plays: playsKey,
       waivers,
+      weights: appliedKey,
       page: String(page),
       perPage: String(PER_PAGE),
     });
@@ -195,7 +245,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, playsKey, waivers, sort, dir, page, retryKey, movesKey]);
+  }, [q, scope, pos, range, mode, playsKey, waivers, sort, dir, page, retryKey, movesKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -254,7 +304,19 @@ export default function PlayersBrowser() {
           <SegmentedToggle label="Position" options={POSITIONS} value={pos} onChange={(v) => navigate({ pos: v, page: 1 })} />
           <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
+          <button
+            type="button"
+            className={styles.weightsBtn}
+            aria-expanded={showWeights}
+            onClick={() => setShowWeights((v) => !v)}
+          >
+            Punt weights{isDefaultWeights(weights) ? "" : " · custom"}
+          </button>
         </div>
+
+        {showWeights && (
+          <PuntWeights weights={weights} onChange={changeWeights} signedIn={signedIn} saveError={saveError} />
+        )}
 
         {/* Streaming: who plays soon, and who comes off waivers soon. */}
         <div className={`${styles.bar} ${styles.stream}`}>

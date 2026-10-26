@@ -52,6 +52,28 @@ export interface CategoryLine {
   tov: number;
 }
 
+/** The nine categories, in table order. Keys of CategoryWeights and of the ?weights= list. */
+export const CATEGORIES = ["fgPct", "ftPct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
+export type Category = (typeof CATEGORIES)[number];
+
+/**
+ * Punt weights: each category's z-score is multiplied by its weight in the players page's value.
+ * 0 ignores (punts) the category, 1 counts it fully; 0 to MAX_WEIGHT.
+ */
+export type CategoryWeights = Record<Category, number>;
+export const MAX_WEIGHT = 2;
+/** Turnovers count a quarter by default. Reset goes back to these. */
+export const DEFAULT_WEIGHTS: CategoryWeights = {
+  fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 0.25,
+};
+
+/** GET /api/me/weights (defaults when signed out or never saved); PUT the same shape to save (signed in). */
+export interface WeightsResponse {
+  weights: CategoryWeights;
+  /** False when signed out: changes apply but aren't saved. */
+  signedIn: boolean;
+}
+
 export interface PlayerSummary {
   id: number;
   firstName: string;
@@ -63,13 +85,13 @@ export interface PlayerSummary {
 }
 
 export interface PlayerRow extends PlayerSummary {
-  /** 1-based rank by 9CAT value among all players with a game this season (independent of q/pos). */
+  /** 1-based rank by (weighted) 9CAT value among all players with a game this season (independent of q/pos). */
   rank: number;
   gp: number;
   /** Minutes per game in avg mode, total minutes in total mode. */
   min: number;
   stats: CategoryLine;
-  /** 9CAT value (sum of category z-scores; higher is better). */
+  /** 9CAT value (sum of category z-scores times the request's weights; higher is better). */
   value: number;
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
@@ -93,7 +115,8 @@ export interface PlayerUpcomingGame {
 
 /**
  * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&plays=&waivers=any&page=1&perPage=50
- * GP, stats, value and rank all cover `range`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
+ *   &weights=1,1,1,1,1,1,1,1,0.25  (one per CATEGORIES entry, in order; omitted = DEFAULT_WEIGHTS)
+ * GP, stats, value and rank all cover `range`; value and rank use `weights`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */
 export interface PlayersResponse {
@@ -110,6 +133,7 @@ export interface PlayersResponse {
   plays: PlayDay[];
   playDates: Record<PlayDay, string>;
   waivers: WaiverFilter;
+  weights: CategoryWeights;
   page: number;
   perPage: number;
   total: number;

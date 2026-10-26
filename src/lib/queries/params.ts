@@ -1,6 +1,11 @@
 // Query-string parsing for the /api/players endpoints. Pure, unit tested.
 import {
+  CATEGORIES,
   CURRENT_SEASON,
+  DEFAULT_WEIGHTS,
+  MAX_WEIGHT,
+  type Category,
+  type CategoryWeights,
   PLAY_DAYS,
   SORT_KEYS,
   defaultSortDir,
@@ -28,6 +33,7 @@ export interface PlayersQuery {
   /** Empty = any day. Deduplicated, in PLAY_DAYS order. */
   plays: PlayDay[];
   waivers: WaiverFilter;
+  weights: CategoryWeights;
   page: number;
   perPage: number;
 }
@@ -42,6 +48,39 @@ function intParam(params: URLSearchParams, name: string, fallback: number, min: 
   const n = Number(raw);
   if (n < min || n > max) throw new BadRequest(`${name} must be between ${min} and ${max}`);
   return n;
+}
+
+/** A weight from 0 to MAX_WEIGHT, rounded to hundredths; null if it isn't one. */
+export function toWeight(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > MAX_WEIGHT) return null;
+  return Math.round(value * 100) / 100;
+}
+
+/** An object with a valid weight for every category, else null. Extra keys are ignored. */
+export function toWeights(value: unknown): CategoryWeights | null {
+  if (typeof value !== "object" || value === null) return null;
+  const out = {} as CategoryWeights;
+  for (const c of CATEGORIES) {
+    const w = toWeight((value as Partial<Record<Category, unknown>>)[c]);
+    if (w === null) return null;
+    out[c] = w;
+  }
+  return out;
+}
+
+/** "?weights=1,1,1,1,1,1,1,1,0.25": one number per CATEGORIES entry, in order. Omitted = DEFAULT_WEIGHTS. */
+function parseWeights(params: URLSearchParams): CategoryWeights {
+  const raw = params.get("weights")?.trim();
+  if (!raw) return { ...DEFAULT_WEIGHTS };
+  const parts = raw.split(",").map((x) => x.trim());
+  const nums = parts.map((x) => (/^\d+(\.\d+)?$/.test(x) ? Number(x) : NaN));
+  const weights = parts.length === CATEGORIES.length
+    ? toWeights(Object.fromEntries(CATEGORIES.map((c, i) => [c, nums[i]])))
+    : null;
+  if (!weights) {
+    throw new BadRequest(`weights must be ${CATEGORIES.length} numbers from 0 to ${MAX_WEIGHT} (${CATEGORIES.join(", ")})`);
+  }
+  return weights;
 }
 
 export function parseSeason(params: URLSearchParams): number {
@@ -78,6 +117,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers,
+    weights: parseWeights(params),
     page: intParam(params, "page", 1, 1, 100000),
     perPage: intParam(params, "perPage", DEFAULT_PER_PAGE, 1, MAX_PER_PAGE),
   };

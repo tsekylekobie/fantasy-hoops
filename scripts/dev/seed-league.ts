@@ -13,6 +13,7 @@
 import "dotenv/config";
 import { Pool } from "pg";
 import { getPlayers } from "../../src/lib/queries/players";
+import { EQUAL_WEIGHTS } from "../../src/lib/queries/value";
 import { CURRENT_SEASON } from "../../src/lib/types";
 
 const LEAGUE_NAME = "Fantasy Hoops";
@@ -172,7 +173,8 @@ async function main() {
     for (let page = 1; board.length < MANAGERS.length * rosterSize * 2; page++) {
       const res = await getPlayers(db, {
         season: CURRENT_SEASON - 1, range: "season", sort: "value", dir: "desc",
-        mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", page, perPage: 100,
+        mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any",
+        weights: EQUAL_WEIGHTS, page, perPage: 100,
       });
       if (res.players.length === 0) break;
       board.push(...res.players.map((p) => ({ id: p.id, position: p.position })));

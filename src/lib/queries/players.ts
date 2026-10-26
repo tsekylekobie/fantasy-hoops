@@ -199,8 +199,8 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
   ]);
-  // Value and rank over every player with a game in the range, before scope/q/pos.
-  const values = valuePlayers(rows.map(toTotals));
+  // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
+  const values = valuePlayers(rows.map(toTotals), q.weights);
 
   // Streaming filters, in the league's time zone.
   const now = new Date();
@@ -262,6 +262,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     plays: q.plays,
     playDates: dates,
     waivers: q.waivers,
+    weights: q.weights,
     page: q.page,
     perPage: q.perPage,
     total: matching.length,
