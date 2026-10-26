@@ -1,5 +1,5 @@
 // Number and label formatting shared by the players table and the player modal.
-import type { PlayerUpcomingGame } from "@/lib/types";
+import type { PlayerInjury, PlayerUpcomingGame } from "@/lib/types";
 
 /** 0.492 -> ".492"; 1 -> "1.000"; null -> "—" */
 export function fmtPct(value: number | null): string {
@@ -30,6 +30,20 @@ export function fmtGameDate(iso: string): string {
   const [, m, d] = iso.slice(0, 10).split("-").map(Number);
   if (!m || !d || m < 1 || m > 12) return iso;
   return `${MONTHS[m - 1]} ${d}`;
+}
+
+/** "Left Calf Strain · Est. return Oct 28", skipping missing parts; "" when neither is known. */
+export function fmtInjuryLine(i: PlayerInjury): string {
+  return [i.injury, i.returnDate && `Est. return ${fmtGameDate(i.returnDate)}`].filter(Boolean).join(" · ");
+}
+
+/** Hover text for a player row: "Out · Left Calf Strain · Est. return Oct 28", then the news blurb. */
+export function injuryTooltip(i: PlayerInjury | null): string | undefined {
+  if (!i) return undefined;
+  const line = [i.status, fmtInjuryLine(i)].filter(Boolean).join(" · ");
+  if (!i.note) return line;
+  const note = i.note.length > 240 ? `${i.note.slice(0, 240).replace(/\s+\S*$/, "")}…` : i.note;
+  return `${line}\n${note}`;
 }
 
 /** "@ CHI · W" / "vs ORL · L" */

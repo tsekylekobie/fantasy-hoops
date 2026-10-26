@@ -36,6 +36,7 @@ import {
   type PlayerWeek,
   type TeamLineupResponse,
 } from "../types";
+import { getInjuries } from "./injuries";
 import { getSeasonValues } from "./players";
 import { teamLogoUrl } from "./teamLogo";
 
@@ -151,7 +152,6 @@ interface DayPlayerRow {
   position: string | null;
   nba_person_id: number | null;
   team_abbr: string | null;
-  injury_status: string | null;
   game_id: number | null;
   tipoff: string | null;
   status: string | null;
@@ -171,10 +171,10 @@ interface DayPlayerRow {
 // tip-off (so stale data locks early, never late).
 const started = (g: string) => `coalesce(${g}.status_state <> 'scheduled' OR ${g}.datetime <= now(), false)`;
 
-// One row per player: team, current injury status, and his team's game on $2.
+// One row per player: team and his team's game on $2.
 const DAY_PLAYERS_SQL = `
   SELECT p.id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
-         t.abbreviation AS team_abbr, inj.status AS injury_status,
+         t.abbreviation AS team_abbr,
          g.id AS game_id, to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff,
          g.status, g.status_state,
          ${started("g")} AS started,
@@ -187,9 +187,6 @@ const DAY_PLAYERS_SQL = `
          coalesce(s.blk, 0) AS blk, coalesce(s.turnover, 0) AS tov
     FROM players p
     LEFT JOIN teams t ON t.id = p.team_id
-    LEFT JOIN LATERAL (
-      SELECT pi.status FROM player_injuries pi WHERE pi.player_id = p.id ORDER BY pi.observed_at DESC LIMIT 1
-    ) inj ON true
     LEFT JOIN LATERAL (
       SELECT * FROM games g
        WHERE g.date = $2 AND NOT g.postponed AND p.team_id IN (g.home_team_id, g.visitor_team_id)
@@ -274,13 +271,14 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
     for (const r of rosterRes.rows) slots.set(r.player_id, fromRows.get(r.player_id) ?? "BN");
   }
 
-  const [infoRes, dayRes, stints] = await Promise.all([
+  const [infoRes, dayRes, stints, injuries] = await Promise.all([
     db.query<DayPlayerRow>(DAY_PLAYERS_SQL, [[...slots.keys()], date]),
     db.query<{ started: boolean }>(
       `SELECT coalesce(bool_or(${started("g")}), false) AS started FROM games g WHERE g.date = $1 AND NOT g.postponed`,
       [date],
     ),
     loadInjuryStints(db, team.leagueId, [...slots.keys()]),
+    getInjuries(db, [...slots.keys()]),
   ]);
   const dayStarted = dayRes.rows[0]?.started ?? false;
   const il = ilRules(team);
@@ -300,7 +298,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
       slot: slots.get(r.id)!,
       eligible: eligibleSlots(r.position, ilEligibility(stints.get(r.id) ?? [], il, date)),
       lock,
-      injuryStatus: r.injury_status,
+      injury: injuries.get(r.id) ?? null,
       game: toGame(r),
       dayStats: toDayStats(r),
     };
@@ -443,7 +441,7 @@ export async function autoSetLineup(
       const next = autoLineup(
         day.players.map((p) => ({
           id: p.id, slot: p.slot, eligible: p.eligible, locked: p.lock !== null,
-          plays: p.game !== null && p.injuryStatus !== "Out",
+          plays: p.game !== null && p.injury?.status !== "Out",
           value: playerValue(values, p.id),
         })),
         team.rosterSlots,

@@ -24,6 +24,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   seed). `src/lib/queries/playoffs.ts` `syncPlayoffs` is the one place that creates bracket matchups (worker task
   `playoffs`; by hand `npm run playoffs -- --today <yyyy-mm-dd>` or `POST /api/dev/playoffs?today=...`, dev only).
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
+- `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
+  injury + news blurb. Rows show the status chip; the modal and row tooltips add injury, est. return and news.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (league data: `il_statuses`,
   `il_min_days` and the IL+ pair); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
 - `src/components/`: UI. `Avatar` must fall back to initials.

@@ -24,6 +24,7 @@ import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
 import { ISO, getWaiverStatus } from "./waiverStatus";
+import { getInjuries } from "./injuries";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -194,10 +195,11 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const [{ rows }, owners, waivers] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
+    getInjuries(db),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -247,6 +249,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
+      injury: injuries.get(r.player_id) ?? null,
     };
   });
 
@@ -280,7 +283,7 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
 export async function getPlayerDetail(
   db: Pool, playerId: number, season: number,
 ): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
-  const [playerRes, seasonsRes, logRes, owners, waivers] = await Promise.all([
+  const [playerRes, seasonsRes, logRes, owners, waivers, injuries] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -331,6 +334,7 @@ export async function getPlayerDetail(
     ),
     getOwners(db, season),
     getWaiverStatus(db, season),
+    getInjuries(db, [playerId]),
   ]);
 
   const p = playerRes.rows[0];
@@ -357,7 +361,7 @@ export async function getPlayerDetail(
       position: p.position,
       nbaPersonId: p.nba_person_id,
       teamName: p.team_name,
-      availability: null,
+      injury: injuries.get(p.id) ?? null,
     },
     owner: owners.get(p.id) ?? null,
     waiver: waivers.players.get(p.id) ?? null,

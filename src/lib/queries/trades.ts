@@ -38,6 +38,7 @@ import {
   type LineupSlot,
   LINEUP_SLOTS,
 } from "../types";
+import { getInjuries } from "./injuries";
 import { freezeLineups } from "./lineup";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
 import { categoryLine, getSeasonValues } from "./players";
@@ -257,16 +258,14 @@ export async function getTradeBuilder(
   if (!partner) throw new TradeError("No such team in this league.", 404);
   if (partner.id === viewer.team.id) throw new TradeError("You can't trade with yourself.", 400);
 
-  const [{ rows }, values] = await Promise.all([
+  const [{ rows }, values, injuries] = await Promise.all([
     pool.query<{
       team_id: number; id: number; first_name: string; last_name: string; position: string | null;
-      nba_person_id: number | null; team_abbr: string | null; slot: LineupSlot; injury_status: string | null;
+      nba_person_id: number | null; team_abbr: string | null; slot: LineupSlot;
       in_open_trade: boolean;
     }>(
       `SELECT rp.fantasy_team_id::int AS team_id, p.id, p.first_name, p.last_name,
               nullif(p.position, '') AS position, p.nba_person_id, tm.abbreviation AS team_abbr, rp.slot,
-              (SELECT pi.status FROM player_injuries pi WHERE pi.player_id = p.id ORDER BY pi.observed_at DESC LIMIT 1)
-                AS injury_status,
               EXISTS (SELECT 1 FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
                        WHERE tp.player_id = p.id AND t.league_id = rp.league_id
                          AND t.type = 'trade' AND t.status = 'pending') AS in_open_trade
@@ -277,13 +276,14 @@ export async function getTradeBuilder(
       [league.id, [viewer.team.id, partner.id]],
     ),
     getSeasonValues(pool, league.season),
+    getInjuries(pool),
   ]);
   const toPlayer = (r: (typeof rows)[number]): TradeRosterPlayer => {
     const v = values.get(r.id);
     const line = v ? categoryLine(v.totals, "avg") : null;
     return {
       id: r.id, firstName: r.first_name, lastName: r.last_name, teamAbbr: r.team_abbr, position: r.position,
-      nbaPersonId: r.nba_person_id, slot: r.slot, injuryStatus: r.injury_status,
+      nbaPersonId: r.nba_person_id, slot: r.slot, injury: injuries.get(r.id) ?? null,
       gp: v?.totals.gp ?? 0,
       stats: line,
       value: v ? Math.round(v.value * 100) / 100 : null,

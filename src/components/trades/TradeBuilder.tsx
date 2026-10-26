@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
-import { fetchJson, fmtAvg, fmtValue, fullName } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtValue, fullName, injuryTooltip } from "@/components/players/format";
 import type { Trade, TradeBuilderResponse, TradeProposal, TradeRosterPlayer } from "@/lib/types";
 import styles from "./Trades.module.css";
 
@@ -192,7 +192,7 @@ function Roster({ title, team, players, picked, onPick }: {
       {players.map((p) => {
         const on = picked.has(p.id);
         return (
-          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""}`}>
+          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""}`} title={injuryTooltip(p.injury)}>
             <span>
               <button
                 type="button"
@@ -210,8 +210,8 @@ function Roster({ title, team, players, picked, onPick }: {
               <span className={styles.who}>
                 <span className={styles.name}>
                   {fullName(p)}
-                  {p.injuryStatus && (
-                    <span className={`${styles.tag} ${p.injuryStatus === "Out" ? styles.out : styles.dtd}`}>{p.injuryStatus}</span>
+                  {p.injury && (
+                    <span className={`${styles.tag} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
                   )}
                   {p.inOpenTrade && <span className={styles.tag} title="Also in another open trade">In a trade</span>}
                 </span>

@@ -203,7 +203,7 @@ function rosterOptions(team: TeamContext, day: DayState, values: Values): Roster
       const avg = cur ? categoryLine(cur.totals, "avg") : null;
       return {
         id: p.id, firstName: p.firstName, lastName: p.lastName, teamAbbr: p.teamAbbr,
-        position: p.position, nbaPersonId: p.nbaPersonId, slot: p.slot, injuryStatus: p.injuryStatus,
+        position: p.position, nbaPersonId: p.nbaPersonId, slot: p.slot, injury: p.injury,
         pts: avg?.pts ?? null, reb: avg?.reb ?? null,
         value: Math.round((cur?.value ?? values.previous.get(p.id)?.value ?? 0) * 100) / 100,
         dropBlocked: dropBlocked(p),

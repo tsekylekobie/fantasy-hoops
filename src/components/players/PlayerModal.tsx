@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
-import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtWaiverTime, fullName } from "./format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
 
 interface Props {
@@ -24,12 +24,6 @@ type Load =
   | { status: "loading"; id: number }
   | { status: "ready"; id: number; data: PlayerDetailResponse }
   | { status: "error"; id: number; message: string };
-
-const AVAILABILITY: Record<"available" | "day-to-day" | "out", { label: string; className: string }> = {
-  available: { label: "Available", className: styles.chipAvailable },
-  "day-to-day": { label: "Day-to-day", className: styles.chipDtd },
-  out: { label: "Out", className: styles.chipOut },
-};
 
 export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -164,7 +158,8 @@ function DetailHead({
   data, onAdd, myTeamId,
 }: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
   const { player, owner, waiver } = data;
-  const chip = player.availability ? AVAILABILITY[player.availability] : null;
+  const injury = player.injury;
+  const injuryLine = injury ? fmtInjuryLine(injury) : "";
   const team = player.teamName ?? player.teamAbbr;
   const subline = [team, player.position, `${seasonLabel(data.season)} season`].filter(Boolean).join(" · ");
   return (
@@ -173,13 +168,21 @@ function DetailHead({
       <div className={styles.headText}>
         <h2 id="player-modal-title" className={styles.name}>
           {fullName(player)}
-          {chip && <span className={`${styles.chip} ${chip.className}`}>{chip.label}</span>}
+          {injury && (
+            <span className={`${styles.chip} ${injury.status === "Out" ? styles.chipOut : styles.chipDtd}`}>{injury.status}</span>
+          )}
           {owner === null && waiver && <span className={`${styles.chip} ${styles.chipWaivers}`}>On waivers</span>}
         </h2>
         <p className={styles.subline}>
           {subline}
           {owner && ` · ${owner.teamId === myTeamId ? "On your team" : `On ${owner.abbreviation}`}`}
         </p>
+        {injury && (injuryLine || injury.note) && (
+          <div className={styles.injury}>
+            {injuryLine && <p className={styles.injuryLine}>{injuryLine}</p>}
+            {injury.note && <p className={styles.injuryNote}>{injury.note}</p>}
+          </div>
+        )}
         {owner === null && waiver && (
           <p className={styles.subline}>
             {waiver.reason === "game_started"

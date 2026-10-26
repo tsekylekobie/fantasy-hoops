@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
+import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, injuryTooltip, teamPos } from "./format";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -133,7 +133,7 @@ function Row({
 }) {
   const s = p.stats;
   return (
-    <tr>
+    <tr title={injuryTooltip(p.injury)}>
       <td>{p.rank}</td>
       <td>
         <span className={styles.player}>
@@ -142,7 +142,12 @@ function Row({
             <button type="button" className={styles.name} data-player-id={p.id} onClick={() => onOpen(p.id)}>
               {fullName(p)}
             </button>
-            <span className={styles.team}>{teamPos(p.teamAbbr, p.position)}</span>
+            <span className={styles.team}>
+              {teamPos(p.teamAbbr, p.position)}
+              {p.injury && (
+                <span className={`${styles.injury} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
+              )}
+            </span>
             {p.games.length > 0 && (
               <span className={styles.games}>
                 {p.games.map((g) => fmtUpcomingGame(g, timeZone)).join(" · ")}

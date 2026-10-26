@@ -22,7 +22,7 @@ import TeamBadge from "@/components/TeamBadge";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
-import { fetchJson, fmtPct, fullName } from "@/components/players/format";
+import { fetchJson, fmtPct, fullName, injuryTooltip } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
   AutoLineupRequest,
@@ -92,7 +92,7 @@ const ilOpenTo = (p: LineupPlayer, leagueIl: LineupSlot[]) =>
 
 const isStarter = (slot: LineupSlot) => STARTING_SLOTS.includes(slot);
 const where = (slot: LineupSlot) => (slot === "BN" ? "the bench" : isIlSlot(slot) ? `the ${slot}` : slot);
-const plays = (p: LineupPlayer) => p.game !== null && p.injuryStatus !== "Out";
+const plays = (p: LineupPlayer) => p.game !== null && p.injury?.status !== "Out";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -342,7 +342,11 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
     // Final game but no minutes (or no stat row at all, e.g. listed Out).
     const dnp = p?.game?.state === "final" && (day === null || day.min === 0);
     return (
-      <div key={spot.key} className={`${styles.grid} ${styles.row} ${styles[mode]} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}>
+      <div
+        key={spot.key}
+        className={`${styles.grid} ${styles.row} ${styles[mode]} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}
+        title={p ? injuryTooltip(p.injury) : undefined}
+      >
         <span>
           <button
             type="button"
@@ -363,8 +367,8 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
               <span className={styles.who}>
                 <span className={styles.name} data-player-name>
                   {fullName(p)}
-                  {p.injuryStatus && (
-                    <span className={`${styles.status} ${p.injuryStatus === "Out" ? styles.out : styles.dtd}`}>{p.injuryStatus}</span>
+                  {p.injury && (
+                    <span className={`${styles.status} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
                   )}
                   {current && ilIneligible(p) && (
                     <span className={`${styles.status} ${styles.ilBad}`} title={`No longer meets the league's ${p.slot} rule`}>

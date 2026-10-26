@@ -84,6 +84,18 @@ export interface PlayerSummary {
   nbaPersonId: number | null;
 }
 
+/** A player's current injury report entry. */
+export interface PlayerInjury {
+  /** "Out", "Doubtful", "Questionable", "Day-To-Day", "Probable" (INJURY_STATUSES). */
+  status: string;
+  /** The provider's estimated return, yyyy-mm-dd; null when unknown. */
+  returnDate: string | null;
+  /** "Left Calf Strain", "Knee", "Not With Team", ...; null when the report doesn't say. */
+  injury: string | null;
+  /** The latest news blurb. */
+  note: string | null;
+}
+
 export interface PlayerRow extends PlayerSummary {
   /** 1-based rank by (weighted) 9CAT value among all players with a game this season (independent of q/pos). */
   rank: number;
@@ -99,6 +111,8 @@ export interface PlayerRow extends PlayerSummary {
   waiver: PlayerWaiver | null;
   /** His team's scheduled games on the requested `plays` days, in date order; empty without `plays`. */
   games: PlayerUpcomingGame[];
+  /** Null when healthy. */
+  injury: PlayerInjury | null;
 }
 
 /** A scheduled (not started, not postponed) NBA game, for the streaming filter. */
@@ -174,8 +188,8 @@ export interface SeasonRow extends CategoryLine {
 export interface PlayerDetailResponse {
   player: PlayerSummary & {
     teamName: string | null;
-    /** No injury data in M1, so this is null and the UI hides the chip. */
-    availability: "available" | "day-to-day" | "out" | null;
+    /** Null when healthy. */
+    injury: PlayerInjury | null;
   };
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
@@ -540,8 +554,8 @@ export interface LineupPlayer extends PlayerSummary {
    */
   eligible: LineupSlot[];
   lock: LineupLock | null;
-  /** Latest injury report status ("Out", "Day-To-Day", ...); null when healthy. */
-  injuryStatus: string | null;
+  /** Null when healthy. */
+  injury: PlayerInjury | null;
   game: LineupGame | null;
   /** His NBA team's games in the lineup's week (see `days`): not yet tipped off, and in all. */
   weekGames: { remaining: number; total: number };
@@ -626,7 +640,7 @@ export interface PlayerWaiver {
 export interface RosterMoveOption extends PlayerSummary {
   /** His slot today. IL and IL+ don't count against the roster limit. */
   slot: LineupSlot;
-  injuryStatus: string | null;
+  injury: PlayerInjury | null;
   /** Season per-game points and rebounds; null with no games yet. */
   pts: number | null;
   reb: number | null;
@@ -771,7 +785,7 @@ export interface TradesResponse {
 /** A rostered player as the trade builder shows him. */
 export interface TradeRosterPlayer extends PlayerSummary {
   slot: LineupSlot;
-  injuryStatus: string | null;
+  injury: PlayerInjury | null;
   /** Season per-game line and 9CAT value; null before his first game. */
   gp: number;
   stats: CategoryLine | null;
