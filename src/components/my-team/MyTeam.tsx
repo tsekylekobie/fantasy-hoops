@@ -8,6 +8,8 @@
 // IL: who may move in is the league's IL rule (lineup/rules.ts ilEligibility).
 // A player who stops qualifying stays on IL but makes the roster illegal:
 // a banner explains it, and add/drop refuses adds until it's fixed.
+// Game limits (when the week has them): games used against the total and each
+// capped slot, warning before starts that won't count (GameLimits.tsx).
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
@@ -22,6 +24,7 @@ import TeamBadge from "@/components/TeamBadge";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
+import GameLimits from "./GameLimits";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
@@ -463,6 +466,8 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
           ›
         </button>
       </div>
+
+      {data.gameLimits && <GameLimits usage={data.gameLimits} week={data.week?.week ?? null} />}
 
       {note && (
         <div className={`${styles.note} ${note.kind === "ok" ? styles.ok : styles.error}`} role={note.kind === "ok" ? "status" : "alert"}>

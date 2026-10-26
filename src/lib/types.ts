@@ -260,10 +260,12 @@ export interface MatchupSide extends FantasyTeamSummary {
   managerName: string | null;
   /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
   stats: CategoryLine;
-  /** Starter games played so far this week. */
+  /** Starter games played so far this week (that counted, under game limits). */
   gamesPlayed: number;
-  /** Starter games still to tip off this week (current lineup and NBA teams). */
+  /** Starter games still to tip off this week (current lineup and NBA teams) that will count under game limits. */
   gamesLeft: number;
+  /** The week's game limit total, when the week has game limits. */
+  gameLimit?: number;
   /** Slot order (starters, BN, IL, IL+), then players who left the roster. */
   players: MatchupPlayer[];
 }
@@ -628,6 +630,8 @@ export interface TeamLineupResponse {
   /** Each day of that week (or the Mon–Sun around `date`) with its NBA game count. */
   days: { date: string; nbaGames: number }[];
   players: LineupPlayer[];
+  /** Starters' games against that week's game limits; null when the week has none (or outside the schedule). */
+  gameLimits: GameLimitUsage | null;
 }
 
 /** PUT /api/team/lineup: the whole lineup for one day (today or later). Responds with TeamLineupResponse. */
@@ -983,6 +987,42 @@ export interface LeagueSettings {
   /** Bottom teams play a loser-advances bracket; its final's loser is last place. */
   toiletBowl: boolean;
   toiletBowlTeams: number;
+  /**
+   * Caps on starters' games per matchup week; null = no limits. A change
+   * applies from the next matchup week (league_weeks.game_limits); the current
+   * week keeps its limits.
+   */
+  gameLimits: GameLimits | null;
+}
+
+/**
+ * Games a team's starters may play in one matchup week (lineup/gameLimits.ts).
+ * Games count in tip-off order; once the team total or a slot's cap is
+ * reached, later starts (for the team / in that slot) score nothing that week.
+ */
+export interface GameLimits {
+  /** All starting slots together. */
+  total: number;
+  /** Per starting slot, shared by all of that slot's spots (C x2 = one cap). Missing = only the total applies. */
+  slots: Partial<Record<LineupSlot, number>>;
+}
+
+/** One game limit's tally for a week. */
+export interface GameLimitCount {
+  limit: number;
+  /** Games that counted so far. */
+  used: number;
+  /** What it will reach if the lineups as set now play out (scheduled games assumed played). */
+  planned: number;
+  /** Days (yyyy-mm-dd) with upcoming starts that won't count because of this limit. */
+  blockedDays: string[];
+}
+
+/** A team's games against its week's limits (TeamLineupResponse.gameLimits). */
+export interface GameLimitUsage {
+  total: GameLimitCount;
+  /** Capped slots only, in slot order. */
+  slots: (GameLimitCount & { slot: LineupSlot })[];
 }
 
 export interface LeagueSettingsResponse {
@@ -996,6 +1036,10 @@ export interface LeagueSettingsResponse {
   weeks?: { week: number; startsOn: string; endsOn: string }[];
   /** Playoff matchups exist: the playoff settings can't change any more. */
   playoffsStarted?: boolean;
+  /** The league's starting slots and counts, for the per-position game limits. */
+  startingSlots?: { slot: LineupSlot; count: number }[];
+  /** The first week a game limits change would apply to (the next one to start); null = none left. */
+  gameLimitsFromWeek?: number | null;
 }
 
 // Team profile (/api/team/profile)

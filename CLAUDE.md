@@ -28,6 +28,11 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   for one week or the regular season added up; Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
   status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
+- `src/lib/lineup/gameLimits.ts`: game limits (commissioner setting, off by default): caps on starters' games per matchup
+  week, total and per starting slot, counted in tip-off order (`countStarts`, pure, tested). Each week carries its own
+  limits (`league_weeks.game_limits`, migration 0015); saving settings copies them onto weeks not yet started, so a change
+  starts next week. Matchup scoring (`queries/matchups.ts`: `weekLines`, used by standings, rankings and playoffs) applies
+  them; My team shows games used (`teamGameLimitUsage`).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; the others (my team, matchup, league, rankings, claim, nav map, phone) are later-milestone exploration.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
