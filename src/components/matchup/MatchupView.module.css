@@ -232,11 +232,11 @@ a.pageBtn:hover {
 
 .cs {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) repeat(9, 50px);
+  /* Stat columns give up to 6px each so all nine fit beside Around the league. */
+  grid-template-columns: minmax(88px, 1fr) repeat(9, minmax(44px, 50px));
   align-items: center;
-  column-gap: 4px;
+  column-gap: 2px;
   padding: 0 20px;
-  min-width: 680px;
   box-sizing: border-box;
   font-variant-numeric: tabular-nums;
   font-size: 15px;
