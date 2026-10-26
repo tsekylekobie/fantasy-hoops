@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League settings</title>
+<!-- Commissioner: league settings (/league/settings). Standalone copy of the design; sample state: one unsaved change (Sunday turned off). -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.pg{background:#F6F4EF;color:#16181D;font-family:Inter,system-ui,sans-serif;min-height:2700px;box-sizing:border-box;padding:12px 40px 48px}
+.in{max-width:1200px;margin:0 auto}
+.nav{display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;border-bottom:1px solid #E2DDD1}
+.logo{font:700 26px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#16181D;text-decoration:none}
+.logo b{color:#C2410C}
+.tabs{display:flex;flex-wrap:wrap}
+.tabs a{display:flex;align-items:center;height:56px;box-sizing:border-box;padding:0 14px;font:600 14px Inter,sans-serif;color:#4A4F57;text-decoration:none;border-bottom:3px solid transparent}
+.tabs a:hover{color:#16181D}
+.tabs a.on{color:#16181D;border-bottom-color:#C2410C}
+.me{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tag{font-size:12px;font-weight:600;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:6px 12px}
+.tmc{display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px 0 6px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;text-decoration:none;font:600 13px Inter,sans-serif}
+.tmc i{width:32px;height:32px;border-radius:50%;background:#16181D;color:#fff;font:700 13px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.back{display:inline-block;margin-top:24px;font-size:14px;font-weight:600;text-decoration:none}
+h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:12px 0 8px;text-transform:uppercase;letter-spacing:.01em;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1 small{font:700 11px Inter,sans-serif;letter-spacing:.06em;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:4px 10px}
+.sub{color:#4A4F57;font-size:15px;margin:0 0 24px;max-width:760px;line-height:1.5}
+.cols{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.side{flex:1 1 220px;max-width:260px;display:flex;flex-direction:column;gap:2px}
+.side a{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 14px;border-radius:10px;color:#16181D;text-decoration:none;font-size:14px;font-weight:500}
+.side a:hover{background:#EFECE4;color:#16181D}
+.side a.on{background:#fff;border:1px solid #E2DDD1;font-weight:600}
+.side a em{font-style:normal;font-size:11px;font-weight:600;color:#5A5F68}
+.side hr{border:0;border-top:1px solid #E2DDD1;margin:10px 0}
+.main{flex:999 1 600px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.card{background:#fff;border:1px solid #E2DDD1;border-radius:12px;padding:4px 24px 8px}
+.card h2{font:700 22px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 4px}
+.card .lede{font-size:13px;color:#4A4F57;margin:0 0 8px;line-height:1.5}
+.row{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:8px 24px;padding:16px 0;border-top:1px solid #EEEAE0;align-items:start}
+.row .lb{font-size:14px;font-weight:600;padding-top:12px}
+.row .lb small{display:block;font-size:12px;font-weight:400;color:#5A5F68;margin-top:4px;line-height:1.45}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid #CFC9BD;border-radius:10px;overflow:hidden;background:#fff}
+.seg button{height:44px;padding:0 16px;border:0;border-left:1px solid #CFC9BD;background:#fff;color:#16181D;font:500 14px Inter,sans-serif;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:#16181D;color:#fff;font-weight:600}
+.day{width:52px;height:44px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;color:#16181D;font:600 13px Inter,sans-serif;cursor:pointer}
+.day[aria-pressed="true"]{background:#16181D;border-color:#16181D;color:#fff}
+.inp{height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:10px;padding:0 12px;font:400 14px Inter,sans-serif;background:#fff;color:#16181D}
+.num{width:96px;font-variant-numeric:tabular-nums}
+.unit{font-size:13px;color:#4A4F57}
+.money{display:inline-flex;align-items:center;gap:6px}
+.chk{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 10px;border:1px solid #CFC9BD;border-radius:10px;font-size:14px;cursor:pointer;background:#fff}
+.chk input{width:18px;height:18px;accent-color:#16181D;margin:0}
+.sw2{display:inline-flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;min-height:44px}
+.sw2 input{width:20px;height:20px;accent-color:#C2410C;margin:0}
+.hint{flex-basis:100%;font-size:12px;color:#5A5F68;margin:2px 0 0;line-height:1.45}
+.warn{flex-basis:100%;font-size:13px;color:#7C2D12;background:#FFF4EC;border:1px solid #FFD8BD;border-radius:8px;padding:8px 12px;margin:4px 0 0;line-height:1.45}
+.lock{font-size:13px;color:#4A4F57;background:#F6F4EF;border-radius:8px;padding:10px 12px;margin:8px 0;line-height:1.45}
+.sub2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;flex-basis:100%}
+.sub2 label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#4A4F57}
+.ilgrid{display:flex;flex-direction:column;gap:12px;flex-basis:100%}
+.ilrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ilrow b{width:48px;font-size:13px}
+.bracket{display:flex;gap:4px;flex-basis:100%;margin-top:4px}
+.bracket span{flex:1;height:28px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.bracket .r{background:#EFECE4;color:#4A4F57}
+.bracket .p{background:#16181D;color:#fff}
+.bracket .t{background:#FFE7D6;color:#7C2D12}
+.save{position:sticky;bottom:16px;background:#16181D;color:#fff;border-radius:12px;padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;box-shadow:0 12px 32px rgba(22,24,29,.24)}
+.save .what{flex:1 1 360px;min-width:0}
+.save .what b{display:block;font-size:15px}
+.save ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:#E2DDD1;line-height:1.5}
+.save .ok{font-size:14px;color:#D9F2D3}
+.bt{height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;font:600 14px Inter,sans-serif;cursor:pointer}
+.bt.p{background:#C2410C;border:1px solid #C2410C;color:#fff}
+.bt.g{background:transparent;border:1px solid #6B7079;color:#fff}
+.bt:disabled{opacity:.45;cursor:default}
+.who{font-size:13px;color:#4A4F57;margin:0;line-height:1.5}
+.glgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;flex-basis:100%}
+.glgrid label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#4A4F57;letter-spacing:.04em}
+.glgrid .num{width:100%}
+.glprev{flex-basis:100%;display:flex;flex-direction:column;gap:10px;margin-top:8px;padding:14px 16px;border:1px dashed #CFC9BD;border-radius:10px;background:#FBFAF6}
+.gp{display:grid;grid-template-columns:96px 64px 1fr;gap:4px 12px;align-items:center;font-size:13px}
+.gp b{font-variant-numeric:tabular-nums;text-align:right}
+.gp em{grid-column:3;font-style:normal;font-size:12px;font-weight:600;color:#7C2D12}
+.bar{height:8px;border-radius:4px;background:#EFECE4;overflow:hidden}
+.bar i{display:block;height:100%;background:#16181D}
+.bar.full i{background:#C2410C}
+</style>
+</head>
+<body>
+<div class="pg"><div class="in">
+<nav class="nav" aria-label="Main">
+<a class="logo" href="Main.dc.html">Fantasy <b>Hoops</b></a>
+<div class="tabs"><a href="Main.dc.html">Players</a><a href="Team.dc.html">My team</a><a href="Matchup.dc.html">Matchup</a><a href="League.dc.html" class="on" aria-current="page">League</a><a href="Rankings.dc.html">Rankings</a></div>
+<div class="me"><span class="tag">Sample data</span><a class="tmc" href="Team.dc.html"><i>BDC</i>Back Door Cuts</a></div>
+</nav>
+<a class="back" href="League.dc.html">← League</a>
+<h1>League settings <small>COMMISSIONER</small></h1>
+<p class="sub">Only you can change these. A change applies from the next action on: lineups already locked and moves already processed stay as they were. Managers see the rules read-only on the League page.</p>
+
+<div class="cols">
+<nav class="side" aria-label="Settings sections">
+<a href="#waivers" class="on">Waivers <em>Rolling · 6×/wk</em></a>
+<a href="#roster">Roster &amp; IL <em>2 IL · 1 IL+</em></a>
+<a href="#games">Game limits <em>40 / week</em></a>
+<a href="#adds">Add limits <em>4 / week</em></a>
+<a href="#trades">Trades <em>League vote</em></a>
+<a href="#playoffs">Playoffs <em>6 teams</em></a>
+<hr>
+<a href="Members.dc.html">League members <em>11 of 12</em></a>
+<p class="who">Fixed once the league starts: 12 teams, 9 categories, 21-week schedule.</p>
+</nav>
+
+<div class="main">
+
+<section class="card" id="waivers" aria-labelledby="h-waivers">
+<h2 id="h-waivers">Waivers</h2>
+<p class="lede">How dropped players and claims are handled. Next run: <b>Tue Oct 27, 3:00 AM ET</b>.</p>
+<div class="row"><div class="lb">Waiver type<small>Who wins when two teams claim the same player.</small></div>
+<div class="ctl"><div class="seg" role="group" aria-label="Waiver type">
+<button aria-pressed="true">Rolling</button><button aria-pressed="false">Reverse standings</button><button aria-pressed="false">FAAB</button>
+</div><p class="hint">Priority order; a team that wins a claim drops to the bottom.</p></div></div>
+
+
+
+<div class="row"><div class="lb">Run days<small>Claims are processed and waivers clear only on these days.</small></div>
+<div class="ctl">
+<button class="day" aria-pressed="true" aria-label="Monday">Mon</button><button class="day" aria-pressed="true" aria-label="Tuesday">Tue</button><button class="day" aria-pressed="true" aria-label="Wednesday">Wed</button><button class="day" aria-pressed="true" aria-label="Thursday">Thu</button><button class="day" aria-pressed="true" aria-label="Friday">Fri</button><button class="day" aria-pressed="true" aria-label="Saturday">Sat</button><button class="day" aria-pressed="false" aria-label="Sunday">Sun</button>
+
+</div></div>
+<div class="row"><div class="lb">Run time</div>
+<div class="ctl"><label class="unit" for="set-time">Time</label><input id="set-time" class="inp" type="time" value="03:00"><label class="unit" for="set-tz">Time zone</label><select id="set-tz" class="inp"><option>America/New_York (ET)</option><option>America/Chicago (CT)</option><option>America/Los_Angeles (PT)</option></select></div></div>
+<div class="row"><div class="lb"><label for="set-wdays">Days on waivers</label><small>After a drop. They clear at the first run after this; 0 = straight to free agents.</small></div>
+<div class="ctl"><input id="set-wdays" class="inp num" type="number" min="0" max="14" value="2"><span class="unit">days</span></div></div>
+<div class="row"><div class="lb">Free agents after tip-off<small>A free agent goes on waivers once his game starts, until the next run.</small></div>
+<div class="ctl"><label class="sw2"><input type="checkbox" checked>Lock free agents once their game starts</label></div></div>
+</section>
+
+<section class="card" id="roster" aria-labelledby="h-roster">
+<h2 id="h-roster">Roster &amp; IL</h2>
+<p class="lede">Starting slots are fixed: PG SG G SF PF F C C UTIL UTIL + 3 bench. IL players don’t count against the roster.</p>
+<div class="row"><div class="lb">Injured list slots<small>Who can be stashed, and how long they must be on the injury report first.</small></div>
+<div class="ctl"><div class="ilgrid">
+<div class="ilrow"><b>IL</b><input class="inp num" type="number" min="0" max="5" value="2" aria-label="IL slots"><span class="unit">slots for</span>
+<label class="chk"><input type="checkbox" checked>Out</label><label class="chk"><input type="checkbox">Doubtful</label><label class="chk"><input type="checkbox">Questionable</label><label class="chk"><input type="checkbox">Day-To-Day</label></div>
+<div class="ilrow"><b>IL+</b><input class="inp num" type="number" min="0" max="5" value="1" aria-label="IL+ slots"><span class="unit">slots for</span>
+<label class="chk"><input type="checkbox" checked>Out</label><label class="chk"><input type="checkbox" checked>Doubtful</label><label class="chk"><input type="checkbox" checked>Questionable</label><label class="chk"><input type="checkbox" checked>Day-To-Day</label></div>
+</div></div></div>
+<div class="row"><div class="lb">How it’s checked<small>Current status on the injury report.</small></div>
+<div class="ctl"><p class="hint" style="margin:12px 0 0">A player can move into a slot whenever his status today is one it allows. Fewer slots than a team is using is refused: Paint Protectors has 2 in IL, so IL can’t go below 2 until they move someone.</p></div></div>
+</section>
+
+<section class="card" id="games" aria-labelledby="h-games">
+<h2 id="h-games">Game limits</h2>
+<p class="lede">Caps on how many games a team’s starters can play in one matchup week. Bench and IL games never count.</p>
+<div class="row"><div class="lb">Limit games<small>Changes start with the next matchup week; this week keeps its current limits.</small></div>
+<div class="ctl"><label class="sw2"><input type="checkbox" checked>Cap games per matchup week</label></div></div>
+
+<div class="row"><div class="lb"><label for="set-gtotal">Total games</label><small>All starting slots together.</small></div>
+<div class="ctl"><input id="set-gtotal" class="inp num" type="number" min="1" max="200" value="40"><span class="unit">games per week</span></div></div>
+<div class="row"><div class="lb">Per position<small>Per slot, summed across that slot’s spots (C has 2, UTIL has 2). Blank = only the total applies.</small></div>
+<div class="ctl"><div class="glgrid">
+<label for="gl-pg">PG<input id="gl-pg" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-sg">SG<input id="gl-sg" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-g">G<input id="gl-g" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-sf">SF<input id="gl-sf" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-pf">PF<input id="gl-pf" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-f">F<input id="gl-f" class="inp num" type="number" min="0" value="5"></label>
+<label for="gl-c">C<input id="gl-c" class="inp num" type="number" min="0" value="8"></label>
+<label for="gl-util">UTIL<input id="gl-util" class="inp num" type="number" min="0" placeholder="—"></label>
+</div>
+<p class="hint">Positions add up to 38 plus unlimited UTIL, so the 40 total is what usually binds.</p></div></div>
+<div class="row"><div class="lb">Past the limit<small>Games are counted in tip-off order.</small></div>
+<div class="ctl"><p class="hint" style="margin:12px 0 0">Once a slot or the team is at its limit, later starts in it score nothing for the rest of the week. Managers are warned in their lineup before it happens.</p>
+<div class="glprev" aria-label="What managers see on My team">
+<div class="gp"><span>Week 3 games</span><b>34 / 40</b><div class="bar"><i style="width:85%"></i></div></div>
+<div class="gp"><span>C</span><b>8 / 8</b><div class="bar full"><i style="width:100%"></i></div><em>At limit: Thu’s C starts won’t count</em></div>
+<div class="gp"><span>PG</span><b>3 / 5</b><div class="bar"><i style="width:60%"></i></div></div>
+</div></div></div>
+
+</section>
+
+<section class="card" id="adds" aria-labelledby="h-adds">
+<h2 id="h-adds">Add limits</h2>
+<p class="lede">Free-agent adds and won waiver claims both count. Blank = unlimited.</p>
+<div class="row"><div class="lb"><label for="set-addw">Adds per week</label><small>Per matchup week, resets Monday.</small></div>
+<div class="ctl"><input id="set-addw" class="inp num" type="number" min="0" max="200" value="4"></div></div>
+<div class="row"><div class="lb"><label for="set-adds">Adds per season</label></div>
+<div class="ctl"><input id="set-adds" class="inp num" type="number" min="0" max="200" placeholder="Unlimited"></div></div>
+</section>
+
+<section class="card" id="trades" aria-labelledby="h-trades">
+<h2 id="h-trades">Trades</h2>
+<p class="lede">What happens after the other manager accepts.</p>
+<div class="row"><div class="lb">Review<small>Other managers can vote to veto during the review period.</small></div>
+<div class="ctl"><div class="seg" role="group" aria-label="Trade review">
+<button aria-pressed="false">None</button><button aria-pressed="false">Commissioner</button><button aria-pressed="true">League vote</button>
+</div></div></div>
+
+<div class="row"><div class="lb"><label for="set-rdays">Review period</label><small>The trade goes through when it ends.</small></div>
+<div class="ctl"><input id="set-rdays" class="inp num" type="number" min="0" max="7" value="2"><span class="unit">days</span></div></div>
+
+
+<div class="row"><div class="lb"><label for="set-votes">Veto votes to block</label><small>The two teams in the trade can’t vote, so up to 10.</small></div>
+<div class="ctl"><input id="set-votes" class="inp num" type="number" min="1" max="10" value="4"><span class="unit">of 10 eligible managers</span></div></div>
+
+<div class="row"><div class="lb"><label for="set-deadline">Trade deadline</label><small>Blank = no deadline.</small></div>
+<div class="ctl"><input id="set-deadline" class="inp" type="date" value="2027-02-26"></div></div>
+</section>
+
+<section class="card" id="playoffs" aria-labelledby="h-playoffs">
+<h2 id="h-playoffs">Playoffs</h2>
+<p class="lede">One week per round. Ties go to the better seed.</p>
+<div class="row"><div class="lb"><label for="set-pteams">Playoff teams</label><small>Top seeds by the standings; byes when it isn’t a power of two.</small></div>
+<div class="ctl"><input id="set-pteams" class="inp num" type="number" min="2" max="12" value="6"><span class="unit">teams · 3 rounds</span></div></div>
+<div class="row"><div class="lb"><label for="set-pstart">Playoffs start</label><small>Weeks 2–19 allowed for 3 rounds.</small></div>
+<div class="ctl"><select id="set-pstart" class="inp"><option>Week 19 (Mar 15) – ends week 21</option><option>Week 18 (Mar 8) – ends week 20</option></select>
+<div class="bracket" aria-hidden="true"><span class="r">Weeks 1–18 regular season</span><span class="p" style="flex:0 0 22%">19–21 playoffs</span></div></div></div>
+<div class="row"><div class="lb">Toilet bowl<small>The bottom teams play a bracket where the loser advances; its last loser finishes last.</small></div>
+<div class="ctl"><label class="sw2"><input type="checkbox" checked>Play a toilet bowl</label>
+<span class="unit">with the bottom</span><input class="inp num" type="number" min="2" max="6" value="4" aria-label="Toilet bowl teams"><span class="unit">teams</span><p class="hint">6 in the playoffs + 4 in the toilet bowl; seeds 7 and 8 are done after week 18.</p>
+</div></div>
+<p class="lock">Playoff settings lock once week 19’s bracket is made (Mar 15).</p>
+</section>
+
+<div class="save" role="region" aria-label="Save changes" aria-live="polite">
+
+<div class="what"><b>1 change</b><ul><li>Waivers run Mon, Tue, Wed, Thu, Fri, Sat. 3 pending claims and 2 players on waivers move to the first new run at or after their old time.</li></ul></div>
+<button class="bt g">Discard</button><button class="bt p">Save settings</button>
+
+
+</div>
+
+</div>
+</div>
+</div></div>
+<script>
+// Mockup only: toggle the segmented buttons and run days.
+document.querySelectorAll('.seg').forEach(function(g){g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});});});
+document.querySelectorAll('.day').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');});});
+</script>
+</body>
+</html>
