@@ -22,9 +22,11 @@
 //   (so the manager hears about problems now) and again when the waiver run
 //   processes it (queries/waivers.ts calls completeClaim), since rosters change
 //   in between. Dropped players go on waivers (waiver_players) per the policy.
+// - In FAAB leagues a claim needs a bid (policy.ts faabBidProblem): whole
+//   dollars from the minimum bid to the team's balance. Immediate adds are free.
 import type { Pool, PoolClient } from "pg";
 import { activeRosterLimit, isIlSlot, isStarting, rosterProblems } from "../lineup/rules";
-import { addMode, dropDestination, type MovePolicyLeague } from "../transactions/policy";
+import { addMode, dropDestination, faabBidProblem, type MovePolicyLeague } from "../transactions/policy";
 import type {
   AddCandidate,
   PlayerWaiver,
@@ -37,6 +39,7 @@ import type {
 import { LineupError, freezeLineups, loadDay, withTeamLock, type DayState, type TeamContext, type Values } from "./lineup";
 import { categoryLine } from "./players";
 import { teamLogoUrl } from "./teamLogo";
+import { getTeamFaab } from "./waiverStatus";
 
 type Db = Pool | PoolClient;
 
@@ -216,11 +219,12 @@ export async function getRosterMovesContext(
   pool: Pool, team: TeamContext, values: Values, addPlayerId: number | null,
 ): Promise<RosterMovesContext | null> {
   await withTeamLock(pool, team.teamId, (db) => freezeLineups(db, team.teamId));
-  const [day, rules, adds, target] = await Promise.all([
+  const [day, rules, adds, target, faab] = await Promise.all([
     loadDay(pool, team, team.today, values),
     loadRules(pool, team.leagueId),
     countAdds(pool, team),
     addPlayerId === null ? null : loadTarget(pool, team, addPlayerId),
+    getTeamFaab(pool, team.teamId),
   ]);
   if (addPlayerId !== null && !target) return null;
 
@@ -251,12 +255,15 @@ export async function getRosterMovesContext(
     maxAddsPerSeason: rules.maxAddsPerSeason,
     roster: rosterOptions(team, day, values),
     add,
+    faab,
   };
 }
 
 interface Move {
   addPlayerId: number | null;
   dropPlayerId: number | null;
+  /** The FAAB bid, for a claim in a FAAB league (checked there; ignored otherwise). */
+  faabBid?: unknown;
 }
 
 /**
@@ -361,15 +368,22 @@ async function applyMove(
 
 /** Records a pending waiver claim (and its optional drop), last in the team's claim order. */
 async function placeClaim(
-  db: PoolClient, team: TeamContext, userId: number, target: TargetRow, dropped: PlayerSummary | null,
+  db: PoolClient, team: TeamContext, userId: number, target: TargetRow, dropped: PlayerSummary | null, bid: unknown,
 ): Promise<RosterMoveResult> {
+  const faab = await getTeamFaab(db, team.teamId);
+  if (faab) {
+    if (bid === undefined || bid === null) throw new TransactionError("Enter a bid for this claim.", 400);
+    const problem = faabBidProblem(faab, bid);
+    if (problem) throw new TransactionError(problem, 400);
+  }
+  const faabBid = faab ? (bid as number) : null;
   const { rows: [tx] } = await db.query<{ id: string }>(
-    `INSERT INTO transactions (league_id, type, status, team_id, created_by, process_at, claim_rank)
+    `INSERT INTO transactions (league_id, type, status, team_id, created_by, process_at, claim_rank, faab_bid)
      VALUES ($1, 'waiver_claim', 'pending', $2, $3, $4,
              (SELECT coalesce(max(claim_rank), 0) + 1 FROM transactions
-               WHERE team_id = $2 AND type = 'waiver_claim' AND status = 'pending'))
+               WHERE team_id = $2 AND type = 'waiver_claim' AND status = 'pending'), $5)
      RETURNING id`,
-    [team.leagueId, team.teamId, userId, target.process_at],
+    [team.leagueId, team.teamId, userId, target.process_at, faabBid],
   );
   const transactionId = Number(tx.id);
   await db.query(
@@ -382,7 +396,7 @@ async function placeClaim(
       [transactionId, dropped.id, team.teamId],
     );
   }
-  return { transactionId, type: "waiver_claim", status: "pending", processAt: target.process_at, added: summary(target), dropped };
+  return { transactionId, type: "waiver_claim", status: "pending", processAt: target.process_at, added: summary(target), dropped, faabBid };
 }
 
 /**
@@ -400,7 +414,7 @@ export async function runRosterMove(
   try {
     return await withTeamLock(pool, team.teamId, async (db) => {
       const { rules, dropped, target } = await checkMove(db, team, values, move, false);
-      if (target && targetMode(rules, target) === "waiver") return placeClaim(db, team, userId, target, dropped);
+      if (target && targetMode(rules, target) === "waiver") return placeClaim(db, team, userId, target, dropped, move.faabBid);
 
       const added = target ? summary(target) : null;
       const type: RosterMoveResult["type"] = added && dropped ? "add_drop" : added ? "add" : "drop";
@@ -411,7 +425,7 @@ export async function runRosterMove(
       );
       const transactionId = Number(tx.id);
       await applyMove(db, team, rules, transactionId, dropped, added, true);
-      return { transactionId, type, status: "completed", processAt: null, added, dropped };
+      return { transactionId, type, status: "completed", processAt: null, added, dropped, faabBid: null };
     });
   } catch (err) {
     if ((err as { code?: string }).code === "23505") {

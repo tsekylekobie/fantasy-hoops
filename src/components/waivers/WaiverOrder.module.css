@@ -105,6 +105,18 @@
   white-space: nowrap;
 }
 
+/* FAAB: the team's remaining budget, at the right edge. */
+.faab {
+  margin-left: auto;
+  min-width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.claims + .faab {
+  margin-left: 8px;
+}
+
 /* Recent transactions beside the waiver order on the League page. */
 .below {
   display: grid;

@@ -10,8 +10,10 @@
 //   - dropDestination is "waivers" unless the league's waiver_days is 0;
 //     runRosterMove then inserts a waiver_players row that clears at the first
 //     waiver run at least waiver_days after the drop.
+//   - In FAAB leagues a claim carries a blind bid (faabBidProblem); a free
+//     agent who isn't on waivers is still an immediate add, for nothing.
 
-import type { AddMode } from "../types";
+import type { AddMode, FaabBudget } from "../types";
 
 /** League settings the policy reads (a subset of the leagues row). */
 export interface MovePolicyLeague {
@@ -33,4 +35,17 @@ export function addMode(league: MovePolicyLeague, player: AddTarget): AddMode {
 
 export function dropDestination(league: MovePolicyLeague): "free_agents" | "waivers" {
   return league.waiverDays > 0 ? "waivers" : "free_agents";
+}
+
+/**
+ * Why a FAAB bid can't be placed (or changed to), or null when it can: whole
+ * dollars from the league's minimum bid up to the team's balance. Pending bids
+ * don't reserve money, so several can each go up to the whole balance; the
+ * waiver run checks each against what's left when it gets to it.
+ */
+export function faabBidProblem(faab: FaabBudget, bid: unknown): string | null {
+  if (typeof bid !== "number" || !Number.isInteger(bid)) return "Bids are whole dollars.";
+  if (bid < faab.minBid) return faab.minBid === 0 ? "Bids can't be negative." : `The minimum bid is $${faab.minBid}.`;
+  if (bid > faab.balance) return `You only have $${faab.balance} left to bid.`;
+  return null;
 }

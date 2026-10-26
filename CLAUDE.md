@@ -14,7 +14,10 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   is the one place that decides immediate add vs. waiver claim (and where dropped players go).
 - `src/lib/queries/waivers.ts`: the daily waiver run (worker task `waivers`, at `leagues.waiver_time` in its time zone),
   claims (`/api/team/claims`) and the waiver order. Run by hand: `npm run waivers -- --at next|now|<ISO>` or
-  `POST /api/dev/waivers?at=...` (dev only).
+  `POST /api/dev/waivers?at=...` (dev only). FAAB (`waiver_type = 'faab'`): `resolveClaims` there (pure, tested) orders
+  claims by bid, breaks ties on priority and charges `fantasy_teams.faab_balance`; bids are checked by `faabBidProblem`
+  in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
+  one summary per run (`getRecentTransactions` in `queries/league.ts`).
 - `src/lib/queries/settings.ts` + `/api/league/settings` + `/league/settings`: the commissioner's league settings
   (`leagues.commissioner_user_id` only). Waivers run on `leagues.waiver_days_of_week` (ISO weekdays, migration 0009).
 - `src/lib/playoffs/bracket.ts`: playoff and toilet bowl rules (seeding, pairings, who advances, ties go to the better

@@ -12,8 +12,11 @@ import type {
   LeagueTransaction,
   OtherMatchup,
   RecentTransactions,
+  PlayerSummary,
   StandingsRow,
   TransactionMove,
+  WaiverRunClaim,
+  WaiverRunEntry,
 } from "../types";
 import { standingsOrder, winPct } from "../playoffs/bracket";
 import { MATCHUP_ROWS_SQL, bracketTag, buildPlayoffsView, configOf, type BracketRow } from "./playoffs";
@@ -133,20 +136,21 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   );
   if (!league) return null;
   const { rows } = await db.query<{
-    id: number; type: LeagueTransaction["type"]; at: string;
+    id: number; type: LeagueTransaction["type"]; at: string; faab_bid: number | null;
     team_id: number | null; trade_team_id: number | null;
     player_id: number | null; first_name: string | null; last_name: string | null; position: string | null;
     nba_person_id: number | null; team_abbr: string | null; from_team_id: number | null; to_team_id: number | null;
   }>(
     `WITH t AS (
-       SELECT id, type, team_id, trade_team_id, coalesce(processed_at, created_at) AS at
+       SELECT id, type, team_id, trade_team_id, faab_bid, coalesce(processed_at, created_at) AS at
        FROM transactions
-       WHERE league_id = $1 AND status = 'completed'
+       -- Claims a waiver run decided show in that run's summary instead.
+       WHERE league_id = $1 AND status = 'completed' AND NOT (type = 'waiver_claim' AND waiver_run_id IS NOT NULL)
        ORDER BY coalesce(processed_at, created_at) DESC, id DESC
        LIMIT $2
      )
      SELECT t.id::int, t.type, to_char(t.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
-            t.team_id::int, t.trade_team_id::int,
+            t.team_id::int, t.trade_team_id::int, t.faab_bid,
             tp.player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
             nt.abbreviation AS team_abbr, tp.from_team_id::int, tp.to_team_id::int
      FROM t
@@ -167,7 +171,9 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   for (const r of rows) {
     let tx = byId.get(r.id);
     if (!tx) {
-      tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [] };
+      tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [],
+        faabBid: r.type === "waiver_claim" ? r.faab_bid : null,
+      };
       byId.set(r.id, tx);
     }
     if (r.player_id === null) continue;
@@ -183,5 +189,98 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   // Adds, then players changing teams, then drops.
   const rank = (m: TransactionMove) => (m.from === null ? 0 : m.to === null ? 2 : 1);
   for (const tx of byId.values()) tx.moves.sort((a, b) => rank(a) - rank(b));
-  return { timeZone: league.time_zone, transactions: [...byId.values()] };
+  return {
+    timeZone: league.time_zone,
+    transactions: [...byId.values()],
+    waiverRuns: await getWaiverRunEntries(db, league.id, team),
+  };
+}
+
+/**
+ * The league's latest waiver runs that decided claims (newest first), each with
+ * every claim it decided, won or failed, grouped by player: the whole auction.
+ */
+async function getWaiverRunEntries(
+  db: Pool, leagueId: number, team: (id: number | null) => FantasyTeamSummary | null, limit = 10,
+): Promise<WaiverRunEntry[]> {
+  const { rows } = await db.query<{
+    run_id: number; at: string; claim_id: number; team_id: number; status: string; faab_bid: number | null;
+    failure_reason: string | null; is_add: boolean; player_id: number; first_name: string; last_name: string;
+    position: string | null; nba_person_id: number | null; team_abbr: string | null;
+  }>(
+    `WITH r AS (
+       SELECT r.id, coalesce(r.finished_at, r.started_at) AS at FROM waiver_runs r
+        WHERE r.league_id = $1 AND EXISTS (SELECT 1 FROM transactions t WHERE t.waiver_run_id = r.id)
+        ORDER BY coalesce(r.finished_at, r.started_at) DESC, r.id DESC
+        LIMIT $2
+     )
+     SELECT r.id::int AS run_id, to_char(r.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
+            t.id::int AS claim_id, t.team_id::int, t.status, t.faab_bid, t.failure_reason,
+            tp.to_team_id IS NOT NULL AS is_add, p.id AS player_id, p.first_name, p.last_name,
+            nullif(p.position, '') AS position, p.nba_person_id, nt.abbreviation AS team_abbr
+       FROM r
+       JOIN transactions t ON t.waiver_run_id = r.id
+       JOIN transaction_players tp ON tp.transaction_id = t.id
+       JOIN players p ON p.id = tp.player_id
+       LEFT JOIN teams nt ON nt.id = p.team_id
+      ORDER BY r.at DESC, r.id DESC, t.id`,
+    [leagueId, limit],
+  );
+
+  type Claim = WaiverRunClaim & { add: PlayerSummary };
+  const runs = new Map<number, { at: string; claims: Map<number, Claim> }>();
+  for (const r of rows) {
+    let run = runs.get(r.run_id);
+    if (!run) runs.set(r.run_id, (run = { at: r.at, claims: new Map() }));
+    const player: PlayerSummary = {
+      id: r.player_id, firstName: r.first_name, lastName: r.last_name, teamAbbr: r.team_abbr,
+      position: r.position, nbaPersonId: r.nba_person_id,
+    };
+    let c = run.claims.get(r.claim_id);
+    if (!c) {
+      const t = team(r.team_id);
+      if (!t) continue;
+      c = { team: t, bid: r.faab_bid, won: r.status === "completed", drop: null, reason: r.failure_reason, add: player };
+      run.claims.set(r.claim_id, c);
+    }
+    if (r.is_add) c.add = player;
+    else c.drop = player;
+  }
+
+  return [...runs].map(([id, run]) => {
+    const claims = [...run.claims.values()];
+    const byPlayer = new Map<number, { player: PlayerSummary; claims: WaiverRunClaim[] }>();
+    for (const { add, ...c } of claims) {
+      if (!byPlayer.has(add.id)) byPlayer.set(add.id, { player: add, claims: [] });
+      byPlayer.get(add.id)!.claims.push(c);
+    }
+    const players = [...byPlayer.values()];
+    const faab = claims.some((c) => c.bid !== null);
+    for (const p of players) {
+      p.claims.sort((a, b) => Number(b.won) - Number(a.won) || (b.bid ?? -1) - (a.bid ?? -1) || a.team.name.localeCompare(b.team.name));
+      // Losing to the winner is worded for the manager ("ahead of you", resolveClaims);
+      // say it for the whole league here.
+      const w = p.claims.find((c) => c.won);
+      if (!w) continue;
+      for (const c of p.claims) {
+        if (c.won || !c.reason?.includes(` went to ${w.team.abbreviation}`)) continue;
+        const abbr = w.team.abbreviation;
+        c.reason = !faab
+          ? `${abbr} was ahead in the waiver order.`
+          : c.bid === w.bid
+            ? `Tied at $${w.bid}; ${abbr} had priority.`
+            : `Outbid by ${abbr} at $${w.bid}.`;
+      }
+    }
+    const wonAny = (p: (typeof players)[number]) => Number(p.claims[0]?.won ?? false);
+    players.sort((a, b) => wonAny(b) - wonAny(a) || (b.claims[0].bid ?? -1) - (a.claims[0].bid ?? -1)
+      || a.player.lastName.localeCompare(b.player.lastName));
+    return {
+      id, at: run.at,
+      faab,
+      won: claims.filter((c) => c.won).length,
+      failed: claims.filter((c) => !c.won).length,
+      players,
+    };
+  });
 }

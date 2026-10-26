@@ -83,6 +83,11 @@
   font-size: 14px;
 }
 
+/* FAAB: a heavier rule where the bid changes; arrows only move claims within a group. */
+.newBid {
+  border-top: 2px solid var(--border);
+}
+
 .rank {
   font-family: var(--font-display);
   font-weight: 700;
@@ -131,7 +136,41 @@
 
 .actions {
   display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+/* FAAB: the pending claim's bid. */
+.bid {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.bid input {
+  width: 64px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 14px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.bid input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.bid input[aria-invalid="true"] {
+  border-color: var(--danger-ink);
 }
 
 .icon,
@@ -167,6 +206,7 @@
 
 .status {
   justify-self: center;
+  white-space: nowrap;
   padding: 3px 8px;
   border-radius: 999px;
   font-size: 11px;
