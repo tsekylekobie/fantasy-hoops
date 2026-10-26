@@ -33,6 +33,7 @@ const TABS = [
       </>
     ),
   },
+  { href: "/rankings", label: "Rankings", icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/players",
     label: "Players",
