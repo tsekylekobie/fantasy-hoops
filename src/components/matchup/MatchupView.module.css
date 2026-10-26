@@ -232,7 +232,7 @@ a.pageBtn:hover {
 
 .cs {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) repeat(9, 50px) 56px;
+  grid-template-columns: minmax(120px, 1fr) repeat(9, 50px);
   align-items: center;
   column-gap: 4px;
   padding: 0 20px;
@@ -282,13 +282,6 @@ a.pageBtn:hover {
   height: 3px;
   border-radius: 2px;
   background: var(--accent);
-}
-
-.csScore {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 22px;
-  text-align: right;
 }
 
 .foot {
@@ -646,10 +639,10 @@ a.pageBtn:hover {
   }
 
   .cs {
-    grid-template-columns: 112px repeat(9, 50px) 56px;
+    grid-template-columns: 112px repeat(9, 50px);
     column-gap: 0;
     padding: 0 12px 0 0;
-    min-width: 630px;
+    min-width: 574px;
   }
 
   .ros {

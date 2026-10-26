@@ -30,7 +30,6 @@ function fmtScore(s: MatchupScore): string {
   return `${s.wins}–${s.losses}–${s.ties}`;
 }
 
-const flipScore = (s: MatchupScore): MatchupScore => ({ wins: s.losses, losses: s.wins, ties: s.ties });
 
 /** "Oct 20–25", or "Oct 27 – Nov 2" across months. */
 function fmtRange(from: string, to: string): string {
@@ -200,11 +199,10 @@ function Stat({ k, line }: { k: CategoryKey; line: CategoryLine }) {
 
 function Categories({ m }: { m: Matchup }) {
   const rows = [
-    { side: m.team, results: m.results, score: m.score },
+    { side: m.team, results: m.results },
     {
       side: m.opponent,
       results: Object.fromEntries(CATEGORY_KEYS.map((k) => [k, FLIP[m.results[k]]])) as Record<CategoryKey, CategoryResult>,
-      score: flipScore(m.score),
     },
   ];
   return (
@@ -214,9 +212,8 @@ function Categories({ m }: { m: Matchup }) {
         <div className={`${styles.cs} ${styles.csHead}`} role="row">
           <span role="columnheader">Team</span>
           {CATEGORY_KEYS.map((k) => <span role="columnheader" className={styles.n} key={k}>{LABELS[k]}</span>)}
-          <span role="columnheader" className={styles.n}>Score</span>
         </div>
-        {rows.map(({ side, results, score }) => (
+        {rows.map(({ side, results }) => (
           <div className={`${styles.cs} ${styles.csRow}`} role="row" key={side.id}>
             <span role="rowheader" className={styles.tn}>{side.name}</span>
             {CATEGORY_KEYS.map((k) => (
@@ -225,7 +222,6 @@ function Categories({ m }: { m: Matchup }) {
                 {results[k] === "win" && <span className={styles.sr}> (leads)</span>}
               </span>
             ))}
-            <span role="cell" className={styles.csScore}>{fmtScore(score)}</span>
           </div>
         ))}
       </div>
