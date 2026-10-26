@@ -37,7 +37,6 @@ export const LIMITS = {
   waiverDays: [0, 14],
   faabBudget: [1, 1000],
   ilSlots: [0, 5],
-  ilMinDays: [0, 60],
   tradeReviewDays: [0, 7],
   maxAdds: [0, 200],
   playoffTeams: [2, 16],
@@ -59,9 +58,7 @@ interface LeagueRow {
   faab_min_bid: number;
   roster_slots: SlotCounts;
   il_statuses: string[];
-  il_min_days: number;
   il_plus_statuses: string[];
-  il_plus_min_days: number;
   trade_review: TradeReview;
   trade_review_days: number;
   trade_veto_votes: number;
@@ -83,8 +80,8 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
     `SELECT l.id::int, l.name, l.commissioner_user_id::int,
             (SELECT count(*)::int FROM fantasy_teams ft WHERE ft.league_id = l.id) AS team_count,
             l.waiver_type, to_char(l.waiver_time, 'HH24:MI') AS waiver_time, l.time_zone, l.waiver_days_of_week,
-            l.waiver_days, l.waivers_after_game_start, l.faab_budget, l.faab_min_bid, l.roster_slots, l.il_statuses, l.il_min_days,
-            l.il_plus_statuses, l.il_plus_min_days, l.trade_review, l.trade_review_days, l.trade_veto_votes,
+            l.waiver_days, l.waivers_after_game_start, l.faab_budget, l.faab_min_bid, l.roster_slots, l.il_statuses,
+            l.il_plus_statuses, l.trade_review, l.trade_review_days, l.trade_veto_votes,
             to_char(l.trade_deadline, 'YYYY-MM-DD') AS trade_deadline, l.max_adds_per_week, l.max_adds_per_season,
             l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams,
             coalesce((SELECT json_agg(json_build_object('week', w.week, 'startsOn', w.starts_on, 'endsOn', w.ends_on) ORDER BY w.week)
@@ -119,10 +116,8 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
       faabMinBid: r.faab_min_bid,
       ilSlots: r.roster_slots.IL ?? 0,
       ilStatuses: r.il_statuses,
-      ilMinDays: r.il_min_days,
       ilPlusSlots: r.roster_slots["IL+"] ?? 0,
       ilPlusStatuses: r.il_plus_statuses,
-      ilPlusMinDays: r.il_plus_min_days,
       tradeReview: r.trade_review,
       tradeReviewDays: r.trade_review_days,
       tradeVetoVotes: r.trade_veto_votes,
@@ -190,13 +185,12 @@ export function parseSettings(
   const il = statuses(b.ilStatuses);
   const ilPlus = statuses(b.ilPlusStatuses);
   if (!il || !ilPlus) return { error: `IL statuses must be from: ${INJURY_STATUSES.join(", ")}.` };
-  for (const [label, slots, list, min] of [
-    ["IL", b.ilSlots, il, b.ilMinDays],
-    ["IL+", b.ilPlusSlots, ilPlus, b.ilPlusMinDays],
+  for (const [label, slots, list] of [
+    ["IL", b.ilSlots, il],
+    ["IL+", b.ilPlusSlots, ilPlus],
   ] as const) {
     if (!isInt(slots, LIMITS.ilSlots)) return { error: `${label} slots must be ${LIMITS.ilSlots.join("–")}.` };
     if (slots > 0 && list.length === 0) return { error: `Pick at least one injury status that can use ${label}.` };
-    if (!isInt(min, LIMITS.ilMinDays)) return { error: `${label} minimum days must be ${LIMITS.ilMinDays.join("–")}.` };
   }
 
   if (!TRADE_REVIEWS.includes(b.tradeReview as TradeReview)) return { error: "Pick how trades are reviewed." };
@@ -249,10 +243,8 @@ export function parseSettings(
       faabMinBid: b.faabMinBid,
       ilSlots: b.ilSlots as number,
       ilStatuses: il,
-      ilMinDays: b.ilMinDays as number,
       ilPlusSlots: b.ilPlusSlots as number,
       ilPlusStatuses: ilPlus,
-      ilPlusMinDays: b.ilPlusMinDays as number,
       tradeReview: b.tradeReview as TradeReview,
       tradeReviewDays: b.tradeReviewDays,
       tradeVetoVotes: b.tradeVetoVotes,
@@ -334,16 +326,16 @@ export async function updateLeagueSettings(
     await client.query(
       `UPDATE leagues SET
          waiver_type = $2, waiver_time = $3::time, time_zone = $4, waiver_days_of_week = $5, waiver_days = $6,
-         waivers_after_game_start = $7, roster_slots = $8, il_statuses = $9, il_min_days = $10,
-         il_plus_statuses = $11, il_plus_min_days = $12, trade_review = $13, trade_review_days = $14,
-         trade_veto_votes = $15, trade_deadline = $16, max_adds_per_week = $17, max_adds_per_season = $18,
-         playoff_teams = $19, playoff_start_week = $20, toilet_bowl = $21, toilet_bowl_teams = $22,
-         faab_budget = $23, faab_min_bid = $24, updated_at = now()
+         waivers_after_game_start = $7, roster_slots = $8, il_statuses = $9,
+         il_plus_statuses = $10, trade_review = $11, trade_review_days = $12,
+         trade_veto_votes = $13, trade_deadline = $14, max_adds_per_week = $15, max_adds_per_season = $16,
+         playoff_teams = $17, playoff_start_week = $18, toilet_bowl = $19, toilet_bowl_teams = $20,
+         faab_budget = $21, faab_min_bid = $22, updated_at = now()
        WHERE id = $1`,
       [
         current.id, s.waiverType, s.waiverTime, s.timeZone, s.waiverDaysOfWeek, s.waiverDays,
-        s.waiversAfterGameStart, JSON.stringify(slots), s.ilStatuses, s.ilMinDays,
-        s.ilPlusStatuses, s.ilPlusMinDays, s.tradeReview, s.tradeReviewDays,
+        s.waiversAfterGameStart, JSON.stringify(slots), s.ilStatuses,
+        s.ilPlusStatuses, s.tradeReview, s.tradeReviewDays,
         s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
         s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
         s.faabBudget, s.faabMinBid,

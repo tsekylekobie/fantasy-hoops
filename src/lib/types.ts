@@ -611,7 +611,7 @@ export interface TeamLineupResponse {
     lineupLock: "game_time" | "first_game";
     /** Slot counts in display order; slots with 0 are left out. */
     slots: { slot: LineupSlot; count: number }[];
-    /** Who may use each IL slot the league has, e.g. "Out, 3+ days on the injury report". */
+    /** Who may use each IL slot the league has, e.g. "Out or Day-To-Day". */
     ilRules: { slot: LineupSlot; text: string }[];
   };
   /**
@@ -966,10 +966,8 @@ export interface LeagueSettings {
   /** Count of IL and IL+ slots (leagues.roster_slots). */
   ilSlots: number;
   ilStatuses: string[];
-  ilMinDays: number;
   ilPlusSlots: number;
   ilPlusStatuses: string[];
-  ilPlusMinDays: number;
   tradeReview: TradeReview;
   tradeReviewDays: number;
   tradeVetoVotes: number;

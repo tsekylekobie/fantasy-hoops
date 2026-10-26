@@ -8,7 +8,7 @@ const valid: LeagueSettings = {
   waiverType: "continual_rolling", waiverTime: "03:00", timeZone: "America/New_York",
   waiverDaysOfWeek: [1, 2, 3, 4, 5, 6, 7], waiverDays: 2, waiversAfterGameStart: false,
   faabBudget: 100, faabMinBid: 0,
-  ilSlots: 2, ilStatuses: ["Out"], ilMinDays: 0, ilPlusSlots: 0, ilPlusStatuses: [], ilPlusMinDays: 0,
+  ilSlots: 2, ilStatuses: ["Out"], ilPlusSlots: 0, ilPlusStatuses: [],
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
   maxAddsPerWeek: 4, maxAddsPerSeason: null,
   playoffTeams: 8, playoffStartWeek: 22, toiletBowl: true, toiletBowlTeams: 4,
