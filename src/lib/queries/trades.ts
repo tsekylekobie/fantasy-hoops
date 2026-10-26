@@ -39,6 +39,7 @@ import {
   LINEUP_SLOTS,
 } from "../types";
 import { freezeLineups } from "./lineup";
+import { toTeamSummary, type TeamRow } from "./teamLogo";
 import { categoryLine, getSeasonValues } from "./players";
 
 type Db = Pool | PoolClient;
@@ -97,14 +98,14 @@ export async function getTradeLeague(db: Db, season: number): Promise<TradeLeagu
 }
 
 async function leagueTeams(db: Db, leagueId: number) {
-  const { rows } = await db.query<FantasyTeamSummary & { owner_user_id: number | null }>(
-    `SELECT id::int, name, abbreviation, owner_user_id::int FROM fantasy_teams WHERE league_id = $1`,
+  const { rows } = await db.query<TeamRow & { owner_user_id: number | null }>(
+    `SELECT id::int, name, abbreviation, logo_updated_at, owner_user_id::int FROM fantasy_teams WHERE league_id = $1`,
     [leagueId],
   );
-  return rows;
+  return rows.map((r) => ({ ...toTeamSummary(r), owner_user_id: r.owner_user_id }));
 }
 
-const summary = (t: FantasyTeamSummary): FantasyTeamSummary => ({ id: t.id, name: t.name, abbreviation: t.abbreviation });
+const summary = (t: FantasyTeamSummary): FantasyTeamSummary => ({ id: t.id, name: t.name, abbreviation: t.abbreviation, logoUrl: t.logoUrl });
 
 // ---------------------------------------------------------------------------
 // Reading
@@ -194,11 +195,11 @@ async function buildTrades(db: Db, league: TradeLeague, viewer: Viewer, rows: Tr
 
 async function viewerFor(db: Db, league: TradeLeague, userId: number | null): Promise<Viewer> {
   if (userId === null) return { userId, team: null };
-  const { rows: [t] } = await db.query<FantasyTeamSummary>(
-    `SELECT id::int, name, abbreviation FROM fantasy_teams WHERE league_id = $1 AND owner_user_id = $2`,
+  const { rows: [t] } = await db.query<TeamRow>(
+    `SELECT id::int, name, abbreviation, logo_updated_at FROM fantasy_teams WHERE league_id = $1 AND owner_user_id = $2`,
     [league.id, userId],
   );
-  return { userId, team: t ?? null };
+  return { userId, team: t ? toTeamSummary(t) : null };
 }
 
 /**

@@ -3,6 +3,7 @@
 // waivers.ts so players.ts can use it without importing the roster-move code.
 import type { Pool, PoolClient } from "pg";
 import type { PlayerWaiver, WaiverOrder } from "../types";
+import { teamLogoUrl } from "./teamLogo";
 
 type Db = Pool | PoolClient;
 
@@ -50,13 +51,13 @@ export async function getWaiverStatus(db: Pool, season: number): Promise<{ timeZ
   if (!league) return { timeZone: "America/New_York", players };
   const { rows } = await db.query<{
     player_id: number; clears_at: string; reason: PlayerWaiver["reason"];
-    team_id: number | null; name: string | null; abbreviation: string | null;
+    team_id: number | null; name: string | null; abbreviation: string | null; logo_updated_at: Date | null;
   }>(
-    `SELECT w.player_id, ${ISO("w.clears_at")} AS clears_at, 'dropped' AS reason, ft.id::int AS team_id, ft.name, ft.abbreviation
+    `SELECT w.player_id, ${ISO("w.clears_at")} AS clears_at, 'dropped' AS reason, ft.id::int AS team_id, ft.name, ft.abbreviation, ft.logo_updated_at
        FROM waiver_players w LEFT JOIN fantasy_teams ft ON ft.id = w.dropped_by_team_id
       WHERE w.league_id = $1
      UNION ALL
-     SELECT p.id, ${ISO("next_waiver_run($1, now())")}, 'game_started', NULL, NULL, NULL
+     SELECT p.id, ${ISO("next_waiver_run($1, now())")}, 'game_started', NULL, NULL, NULL, NULL
        FROM players p
       WHERE $2
         AND EXISTS (SELECT 1 FROM games g
@@ -71,7 +72,7 @@ export async function getWaiverStatus(db: Pool, season: number): Promise<{ timeZ
     players.set(r.player_id, {
       clearsAt: r.clears_at,
       reason: r.reason,
-      droppedBy: r.team_id === null ? null : { id: r.team_id, name: r.name!, abbreviation: r.abbreviation! },
+      droppedBy: r.team_id === null ? null : { id: r.team_id, name: r.name!, abbreviation: r.abbreviation!, logoUrl: teamLogoUrl(r.team_id, r.logo_updated_at) },
     });
   }
   return { timeZone: league.timeZone, players };

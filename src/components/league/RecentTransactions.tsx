@@ -4,6 +4,7 @@
 import Link from "next/link";
 import type { FantasyTeamSummary, LeagueTransaction, RecentTransactions as Data, TransactionMove } from "@/lib/types";
 import { fullName, teamPos } from "@/components/players/format";
+import TeamBadge from "@/components/TeamBadge";
 import styles from "./RecentTransactions.module.css";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -51,7 +52,7 @@ export default function RecentTransactions({ data, myTeamId }: { data: Data | nu
               <div className={styles.who}>
                 {tx.team ? (
                   <>
-                    <i aria-hidden="true">{tx.team.abbreviation}</i>
+                    <TeamBadge team={tx.team} />
                     <span className={styles.teams}>
                       <span>
                         <Link href={teamHref(tx.team, myTeamId)}>{tx.team.name}</Link>

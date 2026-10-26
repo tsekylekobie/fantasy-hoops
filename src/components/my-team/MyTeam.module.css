@@ -24,6 +24,35 @@
   margin: 32px 0 20px;
 }
 
+.ident {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.identText {
+  min-width: 0;
+}
+
+/* Team badge: the logo, else the abbreviation (TeamBadge). */
+.badge {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .title {
   font-family: var(--font-display);
   font-weight: 700;
@@ -511,6 +540,16 @@
 
   .title {
     font-size: 34px;
+  }
+
+  .ident {
+    gap: 12px;
+  }
+
+  .badge {
+    width: 48px;
+    height: 48px;
+    font-size: 17px;
   }
 
   .actions,

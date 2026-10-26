@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import type { WaiverOrder as Data } from "@/lib/types";
+import TeamBadge from "@/components/TeamBadge";
 import styles from "./WaiverOrder.module.css";
 
 const TYPE_TEXT: Record<Data["type"], string> = {
@@ -24,7 +25,7 @@ export default function WaiverOrder({ data, myTeamId }: { data: Data | null; myT
         {data.teams.map((t) => (
           <li key={t.id} className={t.id === myTeamId ? styles.mine : undefined}>
             <span className={styles.n}>{t.priority}</span>
-            <i aria-hidden="true">{t.abbreviation}</i>
+            <TeamBadge team={t} />
             <Link href={t.id === myTeamId ? "/my-team" : `/team/${t.id}`}>{t.name}</Link>
             {t.pendingClaims > 0 && (
               <span className={styles.claims} title="Pending claims">

@@ -188,6 +188,8 @@ export interface FantasyTeamSummary {
   id: number;
   name: string;
   abbreviation: string;
+  /** /api/teams/<id>/logo?v=<version>; null when the team has no logo (show the abbreviation). */
+  logoUrl: string | null;
 }
 
 /** One row of a matchup roster, for the day shown (or the week). */
@@ -396,7 +398,7 @@ export interface LineupPlayer extends PlayerSummary {
 /** GET /api/team/lineup?date=yyyy-mm-dd (default today), the signed-in user's team. */
 export interface TeamLineupResponse {
   /** managerName: the owner's name; null for an unowned team. */
-  team: { id: number; name: string; managerName: string | null; abbreviation: string; waiverPriority: number | null };
+  team: FantasyTeamSummary & { managerName: string | null; waiverPriority: number | null };
   league: {
     id: number;
     name: string;
@@ -740,4 +742,28 @@ export interface LeagueSettingsResponse {
   /** The next waiver run on the saved schedule. */
   nextRunAt: string;
   updatedAt: string;
+}
+
+// Team profile (/api/team/profile)
+
+/** Limits on a team's name and abbreviation; the server enforces them, the Edit team form mirrors them. */
+export const TEAM_NAME_LENGTH = { min: 2, max: 32 } as const;
+/** 2–4 uppercase letters or digits, at least one letter. */
+export const TEAM_ABBREVIATION = /^(?=.*[A-Z])[A-Z0-9]{2,4}$/;
+/** Logo uploads: PNG, JPEG or WebP, up to 1 MB (the form uploads a ~256px square). */
+export const TEAM_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+export const TEAM_LOGO_MAX_BYTES = 1024 * 1024;
+
+/**
+ * PATCH /api/team/profile: rename a team or change its abbreviation. `teamId`
+ * defaults to your own team; the commissioner may name any team in the league.
+ * Responds with the updated FantasyTeamSummary.
+ *
+ * PUT /api/team/profile/logo?team=<id>  body: the image bytes, Content-Type its type.
+ * DELETE /api/team/profile/logo?team=<id>  removes it. Both respond with the FantasyTeamSummary.
+ */
+export interface TeamProfileUpdate {
+  teamId?: number;
+  name?: string;
+  abbreviation?: string;
 }

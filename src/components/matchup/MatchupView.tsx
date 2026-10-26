@@ -17,6 +17,7 @@ import SiteHeader from "@/components/SiteHeader";
 import Avatar from "@/components/Avatar";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
+import TeamBadge from "@/components/TeamBadge";
 import styles from "./MatchupView.module.css";
 
 const LABELS: Record<CategoryKey, string> = {
@@ -173,7 +174,7 @@ function Scoreboard({ m }: { m: Matchup }) {
   return (
     <section className={styles.board} aria-label="Score">
       <div className={styles.side}>
-        <div className={styles.t}><i aria-hidden="true">{m.team.abbreviation}</i><h2>{m.team.name}</h2></div>
+        <div className={styles.t}><TeamBadge team={m.team} /><h2>{m.team.name}</h2></div>
         <p>{sub(m.team)}</p>
         {m.isMine && <Link href="/my-team">Set lineup</Link>}
       </div>
@@ -181,7 +182,7 @@ function Scoreboard({ m }: { m: Matchup }) {
         {fmtScore(m.score)}
       </div>
       <div className={`${styles.side} ${styles.r}`}>
-        <div className={styles.t}><i aria-hidden="true">{m.opponent.abbreviation}</i><h2>{m.opponent.name}</h2></div>
+        <div className={styles.t}><TeamBadge team={m.opponent} /><h2>{m.opponent.name}</h2></div>
         <p>{sub(m.opponent)}</p>
       </div>
     </section>

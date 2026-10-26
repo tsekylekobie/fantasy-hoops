@@ -21,6 +21,7 @@ import type {
   MatchupWeek,
 } from "../types";
 import { CATEGORY_KEYS, LINEUP_SLOTS } from "../types";
+import { toTeamSummary } from "./teamLogo";
 
 const NON_SCORING = `('BN','IL','IL+')`;
 
@@ -194,6 +195,7 @@ interface TeamRow {
   name: string;
   manager_name: string | null;
   abbreviation: string;
+  logo_updated_at: Date | null;
   owner_user_id: number | null;
 }
 
@@ -347,14 +349,13 @@ export async function getMatchupWeek(
     weeks[weeks.length - 1];
 
   const { rows: teams } = await db.query<TeamRow>(
-    `SELECT ft.id::int, ft.name, u.name AS manager_name, ft.abbreviation, ft.owner_user_id::int
+    `SELECT ft.id::int, ft.name, u.name AS manager_name, ft.abbreviation, ft.logo_updated_at, ft.owner_user_id::int
      FROM fantasy_teams ft LEFT JOIN users u ON u.id = ft.owner_user_id WHERE ft.league_id = $1`,
     [league.id],
   );
   const teamById = new Map(teams.map((t) => [t.id, t]));
   const summary = (id: number): FantasyTeamSummary => {
-    const t = teamById.get(id)!;
-    return { id: t.id, name: t.name, abbreviation: t.abbreviation };
+    return toTeamSummary(teamById.get(id)!);
   };
   const mine = userId === null ? undefined : teams.find((t) => t.owner_user_id === userId);
 

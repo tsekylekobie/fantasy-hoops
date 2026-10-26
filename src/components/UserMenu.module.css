@@ -106,6 +106,12 @@
   cursor: pointer;
 }
 
+a.item {
+  display: block;
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .item:hover:not(:disabled) {
   background: var(--surface-muted);
 }

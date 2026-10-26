@@ -1,7 +1,7 @@
 "use client";
 
 // Header sign-in control: a "Sign in" button when signed out, and the user's
-// avatar with a small menu (email, sign out) when signed in.
+// avatar with a small menu (email, Edit team, sign out) when signed in.
 import { useEffect, useRef, useState } from "react";
 import type { SessionResponse, SessionUser } from "@/lib/types";
 import styles from "./UserMenu.module.css";
@@ -87,6 +87,9 @@ function SignedIn({ user }: { user: SessionUser }) {
             <span className={styles.name}>{user.name}</span>
             <span className={styles.email}>{user.email}</span>
           </div>
+          <a role="menuitem" className={styles.item} href="/my-team?edit=team">
+            Edit team
+          </a>
           <button type="button" role="menuitem" className={styles.item} onClick={signOut} disabled={signingOut}>
             {signingOut ? "Signing out…" : "Sign out"}
           </button>

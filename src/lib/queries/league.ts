@@ -15,6 +15,7 @@ import type {
   TransactionMove,
 } from "../types";
 import { compareLines, emptyLine, weekLines } from "./matchups";
+import { toTeamSummary, type TeamRow } from "./teamLogo";
 
 interface WeekRow {
   week: number;
@@ -40,8 +41,8 @@ export async function getLeagueOverview(db: Pool, season: number, userId: number
   const { today } = league;
 
   const [{ rows: teams }, { rows: weeks }, { rows: pairs }, { rows: moves }] = await Promise.all([
-    db.query<FantasyTeamSummary & { owner_user_id: number | null }>(
-      `SELECT id::int, name, abbreviation, owner_user_id::int FROM fantasy_teams WHERE league_id = $1 ORDER BY name`,
+    db.query<TeamRow & { owner_user_id: number | null }>(
+      `SELECT id::int, name, abbreviation, logo_updated_at, owner_user_id::int FROM fantasy_teams WHERE league_id = $1 ORDER BY name`,
       [league.id],
     ),
     db.query<WeekRow>(
@@ -62,8 +63,7 @@ export async function getLeagueOverview(db: Pool, season: number, userId: number
   ]);
 
   const summary = (id: number): FantasyTeamSummary => {
-    const t = teams.find((x) => x.id === id)!;
-    return { id: t.id, name: t.name, abbreviation: t.abbreviation };
+    return toTeamSummary(teams.find((x) => x.id === id)!);
   };
   const mine = userId === null ? undefined : teams.find((t) => t.owner_user_id === userId);
 
@@ -173,11 +173,11 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
      ORDER BY t.at DESC, t.id DESC, p.last_name, p.first_name`,
     [league.id, limit],
   );
-  const { rows: teams } = await db.query<FantasyTeamSummary>(
-    `SELECT id::int, name, abbreviation FROM fantasy_teams WHERE league_id = $1`,
+  const { rows: teams } = await db.query<TeamRow>(
+    `SELECT id::int, name, abbreviation, logo_updated_at FROM fantasy_teams WHERE league_id = $1`,
     [league.id],
   );
-  const teamById = new Map(teams.map((t) => [t.id, t]));
+  const teamById = new Map(teams.map((t) => [t.id, toTeamSummary(t)]));
   const team = (id: number | null) => (id === null ? null : teamById.get(id) ?? null);
 
   const byId = new Map<number, LeagueTransaction>();

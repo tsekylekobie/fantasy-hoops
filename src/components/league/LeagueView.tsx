@@ -7,6 +7,7 @@ import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } f
 import SiteHeader from "@/components/SiteHeader";
 import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
+import TeamBadge from "@/components/TeamBadge";
 import styles from "./LeagueView.module.css";
 
 /** 5–3–1 */
@@ -86,7 +87,7 @@ function Standings({ data }: { data: LeagueOverview }) {
           >
             <span role="cell">{t.rank}</span>
             <span role="cell" className={styles.tn}>
-              <i aria-hidden="true">{t.abbreviation}</i>
+              <TeamBadge team={t} />
               <Link href={teamHref(t, data.myTeam)}>{t.name}</Link>
             </span>
             <span role="cell" className={styles.n}>{fmtScore(t.record)}</span>
@@ -123,7 +124,7 @@ function Scoreboard({ data }: { data: LeagueOverview }) {
 function ScoreRow({ m, week }: { m: OtherMatchup; week: number }) {
   const side = (t: FantasyTeamSummary, right?: boolean) => (
     <span className={`${styles.side} ${right ? styles.r : ""}`}>
-      <i aria-hidden="true">{t.abbreviation}</i>
+      <TeamBadge team={t} />
       <span>{t.name}</span>
     </span>
   );

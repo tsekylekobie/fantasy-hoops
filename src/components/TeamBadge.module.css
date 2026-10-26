@@ -1,0 +1,13 @@
+/* With a logo, the badge's circle is the image's frame (see TeamBadge.tsx). */
+.logo {
+  overflow: hidden;
+  padding: 0 !important;
+  background: var(--surface) !important;
+}
+
+.img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

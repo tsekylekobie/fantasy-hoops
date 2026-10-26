@@ -1,0 +1,235 @@
+/* Edit team sheet: same frame as the add / claim sheet (AddDropSheet.module.css). */
+
+.dialog {
+  width: min(480px, calc(100% - 32px));
+  max-width: 480px;
+  max-height: calc(100dvh - 80px);
+  margin: 40px auto auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dialog::backdrop {
+  background: var(--backdrop);
+}
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.x {
+  margin-left: auto;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.x:hover {
+  background: var(--surface-muted);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.preview {
+  flex: none;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-ink);
+  border: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.logoBtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.file {
+  display: none;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.fieldError {
+  font-size: 13px;
+  color: var(--danger-ink);
+}
+
+.input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* 16px keeps iOS from zooming in on focus */
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--danger-ink);
+}
+
+.abbr {
+  width: 120px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+  font-size: 14px;
+}
+
+.ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn.pri {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-ink);
+}
+
+.btn.pri:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn:focus-visible,
+.x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .dialog {
+    margin-top: 16px;
+    max-height: calc(100dvh - 32px);
+  }
+  .hd {
+    padding: 16px;
+  }
+  .title {
+    font-size: 26px;
+  }
+  .body {
+    padding: 16px;
+  }
+  .ft {
+    padding: 14px 16px 16px;
+  }
+  .ft .btn {
+    flex: 1;
+  }
+}

@@ -13,6 +13,12 @@ export function errorResponse(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status, headers: NO_STORE });
 }
 
+/** The signed-in user's id; null when signed out. */
+export async function sessionUserId(): Promise<number | null> {
+  const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
+  return session?.user.id ?? null;
+}
+
 /** The signed-in user's team, or an error response to return instead. */
 export async function requireTeam(): Promise<TeamContext | NextResponse> {
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);

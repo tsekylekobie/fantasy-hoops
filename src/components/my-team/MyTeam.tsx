@@ -11,13 +11,17 @@
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
+// Edit team (EditTeamSheet) renames the team and sets its logo: your own team,
+// or any team for the commissioner; /my-team?edit=team opens it (user menu).
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
+import TeamBadge from "@/components/TeamBadge";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import TradesPanel from "@/components/trades/TradesPanel";
+import EditTeamSheet from "./EditTeamSheet";
 import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
@@ -170,8 +174,12 @@ async function sendJson<T>(url: string, method: "PUT" | "POST", body: unknown): 
 
 type Note = { kind: "ok" | "error"; text: string } | null;
 
-/** With `teamId`, another manager's team, read-only (/team/[id]); without, the signed-in manager's. */
-export default function MyTeam({ teamId }: { teamId?: number } = {}) {
+/**
+ * With `teamId`, another manager's team, read-only (/team/[id]); without, the
+ * signed-in manager's. `canEditProfile`: the commissioner may still edit the
+ * read-only team's name and logo.
+ */
+export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: number; canEditProfile?: boolean } = {}) {
   const readOnly = teamId !== undefined;
   const router = useRouter();
   const pathname = usePathname();
@@ -184,6 +192,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<Note>(null);
+  const [editingTeam, setEditingTeam] = useState(() => !readOnly && searchParams.get("edit") === "team");
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -404,18 +413,23 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
   return (
     <Shell>
       <div className={styles.head}>
-        <div>
-          <h1 className={styles.title}>{data.team.name}</h1>
-          {data.team.managerName && <p className={styles.manager}>{data.team.managerName}</p>}
+        <div className={styles.ident}>
+          <TeamBadge className={styles.badge} team={data.team} />
+          <div className={styles.identText}>
+            <h1 className={styles.title}>{data.team.name}</h1>
+            {data.team.managerName && <p className={styles.manager}>{data.team.managerName}</p>}
+          </div>
         </div>
         {readOnly ? (
           <div className={styles.actions}>
+            {canEditProfile && <button type="button" className={styles.btn} onClick={() => setEditingTeam(true)}>Edit team</button>}
             <Link className={styles.btn} href="/league">League standings</Link>
             <Link className={styles.btn} href={`/team/${data.team.id}/trade`}>Propose trade</Link>
             <Link className={`${styles.btn} ${styles.primary}`} href={`/matchup?team=${data.team.id}`}>This week’s matchup</Link>
           </div>
         ) : (
         <div className={styles.actions}>
+          <button type="button" className={styles.btn} onClick={() => setEditingTeam(true)}>Edit team</button>
           <button type="button" className={styles.btn} disabled={!editable || saving} onClick={() => autoSet("week")}>
             Auto set rest of week
           </button>
@@ -535,6 +549,18 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
       </p>
       {!readOnly && <TradesPanel scope="mine" />}
       {!readOnly && <MyClaims />}
+      {(!readOnly || canEditProfile) && (
+        <EditTeamSheet
+          team={data.team}
+          open={editingTeam}
+          asCommissioner={readOnly}
+          onClose={() => {
+            setEditingTeam(false);
+            if (searchParams.get("edit")) router.replace(urlDate ? `${pathname}?date=${urlDate}` : pathname, { scroll: false });
+          }}
+          onSaved={(t) => setData((d) => (d ? { ...d, team: { ...d.team, ...t } } : d))}
+        />
+      )}
     </Shell>
   );
 }

@@ -36,6 +36,7 @@ import type {
 } from "../types";
 import { LineupError, freezeLineups, loadDay, withTeamLock, type DayState, type TeamContext, type Values } from "./lineup";
 import { categoryLine } from "./players";
+import { teamLogoUrl } from "./teamLogo";
 
 type Db = Pool | PoolClient;
 
@@ -117,6 +118,7 @@ interface TargetRow {
   dropped_by_id: number | null;
   dropped_by_abbr: string | null;
   dropped_by_name: string | null;
+  dropped_by_logo: Date | null;
   /** The manager's team already has a pending claim for him. */
   my_claim: boolean;
 }
@@ -132,7 +134,7 @@ async function loadTarget(db: Db, team: TeamContext, playerId: number): Promise<
                      WHERE g.date = $3 AND NOT g.postponed AND p.team_id IN (g.home_team_id, g.visitor_team_id)
                        AND coalesce(g.status_state <> 'scheduled' OR g.datetime <= now(), false)) AS game_started,
             to_char(coalesce(w.clears_at, next_waiver_run($2, now())) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS process_at,
-            dt.id::int AS dropped_by_id, dt.abbreviation AS dropped_by_abbr, dt.name AS dropped_by_name,
+            dt.id::int AS dropped_by_id, dt.abbreviation AS dropped_by_abbr, dt.name AS dropped_by_name, dt.logo_updated_at AS dropped_by_logo,
             EXISTS (SELECT 1 FROM transactions c JOIN transaction_players cp ON cp.transaction_id = c.id
                      WHERE c.team_id = $4 AND c.type = 'waiver_claim' AND c.status = 'pending'
                        AND cp.player_id = p.id AND cp.to_team_id = $4) AS my_claim
@@ -160,7 +162,7 @@ function targetWaiver(rules: LeagueRules, t: TargetRow): PlayerWaiver | null {
   return {
     clearsAt: t.process_at,
     reason: t.on_waivers ? "dropped" : "game_started",
-    droppedBy: t.dropped_by_id === null ? null : { id: t.dropped_by_id, abbreviation: t.dropped_by_abbr!, name: t.dropped_by_name! },
+    droppedBy: t.dropped_by_id === null ? null : { id: t.dropped_by_id, abbreviation: t.dropped_by_abbr!, name: t.dropped_by_name!, logoUrl: teamLogoUrl(t.dropped_by_id, t.dropped_by_logo) },
   };
 }
 
@@ -234,7 +236,7 @@ export async function getRosterMovesContext(
     };
   }
   return {
-    team: { id: team.teamId, name: team.teamName, abbreviation: team.abbreviation, waiverPriority: team.waiverPriority },
+    team: { id: team.teamId, name: team.teamName, abbreviation: team.abbreviation, logoUrl: team.logoUrl, waiverPriority: team.waiverPriority },
     teamCount: rules.teamCount,
     today: team.today,
     timeZone: rules.timeZone,

@@ -35,6 +35,7 @@ import type {
 import { getLeagueOverview } from "./league";
 import { LineupError, loadValues, withTeamLock, type TeamContext } from "./lineup";
 import { completeClaim } from "./transactions";
+import { toTeamSummary, type TeamRow } from "./teamLogo";
 import { ISO, getWaiverLeague, type WaiverLeague } from "./waiverStatus";
 
 // Any constant (paired with the league id); keeps two waiver runs from overlapping.
@@ -62,6 +63,7 @@ async function getTeamContext(db: Db, teamId: number): Promise<TeamContext | nul
   if (!r) return null;
   return {
     teamId, teamName: r.team_name, managerName: r.manager_name, abbreviation: r.abbreviation,
+    logoUrl: null, // the run never shows the team
     waiverPriority: r.waiver_priority, leagueId: Number(r.league_id), leagueName: r.league_name,
     season: r.season, rosterSlots: r.roster_slots, lineupLock: r.lineup_lock,
     ilStatuses: r.il_statuses, ilPlusStatuses: r.il_plus_statuses, ilMinDays: r.il_min_days,
@@ -91,8 +93,8 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
   if (!league) return null;
   const [order, { rows: teams }] = await Promise.all([
     waiverOrder(pool, league),
-    pool.query<FantasyTeamSummary & { pending: number }>(
-      `SELECT ft.id::int, ft.name, ft.abbreviation,
+    pool.query<TeamRow & { pending: number }>(
+      `SELECT ft.id::int, ft.name, ft.abbreviation, ft.logo_updated_at,
               (SELECT count(*)::int FROM transactions t
                 WHERE t.team_id = ft.id AND t.type = 'waiver_claim' AND t.status = 'pending') AS pending
          FROM fantasy_teams ft WHERE ft.league_id = $1`,
@@ -110,7 +112,7 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
     nextRunAt: league.nextRunAt,
     teams: order.map((id, i) => {
       const t = byId.get(id)!;
-      return { id: t.id, name: t.name, abbreviation: t.abbreviation, priority: i + 1, pendingClaims: t.pending };
+      return { ...toTeamSummary(t), priority: i + 1, pendingClaims: t.pending };
     }),
   };
 }

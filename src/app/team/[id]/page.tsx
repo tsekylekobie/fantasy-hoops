@@ -29,9 +29,15 @@ export default async function TeamPage({ params }: Props) {
   if (!team) notFound();
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
   if (session && team.ownerUserId === session.user.id) redirect("/my-team");
+  // The commissioner may edit any team's name and logo.
+  const { rows: [league] } = await pool.query<{ commissioner_user_id: number | null }>(
+    `SELECT commissioner_user_id::int FROM leagues WHERE id = $1`,
+    [team.leagueId],
+  );
+  const isCommissioner = session !== null && league?.commissioner_user_id === session.user.id;
   return (
     <Suspense fallback={null}>
-      <MyTeam teamId={team.teamId} />
+      <MyTeam teamId={team.teamId} canEditProfile={isCommissioner} />
     </Suspense>
   );
 }

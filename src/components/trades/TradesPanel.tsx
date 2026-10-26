@@ -10,6 +10,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { fetchJson, fmtGameDate, fullName } from "@/components/players/format";
 import type { FantasyTeamSummary, PlayerSummary, Trade, TradeAction, TradesResponse } from "@/lib/types";
+import TeamBadge from "@/components/TeamBadge";
 import styles from "./Trades.module.css";
 
 const STATE_TEXT: Record<Trade["status"], string> = {
@@ -149,7 +150,7 @@ const teamHref = (t: FantasyTeamSummary, mine: FantasyTeamSummary | null) => (t.
 function TeamName({ t, mine }: { t: FantasyTeamSummary; mine: FantasyTeamSummary | null }) {
   return (
     <>
-      <i aria-hidden="true">{t.abbreviation}</i>
+      <TeamBadge team={t} />
       <Link className={styles.teamLink} href={teamHref(t, mine)}>{t.id === mine?.id ? "You" : t.name}</Link>
     </>
   );
