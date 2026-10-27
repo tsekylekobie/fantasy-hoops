@@ -98,9 +98,45 @@ Ctrl-C stops it after the current pass, and restarting is safe: each task's last
 runs every task once and exits. All tasks share one API client, so together they stay under
 `BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 120),
 `WORKER_CORRECTIONS_HOUR` (default 9) and `WORKER_TIME_ZONE` (default `America/New_York`).
-In production it runs as its own process (e.g. a second Railway service with `npm run worker`).
+In production it runs as its own process (the `worker` service under Deploying).
 
 Without the worker, `npm run backfill -- --seasons 2026` pulls in everything since the last run.
+
+## Deploying (Railway)
+
+One Railway project with three services, all deploying from `main`:
+
+| Service | Config file | Runs |
+|---|---|---|
+| `web` | `railway/web.json` | `npm run db:migrate` before each deploy, then `npm run build` / `npm run start` |
+| `worker` | `railway/worker.json` | `npm run worker` (no build step; exactly one replica) |
+| `Postgres` | Railway's PostgreSQL template | |
+
+1. **New Project → Deploy from GitHub repo** → this repo. Rename the service `web`. Then
+   **+ Create → Database → PostgreSQL**, and **+ Create → GitHub Repo** → this repo again, named `worker`.
+2. In each app service's **Settings → Config-as-code**, set the path to `railway/web.json` or `railway/worker.json`.
+3. Variables (Shared Variables, or set on both `web` and `worker`):
+   ```
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+   BALLDONTLIE_API_KEY=...
+   BALLDONTLIE_BASE_URL=https://api.balldontlie.io/v1
+   BALLDONTLIE_RPM=60
+   WORKER_TIME_ZONE=America/New_York
+   ```
+   `web` also needs `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL=https://<domain>`. Leave `AUTH_MOCK`
+   unset (it's ignored in production builds anyway).
+4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
+   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client.
+5. Load data from your machine against the Postgres service's `DATABASE_PUBLIC_URL` (its Variables tab):
+   ```sh
+   DATABASE_URL="<public url>" npm run sync:players
+   DATABASE_URL="<public url>" npm run backfill -- --seasons 2026,2025
+   .venv/bin/python scripts/map-headshots.py --database-url "<public url>"
+   ```
+   Don't run `db:seed:league` against production: it creates mock managers.
+
+After that, every push to `main` redeploys both services, and the worker keeps the data current.
+For debugging, `railway logs --service worker` (Railway CLI) or the Railway MCP server shows each service's logs.
 
 ## Checks
 

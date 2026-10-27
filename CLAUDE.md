@@ -40,6 +40,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).
 - `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; `league-settings` is the commissioner's /league/settings; the others (my team, matchup, league, rankings, claim, nav map, phone) are later-milestone exploration.
+- `railway/`: Railway config-as-code for the `web` and `worker` services (README, "Deploying"). Anything a
+  script needs at runtime (`tsx`, `dotenv`) belongs in `dependencies`, not `devDependencies`.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
 
 ## Conventions
