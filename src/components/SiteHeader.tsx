@@ -44,6 +44,16 @@ const TABS = [
       </>
     ),
   },
+  {
+    href: "/box-scores",
+    label: "Box scores",
+    icon: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 10h18M3 15h18M9 4v16" />
+      </>
+    ),
+  },
 ];
 
 export default function SiteHeader() {

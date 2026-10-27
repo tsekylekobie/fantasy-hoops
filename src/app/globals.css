@@ -37,6 +37,13 @@
   --rank-1-ink: #16181d;
   --rank-2-bg: #ffe7d6;
   --rank-4-bg: #efece4;
+  /* Box scores: a stat's place among the date's players, top 10% to bottom 10%. */
+  --tier-top10-bg: #15803d;
+  --tier-top10-ink: #ffffff;
+  --tier-top25-bg: #86efac;
+  --tier-top40-bg: #dcfce7;
+  --tier-bottom25-bg: #fee2e2;
+  --tier-bottom10-bg: #fca5a5;
   --on-ink: #ffffff;
   --backdrop: rgba(22, 24, 29, 0.55);
   /* A value that just changed in a live update. */
@@ -80,6 +87,11 @@
   --rank-1-ink: #ffffff;
   --rank-2-bg: #3d2416;
   --rank-4-bg: #23262b;
+  --tier-top10-bg: #15803d;
+  --tier-top25-bg: #166534;
+  --tier-top40-bg: #173a24;
+  --tier-bottom25-bg: #3b1a1a;
+  --tier-bottom10-bg: #7f1d1d;
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
   --flash: #5b4a12;

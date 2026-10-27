@@ -142,7 +142,7 @@ async function getTeamOptions(db: Pool, season: number): Promise<PlayersResponse
   return { fantasy: fantasy.rows, nba: nba.rows };
 }
 
-async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOwner>> {
+export async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOwner>> {
   const { rows } = await db.query<{ player_id: number; team_id: number; abbreviation: string }>(ROSTERED_SQL, [season]);
   return new Map(rows.map((r) => [r.player_id, { teamId: r.team_id, abbreviation: r.abbreviation }]));
 }
@@ -193,6 +193,12 @@ export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) =
     default:
       return (r) => per(r[sort], r.gp);
   }
+}
+
+/** Season totals (finished regular-season games) for every player with a game in `season`. */
+export async function getSeasonTotals(db: Pool, season: number): Promise<SeasonTotals[]> {
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null]);
+  return rows.map(toTotals);
 }
 
 /** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */

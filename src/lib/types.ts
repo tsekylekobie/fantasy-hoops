@@ -1114,3 +1114,77 @@ export interface TeamProfileUpdate {
   name?: string;
   abbreviation?: string;
 }
+
+// Box scores (/box-scores)
+
+/** What a box score cell is ranked on: the nine categories and Value. */
+export type BoxRankKey = Category | "value";
+
+/**
+ * Where a stat ranks among every player who played that date (all games):
+ * top 10% / 25% / 40%, the middle, bottom 25% / 10%. Ties share a place.
+ */
+export type RankTier = "top10" | "top25" | "top40" | "mid" | "bottom25" | "bottom10";
+
+export interface BoxRank {
+  /** 1-based; tied players share the best rank of the tie. */
+  rank: number;
+  tied: boolean;
+  tier: RankTier;
+}
+
+export interface BoxScorePlayer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  position: string | null;
+  owner: PlayerOwner | null;
+  /** Set when he's a free agent on waivers: adding him is a claim. */
+  waiver: PlayerWaiver | null;
+  /** His line; null = on the box score with 0 minutes (DNP). */
+  line: (CategoryLine & { min: number }) | null;
+  /** Value of this one game (the Players page's per-game scale and your punt weights); null for DNP. */
+  value: number | null;
+  /** Ranks against the date's players; FG%/FT% missing with no attempts. Empty for DNP. */
+  ranks: Partial<Record<BoxRankKey, BoxRank>>;
+}
+
+export interface BoxScoreTeam {
+  id: number;
+  abbreviation: string;
+  /** Null before tip-off. */
+  score: number | null;
+  /** Players by Value, best first; DNP last. */
+  players: BoxScorePlayer[];
+  totals: CategoryLine & { min: number };
+}
+
+export interface BoxScoreGame {
+  id: number;
+  state: "scheduled" | "live" | "final" | "postponed";
+  /** "Final", "Final/OT", "Q4 5:06", "Halftime"; null when scheduled (show tipoff). */
+  statusText: string | null;
+  tipoff: string | null;
+  away: BoxScoreTeam;
+  home: BoxScoreTeam;
+  /** Your rostered players whose NBA team plays in this game, by name. */
+  mine: string[];
+}
+
+/** GET page /box-scores?date=yyyy-mm-dd (default today in the league's time zone). */
+export interface BoxScoresResponse {
+  date: string;
+  today: string;
+  timeZone: string;
+  /** The week strip: the date and three days either side, with each one's number of games. */
+  days: { date: string; games: number }[];
+  /** The season's first and last game dates (the date picker's range); null with no schedule. */
+  firstDate: string | null;
+  lastDate: string | null;
+  games: BoxScoreGame[];
+  /** Players with minutes on this date, the pool the ranks are out of. */
+  playerCount: number;
+  myTeamId: number | null;
+  /** Some game can still change: the page polls (components/live). */
+  live: boolean;
+}

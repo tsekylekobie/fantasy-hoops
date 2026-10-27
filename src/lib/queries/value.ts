@@ -140,3 +140,25 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
   scored.forEach((s, i) => out.set(s.p.playerId, { value: s.value, rank: i + 1 }));
   return out;
 }
+
+/** One game's z-scores (by category) and weighted value. */
+export interface GameScore {
+  z: Record<Category, number>;
+  value: number;
+}
+
+/**
+ * Scores single-game lines against the season's pool, as if each were a
+ * one-game average: the same means, stdevs and league FG%/FT% as valuePlayers,
+ * so a game's value is on the Players page's per-game scale. Pass each line
+ * with gp = 1.
+ */
+export function gameScorer(season: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS): (line: SeasonTotals) => GameScore {
+  const z = poolScorer(selectPool(season.filter((p) => p.gp > 0)));
+  return (line) => {
+    const zs = z({ ...line, gp: 1 });
+    const byCategory = {} as Record<Category, number>;
+    for (const c of CATS) byCategory[CATEGORY[c]] = zs[c];
+    return { z: byCategory, value: weightedValue(zs, weights) };
+  };
+}
