@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit team</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.bg{width:1280px;height:820px;box-sizing:border-box;padding:96px 40px;background:repeating-linear-gradient(#76736D 0 55px,#6D6B66 55px 56px);font-family:Inter,system-ui,sans-serif;color:#16181D}
+.md{width:520px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden}
+.hd{display:flex;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid #E2DDD1}
+.hd h2{font:700 32px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.x{margin-left:auto;width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.body{padding:22px 24px 8px;display:flex;flex-direction:column;gap:20px}
+.lr{display:flex;align-items:center;gap:18px}
+.pv{width:88px;height:88px;border-radius:50%;background:#16181D;color:#fff;font:700 30px 'Barlow Condensed',sans-serif;font-style:normal;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden}
+.pv.img{background:#7C2D12}
+.lt{display:flex;flex-direction:column;gap:4px}
+.lb{font-size:13px;font-weight:600}
+.hint{font-size:12px;color:#5A5F68}
+.lbtns{display:flex;gap:8px;margin-top:6px}
+.btn{display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 18px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;font:600 14px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.btn:hover{border-color:#16181D;color:#16181D}
+.btn.pri{background:#C2410C;border-color:#C2410C;color:#fff}
+.btn:disabled{background:#EFECE4;border-color:#EFECE4;color:#8A8F98;cursor:default}
+.f{display:flex;flex-direction:column;gap:6px}
+.f input{height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:10px;padding:0 12px;font:400 15px Inter,sans-serif;color:#16181D}
+.f input.ab{width:120px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.ft{display:flex;justify-content:flex-end;gap:10px;padding:18px 24px 22px}
+</style>
+</helmet>
+<div class="bg"><div class="md" role="dialog" aria-labelledby="edit-team-title">
+<div class="hd"><h2 id="edit-team-title">Edit team</h2><a class="x" href="my-team.mockup.html" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l12 12M15 3L3 15"></path></svg></a></div>
+<div class="body">
+<div class="lr">
+<sc-if value="{{hasLogo}}" hint-placeholder-val="{{ false }}"><span class="pv img"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="1.6" stroke-linecap="round" role="img" aria-label="Uploaded team logo"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"></path></svg></span></sc-if>
+<sc-if value="{{noLogo}}" hint-placeholder-val="{{ true }}"><i class="pv" aria-hidden="true">{{abbr}}</i></sc-if>
+<div class="lt"><span class="lb">Logo</span><span class="hint">PNG, JPEG or WebP. Cropped to a square.</span>
+<div class="lbtns"><button class="btn" onClick="{{upload}}">{{upLabel}}</button><sc-if value="{{hasLogo}}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{remove}}">Remove</button></sc-if></div></div>
+</div>
+<label class="f" for="et-name"><span class="lb">Team name</span><input id="et-name" value="{{name}}" onInput="{{typeName}}" autocomplete="off"></label>
+<label class="f" for="et-abbr"><span class="lb">Abbreviation</span><input id="et-abbr" class="ab" value="{{abbr}}" maxlength="4" onInput="{{typeAbbr}}" autocomplete="off"><span class="hint">Shown where there’s no logo, and in short lists.</span></label>
+</div>
+<div class="ft"><a class="btn" href="my-team.mockup.html">Cancel</a><button class="btn pri" disabled="{{unchanged}}">Save</button></div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals(){
+var self=this;var s=this.state||{};
+var name=s.name===undefined?'Back Door Cuts':s.name;var abbr=s.abbr===undefined?'BDC':s.abbr;var logo=!!s.logo;
+return {
+name:name,abbr:abbr,hasLogo:logo,noLogo:!logo,upLabel:logo?'Replace':'Upload',
+upload:function(){self.setState({logo:true});},remove:function(){self.setState({logo:false});},
+typeName:function(e){self.setState({name:e.target.value});},
+typeAbbr:function(e){self.setState({abbr:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'')});},
+unchanged:name==='Back Door Cuts'&&abbr==='BDC'&&!logo
+};
+}
+}
+</script>
+</body>
+</html>

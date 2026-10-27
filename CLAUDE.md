@@ -39,7 +39,10 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).
-- `docs/design/*.mockup.html`: the design mockups to match. M1 is `players-table` and `player-modal`; `league-settings` is the commissioner's /league/settings; the others (my team, matchup, league, rankings, claim, nav map, phone) are later-milestone exploration.
+- `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (PLAN.md links it). M1 is `players-table` and `player-modal`;
+  `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`,
+  `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
+  and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.
 - `railway/`: Railway config-as-code for the `web` and `worker` services (README, "Deploying"). Anything a
   script needs at runtime (`tsx`, `dotenv`) belongs in `dependencies`, not `devDependencies`.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.

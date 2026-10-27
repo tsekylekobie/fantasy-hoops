@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#7C2D12}
+.w{width:1280px;height:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);font-family:Inter,system-ui,sans-serif;color:#16181D}
+.l{background:#16181D;color:#fff;padding:56px 64px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.l .arc{position:absolute;right:-180px;bottom:-180px;width:520px;height:520px;border:2px solid #2B2E35;border-radius:50%}
+.l .arc2{position:absolute;right:-40px;bottom:-40px;width:240px;height:240px;border:2px solid #2B2E35;border-radius:50%}
+.logo{font:700 30px 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase}
+.logo b{color:#FB923C}
+.l h1{font:700 76px/.92 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0;max-width:9ch;position:relative}
+.l h1 em{font-style:normal;color:#FB923C}
+.l p{margin:16px 0 0;font-size:16px;color:#C9C5BC;max-width:40ch;position:relative}
+.facts{display:flex;gap:28px;position:relative}
+.facts div{display:flex;flex-direction:column;gap:2px}
+.facts b{font:700 30px/1 'Barlow Condensed',sans-serif}
+.facts span{font-size:12px;color:#C9C5BC;letter-spacing:.06em;text-transform:uppercase}
+.r{background:#F6F4EF;display:flex;align-items:center;justify-content:center;padding:48px}
+.card{width:400px;display:flex;flex-direction:column;gap:18px}
+.card h2{font:700 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.card > p{margin:0;font-size:15px;color:#4A4F57;line-height:1.5}
+.g{display:flex;align-items:center;justify-content:center;gap:12px;height:52px;border-radius:10px;border:1px solid #CFC9BD;background:#fff;color:#16181D;text-decoration:none;font:600 15px Inter,sans-serif}
+.g:hover{border-color:#16181D;color:#16181D}
+.g i{width:24px;height:24px;border-radius:50%;border:1px solid #CFC9BD;font:700 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+.fine{font-size:13px;color:#4A4F57;line-height:1.5;margin:0;padding-top:16px;border-top:1px solid #E2DDD1}
+.demo{margin-top:8px;font-size:12px;color:#5A5F68;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.demo span{font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7C2D12;background:#FFE7D6;border-radius:999px;padding:3px 8px}
+</style>
+</helmet>
+<div class="w">
+<div class="l"><div class="arc"></div><div class="arc2"></div>
+<div class="logo">Fantasy <b>Hoops</b></div>
+<div><h1>Our league, <em>our rules.</em></h1><p>Private 12-team league. Head-to-head, 9 categories, waivers that run when we say they do.</p></div>
+<div class="facts"><div><b>12</b><span>Teams</span></div><div><b>9</b><span>Categories</span></div><div><b>3:00 AM</b><span>Waivers ET</span></div></div>
+</div>
+<div class="r"><div class="card">
+<h2>Sign in</h2>
+<p>Use the Google account your commissioner added to the league.</p>
+<a class="g" href="welcome.mockup.html"><i>G</i>Continue with Google</a>
+<p class="fine">We get your name, email and profile photo from Google, nothing else. No password is stored here. Not on the list yet? Ask your commissioner to add your email.</p>
+<div class="demo"><span>Prototype</span><a href="not-in-league.mockup.html">See what an email that isn’t on the list gets</a></div>
+</div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
