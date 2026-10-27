@@ -5,6 +5,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 ## Layout
 - `src/lib/types.ts`: the API contract between routes and UI. Change both sides together.
 - `src/lib/bdl/`: the only module that talks to BALLDONTLIE (keeps the provider swappable).
+- `src/lib/espn/news.ts`: player news from ESPN's keyless fantasy endpoints (Rotowire blurbs), matched by name and
+  fetched live by `/api/players/[id]/news` with an in-memory cache. Not stored; the one exception to reading from our DB.
 - `src/lib/db.ts`: shared `pg` pool.
 - `db/migrations/NNNN_name.sql`: the schema, applied in order by `npm run db:migrate` and tracked in
   `schema_migrations`. Never edit a migration that has been committed; add the next number instead.

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerDetailResponse, PlayerWeek, SeasonRow } from "@/lib/types";
+import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtWaiverTime, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
@@ -229,6 +229,8 @@ function Detail({ data }: { data: PlayerDetailResponse }) {
 
       {data.thisWeek && <ThisWeek week={data.thisWeek} />}
 
+      <News playerId={data.player.id} />
+
       <section className={styles.section} aria-labelledby="game-log-heading">
         <h3 id="game-log-heading" className={styles.h3}>
           Game log · {label}
@@ -313,6 +315,70 @@ function Detail({ data }: { data: PlayerDetailResponse }) {
       </section>
     </>
   );
+}
+
+const NEWS_PREVIEW = 3;
+
+/** Latest fantasy news, loaded on its own so a slow or failed fetch never holds up the modal. */
+function News({ playerId }: { playerId: number }) {
+  const [items, setItems] = useState<PlayerNewsItem[] | "loading" | "error">("loading");
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setItems("loading");
+    setExpanded(false);
+    fetchJson<PlayerNewsResponse>(`/api/players/${playerId}/news`, ctrl.signal)
+      .then((body) => setItems(body.items))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setItems("error");
+      });
+    return () => ctrl.abort();
+  }, [playerId]);
+
+  const shown = Array.isArray(items) ? (expanded ? items : items.slice(0, NEWS_PREVIEW)) : [];
+  return (
+    <section className={styles.section} aria-labelledby="news-heading" aria-busy={items === "loading"}>
+      <h3 id="news-heading" className={styles.h3}>
+        Latest news
+      </h3>
+      {items === "loading" ? (
+        <p className={styles.empty}>Loading news…</p>
+      ) : items === "error" ? (
+        <p className={styles.empty}>News is unavailable right now.</p>
+      ) : items.length === 0 ? (
+        <p className={styles.empty}>No recent news.</p>
+      ) : (
+        <>
+          <ul className={styles.news}>
+            {shown.map((n) => (
+              <li key={n.id} className={styles.newsItem}>
+                <p className={styles.newsHeadline}>{n.headline}</p>
+                {n.story && <p className={styles.newsStory}>{n.story}</p>}
+                <time className={styles.newsTime} dateTime={n.published} title={new Date(n.published).toLocaleString()}>
+                  {timeAgo(n.published)}
+                </time>
+              </li>
+            ))}
+          </ul>
+          {items.length > NEWS_PREVIEW && (
+            <button type="button" className={styles.newsMore} onClick={() => setExpanded((e) => !e)}>
+              {expanded ? "Show less" : `Show ${items.length - NEWS_PREVIEW} more`}
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** "12m ago", "5h ago", "3d ago", then a date. */
+function timeAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
+  if (mins < 7 * 24 * 60) return `${Math.round(mins / (24 * 60))}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 const GAME_STATE = { scheduled: styles.gameScheduled, live: styles.gameLive, final: styles.gameFinal };

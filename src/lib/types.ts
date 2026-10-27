@@ -170,6 +170,22 @@ export interface SeasonRow extends CategoryLine {
   min: number;
 }
 
+/** One fantasy news update (ESPN / Rotowire). */
+export interface PlayerNewsItem {
+  id: string;
+  /** The update itself, e.g. "Williams has been ruled out for Saturday's game." */
+  headline: string;
+  /** The analysis under it; null when there is none. */
+  story: string | null;
+  /** ISO timestamp. */
+  published: string;
+}
+
+/** GET /api/players/:id/news. Fetched live, so it can be empty when the source is down. */
+export interface PlayerNewsResponse {
+  items: PlayerNewsItem[];
+}
+
 /** GET /api/players/:id?season=2026 */
 export interface PlayerDetailResponse {
   player: PlayerSummary & {
