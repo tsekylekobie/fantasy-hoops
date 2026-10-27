@@ -154,6 +154,16 @@
   margin-left: 0;
 }
 
+/* The watchlist star leads the header's buttons: Star, Add, Close. */
+.watch {
+  margin-left: auto;
+}
+
+.watch + .add,
+.watch + .close {
+  margin-left: 0;
+}
+
 .close {
   margin-left: auto;
   flex: none;

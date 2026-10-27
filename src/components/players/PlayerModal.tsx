@@ -7,6 +7,7 @@ import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
+import WatchStar from "./WatchStar";
 import styles from "./PlayerModal.module.css";
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   myTeamId?: number | null;
   /** Bump to refetch (e.g. after an add changed his owner). */
   refreshKey?: number;
+  /** His watchlist star was toggled, for a page that shows stars too. */
+  onWatch?: (id: number, watched: boolean) => void;
 }
 
 type Load =
@@ -27,7 +30,7 @@ type Load =
   | { status: "ready"; id: number; data: PlayerDetailResponse }
   | { status: "error"; id: number; message: string };
 
-export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0 }: Props) {
+export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0, onWatch }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const closingFromProp = useRef(false);
@@ -113,7 +116,16 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
         {/* The close button stays mounted across loading -> loaded so focus isn't lost. */}
         <div className={styles.header}>
           {data ? (
-            <DetailHead data={data} onAdd={onAdd} myTeamId={myTeamId} />
+            <DetailHead
+              data={data}
+              onAdd={onAdd}
+              myTeamId={myTeamId}
+              onWatch={(id, watched) => {
+                setLoad((prev) =>
+                  prev.status === "ready" && prev.id === id ? { ...prev, data: { ...prev.data, watched } } : prev);
+                onWatch?.(id, watched);
+              }}
+            />
           ) : (
             <div className={styles.headText}>
               <h2 id="player-modal-title" className={styles.name}>
@@ -184,8 +196,13 @@ function InjuryNote({ note }: { note: string }) {
 }
 
 function DetailHead({
-  data, onAdd, myTeamId,
-}: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
+  data, onAdd, myTeamId, onWatch,
+}: {
+  data: PlayerDetailResponse;
+  onAdd?: (id: number) => void;
+  myTeamId: number | null;
+  onWatch: (id: number, watched: boolean) => void;
+}) {
   const { player, owner, waiver } = data;
   const injury = player.injury;
   const injuryLine = injury ? fmtInjuryLine(injury) : "";
@@ -223,6 +240,11 @@ function DetailHead({
           </p>
         )}
       </div>
+      {data.watched !== null && (
+        <WatchStar
+          playerId={player.id} name={fullName(player)} watched={data.watched} onChange={onWatch} size="modal" className={styles.watch}
+        />
+      )}
       {owner === null && onAdd && (
         <button type="button" className={`${styles.add} ${waiver ? styles.claim : ""}`} onClick={() => onAdd(player.id)}>
           {waiver ? `Claim (${fmtWaiverTime(waiver.clearsAt, data.timeZone, "date")})` : "Add"}

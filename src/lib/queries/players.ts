@@ -28,6 +28,7 @@ import { valuePlayers, type SeasonTotals } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
 import { ISO, getWaiverStatus } from "./waiverStatus";
 import { getInjuries } from "./injuries";
+import { getWatchedIds } from "./watchlist";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -211,19 +212,21 @@ export async function getSeasonValues(
   return new Map(rows.map((r) => [r.player_id, { totals: r, value: values.get(r.player_id)!.value }]));
 }
 
-export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResponse> {
+/** `userId`: the signed-in user, for the stars and scope=watch (which lists nothing signed out); null = signed out. */
+export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | null): Promise<PlayersResponse> {
   let window: { from: string; to: string } | null = null;
   if (q.range === "last14") {
     const res = await db.query<{ from: string; to: string }>(LAST14_WINDOW_SQL, [q.season]);
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const [{ rows }, owners, waivers, injuries, teamOptions] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries, teamOptions, watched] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
     getInjuries(db),
     getTeamOptions(db, q.season),
+    getWatchedIds(db, userId),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -237,7 +240,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
-    .filter((r) => q.scope === "all" || !owners.has(r.player_id))
+    .filter((r) => q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
     .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
     .filter((r) => q.nba === null || r.team_abbr === q.nba)
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
@@ -276,6 +279,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
       injury: injuries.get(r.player_id) ?? null,
+      watched: userId === null ? null : watched.has(r.player_id),
     };
   });
 
@@ -310,9 +314,9 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
 /** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
  *  Returns null when the player id does not exist. */
 export async function getPlayerDetail(
-  db: Pool, playerId: number, season: number,
+  db: Pool, playerId: number, season: number, userId: number | null,
 ): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
-  const [playerRes, seasonsRes, logRes, owners, waivers, injuries] = await Promise.all([
+  const [playerRes, seasonsRes, logRes, owners, waivers, injuries, watched] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -364,6 +368,7 @@ export async function getPlayerDetail(
     getOwners(db, season),
     getWaiverStatus(db, season),
     getInjuries(db, [playerId]),
+    getWatchedIds(db, userId, [playerId]),
   ]);
 
   const p = playerRes.rows[0];
@@ -399,5 +404,6 @@ export async function getPlayerDetail(
     seasonAverages: current ? seasonRow(season, current) : null,
     gameLog,
     pastSeasons: seasonsRes.rows.filter((r) => r.season < season).map((r) => seasonRow(r.season, r)),
+    watched: userId === null ? null : watched.has(p.id),
   };
 }

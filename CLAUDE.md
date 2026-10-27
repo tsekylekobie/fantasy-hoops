@@ -31,6 +31,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
   injury + news blurb. Rows show the status chip; the player modal adds injury, est. return and the full news blurb.
+- `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`) on
+  Players rows and in the player modal toggles it via `PUT`/`DELETE /api/players/[id]/watch`; `scope=watch` on
+  `/api/players` lists it. `watched` on rows and player detail is null when signed out (no star).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury

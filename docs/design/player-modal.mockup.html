@@ -19,6 +19,12 @@ body{margin:0}
 .hd p{margin:6px 0 0;font-size:14px;color:#4A4F57}
 .st{font-size:12px;font-weight:600;color:#1E3A8A;background:#DBEAFE;border-radius:999px;padding:4px 10px;margin-left:8px}
 .x{margin-left:auto;width:44px;height:44px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;box-sizing:border-box;text-decoration:none}
+.wst{margin-left:auto;flex:none;width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:10px;background:#fff;color:#5A5F68;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.wst svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.wst:hover{color:#C2410C}
+.wst[aria-pressed="true"]{color:#C2410C;border-color:#C2410C;background:#FFE7D6}
+.wst[aria-pressed="true"] svg{fill:currentColor}
+.wst+.x{margin-left:0}
 .tl{display:grid;grid-template-columns:repeat(9,1fr);background:#FBFAF6;border-top:1px solid #E2DDD1;border-bottom:1px solid #E2DDD1;padding:16px 28px}
 .tl div{display:flex;flex-direction:column;gap:4px}
 .tl small{font-size:11px;font-weight:600;letter-spacing:.06em;color:#4A4F57}
@@ -51,6 +57,7 @@ body{margin:0}
 </helmet>
 <div class="bg"><div class="md">
 <div class="hd"><div class="av">MD</div><div><h2>Marcus Delaney<span class="st dtd">DTD</span></h2><p>Boston Celtics · SG/SF · 2026–27 season · On PPC</p><div class="inj"><p class="il">Left Ankle Sprain · Est. return Oct 25</p><p class="{{noteCls}}">Rolled his left ankle with 2:40 left in Saturday’s loss at Atlanta and limped to the locker room, but returned to the bench in a walking boot as a precaution. X-rays were negative. He went through a light shootaround Sunday morning without the boot and is listed as questionable against Miami; coach Ray Dalton said he’ll be a game-time decision and that the team won’t rush him with a back-to-back coming Tuesday.</p><button class="rm" aria-expanded="{{open}}" onClick="{{flip}}">{{rmLabel}}</button></div></div>
+<button class="wst" aria-pressed="{{watched}}" aria-label="{{watchLabel}}" title="{{watchTitle}}" onClick="{{flipWatch}}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.47 5.2 5.7.68-4.2 3.9 1.1 5.63L10 14.45l-5.07 2.76 1.1-5.63-4.2-3.9 5.7-.68z"/></svg></button>
 <a class="x" href="players-table.mockup.html" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l12 12M15 3L3 15"/></svg></a></div>
 <div class="tl"><div><small>FG%</small><b>.492</b></div><div><small>FT%</small><b>.857</b></div><div><small>3PM</small><b>3.0</b></div><div><small>PTS</small><b>29.0</b></div><div><small>REB</small><b>6.0</b></div><div><small>AST</small><b>5.3</b></div><div><small>STL</small><b>1.3</b></div><div><small>BLK</small><b>0.7</b></div><div><small>TO</small><b>2.7</b></div></div>
 <div class="sec"><div class="wh"><h3>This week · Week 1<span>Oct 20 – Oct 25</span></h3><em>Games Remaining <span class="pill" title="1 game left of 4 this week">1/4</span></em></div>
@@ -76,8 +83,9 @@ body{margin:0}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1240}}'>
 class Component extends DCLogic {
-renderVals(){var self=this;var open=!!(this.state&&this.state.open);
-return {open:open?'true':'false',noteCls:open?'in':'in cl',rmLabel:open?'Show less':'Read more',flip:function(){self.setState({open:!open});}};}
+renderVals(){var self=this;var open=!!(this.state&&this.state.open);var w=!!(this.state&&this.state.watched);
+return {watched:w?'true':'false',watchLabel:(w?'Unwatch':'Watch')+' Marcus Delaney',watchTitle:w?'On your watchlist':'Add to watchlist',flipWatch:function(){self.setState({watched:!w});},
+open:open?'true':'false',noteCls:open?'in':'in cl',rmLabel:open?'Show less':'Read more',flip:function(){self.setState({open:!open});}};}
 }
 </script>
 </body>
