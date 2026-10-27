@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
-import { fetchJson, fmtAvg, fmtValue, fullName, injuryTooltip } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtValue, fullName } from "@/components/players/format";
 import type { Trade, TradeBuilderResponse, TradeProposal, TradeRosterPlayer } from "@/lib/types";
 import styles from "./Trades.module.css";
 
@@ -192,7 +192,7 @@ function Roster({ title, team, players, picked, onPick }: {
       {players.map((p) => {
         const on = picked.has(p.id);
         return (
-          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""}`} title={injuryTooltip(p.injury)}>
+          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""}`}>
             <span>
               <button
                 type="button"

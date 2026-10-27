@@ -29,7 +29,7 @@ import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
 import Flash from "@/components/live/Flash";
 import { useLivePoll } from "@/components/live/useLivePoll";
-import { fetchJson, fmtPct, fullName, injuryTooltip } from "@/components/players/format";
+import { fetchJson, fmtPct, fullName } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
   AutoLineupRequest,
@@ -379,7 +379,6 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
       <div
         key={spot.key}
         className={`${styles.grid} ${styles.row} ${styles[mode]} ${liveRow ? styles.liveRow : ""} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}
-        title={p ? injuryTooltip(p.injury) : undefined}
       >
         <span>
           <button

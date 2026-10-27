@@ -25,7 +25,7 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
   `playoffs`; by hand `npm run playoffs -- --today <yyyy-mm-dd>` or `POST /api/dev/playoffs?today=...`, dev only).
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
-  injury + news blurb. Rows show the status chip; the modal and row tooltips add injury, est. return and news.
+  injury + news blurb. Rows show the status chip; the player modal adds injury, est. return and the full news blurb.
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury

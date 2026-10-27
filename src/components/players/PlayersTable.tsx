@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, injuryTooltip, teamPos } from "./format";
+import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -133,7 +133,7 @@ function Row({
 }) {
   const s = p.stats;
   return (
-    <tr title={injuryTooltip(p.injury)}>
+    <tr>
       <td>{p.rank}</td>
       <td>
         <span className={styles.player}>

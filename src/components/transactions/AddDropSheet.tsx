@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import { fetchJson, fmtAvg, fmtPct, fmtWaiverTime, fullName, injuryTooltip, teamPos } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtPct, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
 import { faabBidProblem } from "@/lib/transactions/policy";
 import type { CategoryLine, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
@@ -366,7 +366,7 @@ function DropOption({ p, checked, onPick }: { p: RosterMoveOption; checked: bool
   return (
     <label
       className={`${styles.opt} ${checked ? styles.on : ""} ${disabled ? styles.off : ""}`}
-      title={p.dropBlocked ?? injuryTooltip(p.injury)}
+      title={p.dropBlocked ?? undefined}
     >
       <input type="radio" name="drop" checked={checked} disabled={disabled} onChange={onPick} />
       <b>{fullName(p)}</b>

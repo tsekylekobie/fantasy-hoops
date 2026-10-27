@@ -37,15 +37,6 @@ export function fmtInjuryLine(i: PlayerInjury): string {
   return [i.injury, i.returnDate && `Est. return ${fmtGameDate(i.returnDate)}`].filter(Boolean).join(" · ");
 }
 
-/** Hover text for a player row: "Out · Left Calf Strain · Est. return Oct 28", then the news blurb. */
-export function injuryTooltip(i: PlayerInjury | null): string | undefined {
-  if (!i) return undefined;
-  const line = [i.status, fmtInjuryLine(i)].filter(Boolean).join(" · ");
-  if (!i.note) return line;
-  const note = i.note.length > 240 ? `${i.note.slice(0, 240).replace(/\s+\S*$/, "")}…` : i.note;
-  return `${line}\n${note}`;
-}
-
 /** "@ CHI · W" / "vs ORL · L" */
 export function fmtOpponent(opponentAbbr: string, home: boolean, result: "W" | "L" | null): string {
   const base = `${home ? "vs" : "@"} ${opponentAbbr}`;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
@@ -154,6 +154,33 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** The injury news blurb: the first few lines with Read more when there's more, all of it once expanded. */
+function InjuryNote({ note }: { note: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [clipped, setClipped] = useState(false);
+  // Whether the clamp hides anything depends on the text and the modal's width, so measure (and re-measure on resize).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    const measure = () => setClipped(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [note, open]);
+  return (
+    <>
+      <p ref={ref} className={`${styles.injuryNote} ${open ? "" : styles.clamped}`}>{note}</p>
+      {(clipped || open) && (
+        <button type="button" className={styles.readMore} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          {open ? "Show less" : "Read more"}
+        </button>
+      )}
+    </>
+  );
+}
+
 function DetailHead({
   data, onAdd, myTeamId,
 }: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
@@ -180,7 +207,7 @@ function DetailHead({
         {injury && (injuryLine || injury.note) && (
           <div className={styles.injury}>
             {injuryLine && <p className={styles.injuryLine}>{injuryLine}</p>}
-            {injury.note && <p className={styles.injuryNote}>{injury.note}</p>}
+            {injury.note && <InjuryNote key={player.id} note={injury.note} />}
           </div>
         )}
         {owner === null && waiver && (
