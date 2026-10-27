@@ -6,7 +6,7 @@
 //
 // Tasks, each on its own cadence (one log line per pass):
 //   live         While a game is live: games and stat lines every WORKER_LIVE_SECONDS
-//                (default 120). Otherwise every 30 min, or just after the next tip-off.
+//                (default 30). Otherwise every 30 min, or just after the next tip-off.
 //   injuries     Every 15 min on days with games, every 2 h otherwise.
 //   corrections  Once a day after WORKER_CORRECTIONS_HOUR (default 9, league time):
 //                the last 3 days of games and stat lines again, for stat corrections.
@@ -43,7 +43,7 @@ import { classifyGames, upsertGames } from "./lib/upsert";
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const TZ = process.env.WORKER_TIME_ZONE ?? "America/New_York";
-const LIVE_MS = Number(process.env.WORKER_LIVE_SECONDS ?? 120) * 1000;
+const LIVE_MS = Number(process.env.WORKER_LIVE_SECONDS ?? 30) * 1000;
 const CORRECTIONS_HOUR = Number(process.env.WORKER_CORRECTIONS_HOUR ?? 9);
 const IDLE_MS = 30 * MIN;
 const RETRY_MS = 2 * MIN;

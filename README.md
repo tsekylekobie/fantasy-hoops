@@ -96,7 +96,7 @@ It keeps the database current on its own, logging one line per pass:
 Ctrl-C stops it after the current pass, and restarting is safe: each task's last run is saved in
 `sync_state` (`worker:<task>`), so a restart doesn't redo the slow passes. `npm run worker -- --once`
 runs every task once and exits. All tasks share one API client, so together they stay under
-`BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 120),
+`BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 30),
 `WORKER_CORRECTIONS_HOUR` (default 9) and `WORKER_TIME_ZONE` (default `America/New_York`).
 In production it runs as its own process (the `worker` service under Deploying).
 

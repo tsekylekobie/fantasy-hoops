@@ -2,7 +2,7 @@
 
 // Calls `poll` every LIVE_POLL_MS while `active` and the tab is visible, and
 // once right away when the tab comes back. The worker writes live stats every
-// couple of minutes, so polling more often than this buys nothing.
+// 30s (WORKER_LIVE_SECONDS), so polling more often than this buys nothing.
 import { useEffect, useRef } from "react";
 
 export const LIVE_POLL_MS = 30_000;
