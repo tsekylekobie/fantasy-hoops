@@ -36,6 +36,7 @@ import {
   type TeamLineupResponse,
 } from "../types";
 import { getInjuries } from "./injuries";
+import { gamesInProgress } from "./live";
 import { teamGameLimitUsage } from "./matchups";
 import { getSeasonValues } from "./players";
 import { teamLogoUrl } from "./teamLogo";
@@ -538,9 +539,10 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
     [start, end],
   );
   const byDate = new Map(counts.map((c) => [c.date, c.n]));
-  const [gamesById, gameLimits] = await Promise.all([
+  const [gamesById, gameLimits, live] = await Promise.all([
     getWeekGames(pool, day.players.map((p) => p.id), start, end),
     week ? teamGameLimitUsage(pool, team.leagueId, team.teamId, week, team.today) : null,
+    gamesInProgress(pool),
   ]);
   const days: TeamLineupResponse["days"] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) days.push({ date: d, nbaGames: byDate.get(d) ?? 0 });
@@ -567,5 +569,6 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
     days,
     players: day.players.map((p) => ({ ...p, weekGames: gamesById.get(p.id) ?? { remaining: 0, total: 0 } })),
     gameLimits,
+    live,
   };
 }

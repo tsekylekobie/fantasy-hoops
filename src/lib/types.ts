@@ -337,6 +337,8 @@ export interface MatchupWeek {
   myTeam: FantasyTeamSummary | null;
   /** Every pairing this week other than `matchup`. */
   others: OtherMatchup[];
+  /** Some NBA game is in progress (or just finished), so stats can still change: the page polls while true. */
+  live: boolean;
 }
 
 // League (/league)
@@ -646,6 +648,8 @@ export interface TeamLineupResponse {
   players: LineupPlayer[];
   /** Starters' games against that week's game limits; null when the week has none (or outside the schedule). */
   gameLimits: GameLimitUsage | null;
+  /** Some NBA game is in progress (or just finished), so stats can still change: the page polls while true. */
+  live: boolean;
 }
 
 /** PUT /api/team/lineup: the whole lineup for one day (today or later). Responds with TeamLineupResponse. */

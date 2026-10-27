@@ -53,7 +53,7 @@ export function fmtOpponent(opponentAbbr: string, home: boolean, result: "W" | "
 }
 
 /** Fetch JSON; on a non-2xx response, throw with the API's `{ error }` message when present. */
-export async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+export async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal });
   if (!res.ok) {
     let message = res.status === 404 ? "Not found." : `Request failed (${res.status}).`;
