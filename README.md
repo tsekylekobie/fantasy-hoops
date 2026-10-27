@@ -131,6 +131,41 @@ In dev the same jobs are also at `POST /api/dev/waivers?at=...` and `POST /api/d
 
 Without the worker, `npm run backfill -- --seasons 2026` pulls in everything since the last run.
 
+## Importing a league from Yahoo
+
+Moves a Yahoo league over mid-season: the import replaces this season's league with the Yahoo league
+as it stood when you exported it. Finished weeks keep Yahoo's results exactly; the current week and
+everything after are scored here, starting from each team's Yahoo lineups so far. Managers sign in
+with Google using the email you list for their team, and land on it.
+
+One-time setup: create an app at https://developer.yahoo.com/apps/ with Fantasy Sports (Read)
+permission and redirect URI `oob`, and put its `YAHOO_CLIENT_ID` and `YAHOO_CLIENT_SECRET` in `.env`.
+
+```sh
+npm run yahoo:export -- --league 12345          # Yahoo league id (in the league's URL)
+```
+
+The first run asks you to sign in to Yahoo and paste back a code. It saves the league to
+`yahoo-export/12345/` (gitignored) and writes `members.csv` there: fill in each manager's Gmail
+(several emails for co-managers go in one cell, separated by `;`) and mark the commissioner. You can
+also add `league-settings.json` there for settings Yahoo doesn't have, in the shape the
+`/api/league/settings` endpoint returns under `settings` (e.g. `{"timeZone": "America/Los_Angeles",
+"gameLimits": {"total": 40, "slots": {}}}`); it goes on top of Yahoo's settings.
+
+```sh
+npm run yahoo:import -- yahoo-export/12345                    # dry run: report only
+npm run yahoo:import -- yahoo-export/12345 --apply --replace  # replace the season's league with it
+```
+
+The dry run lists what it would do and any problems: Yahoo players it couldn't match to ours (add
+their ids to `player-overrides.csv`, which it fills with the unmatched ones), starters whose Yahoo
+position doesn't fit ours (they go to the bench), illegal rosters, teams with no email. Point
+`DATABASE_URL` at production to import there. You can import as often as you like (a practice run
+now, the real one on moving day); each run starts over from the snapshot, but users and sign-ins
+are kept. Export and import on the same day: the import refuses a snapshot from an earlier day.
+Not imported: pending trades and waiver claims (managers resubmit them), lineups set for future
+days, and playoff brackets (import before the playoffs).
+
 ## Deploying (Railway)
 
 One Railway project with three services, all deploying from `main`:

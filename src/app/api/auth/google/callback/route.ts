@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OAUTH_COOKIE, appOrigin } from "@/lib/auth/config";
 import { exchangeCode, type OAuthState } from "@/lib/auth/google";
+import { linkMemberships } from "@/lib/auth/members";
 import { startSession, upsertUser } from "@/lib/auth/session";
+import { pool } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,7 @@ export async function GET(req: Request) {
   try {
     const profile = await exchangeCode(code, saved.verifier, `${appOrigin(req)}/api/auth/google/callback`);
     const userId = await upsertUser(profile);
+    await linkMemberships(pool, userId, profile.email);
     const res = done(saved.next);
     await startSession(res, userId, req.headers.get("user-agent"));
     return res;

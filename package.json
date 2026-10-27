@@ -17,6 +17,8 @@
     "worker": "tsx scripts/worker.ts",
     "waivers": "tsx scripts/waivers.ts",
     "playoffs": "tsx scripts/playoffs.ts",
+    "yahoo:export": "tsx scripts/yahoo/export.ts",
+    "yahoo:import": "tsx scripts/yahoo/import.ts",
     "fetch:samples": "node scripts/fetch-samples.mjs"
   },
   "dependencies": {

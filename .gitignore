@@ -17,6 +17,10 @@ next-env.d.ts
 __pycache__/
 .venv/
 
+# Yahoo import: OAuth tokens and league snapshots (scripts/yahoo/)
+.yahoo-tokens.json
+yahoo-export/
+
 # misc
 .DS_Store
 *.log

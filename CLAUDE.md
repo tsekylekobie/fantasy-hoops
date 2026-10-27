@@ -43,6 +43,11 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.
+- Yahoo import (README, "Importing a league from Yahoo"): `scripts/yahoo/export.ts` saves a Yahoo league's raw API JSON
+  to a snapshot folder, `scripts/yahoo/import.ts` replaces the season's league with it (dry run unless `--apply`).
+  Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
+  totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
+  `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose

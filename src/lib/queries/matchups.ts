@@ -8,7 +8,8 @@
 // BN, IL and IL+ don't score. Under the week's game limits
 // (league_weeks.game_limits, lineup/gameLimits.ts) starts past a limit don't
 // count either. FG%/FT% = summed makes / summed attempts of the games that
-// count; TO is lower-is-better. Scores are computed on read (no scoring job yet).
+// count; TO is lower-is-better. Scores are computed on read (no scoring job yet),
+// except weeks imported from Yahoo (week_results), which keep Yahoo's totals.
 import type { Pool } from "pg";
 import { countStarts, gameLimitUsage, parseGameLimits, type Start } from "../lineup/gameLimits";
 import type {
@@ -239,6 +240,17 @@ async function weekLimits(db: Pool, leagueId: number, startsOn: string): Promise
   return toGameLimits(w?.game_limits ?? null);
 }
 
+/** A week's totals as Yahoo scored it (week_results), keyed by team id; null for a week scored here. */
+async function importedLines(db: Pool, leagueId: number, startsOn: string): Promise<Map<number, CategoryLine> | null> {
+  const { rows } = await db.query<{ team_id: number; line: CategoryLine }>(
+    `SELECT r.fantasy_team_id::int AS team_id, r.line
+       FROM week_results r JOIN league_weeks w ON w.league_id = r.league_id AND w.week = r.week
+      WHERE r.league_id = $1 AND w.starts_on = $2::date`,
+    [leagueId, startsOn],
+  );
+  return rows.length > 0 ? new Map(rows.map((r) => [r.team_id, r.line])) : null;
+}
+
 /** Each team's week totals for one league week, keyed by team id. Teams with no games are left out. */
 export async function weekLines(
   db: Pool,
@@ -246,6 +258,8 @@ export async function weekLines(
   week: { startsOn: string; endsOn: string },
   today: string,
 ): Promise<Map<number, CategoryLine>> {
+  const imported = await importedLines(db, leagueId, week.startsOn);
+  if (imported) return imported;
   const [{ rows: starts }, limits] = await Promise.all([
     db.query<PlayedStartRow>(PLAYED_SQL, [leagueId, week.startsOn, week.endsOn, today, null]),
     weekLimits(db, leagueId, week.startsOn),
@@ -480,7 +494,7 @@ export async function getMatchupWeek(
 
   const params = [league.id, w.starts_on, w.ends_on, today];
   const limits = toGameLimits(w.game_limits);
-  const [starts, upcoming, pairs, live] = await Promise.all([
+  const [starts, upcoming, pairs, live, imported] = await Promise.all([
     db.query<PlayedStartRow>(PLAYED_SQL, [...params, null]),
     db.query<StartRow>(UPCOMING_SQL, [...params, null]),
     db.query<Pick<BracketRow, "team_a_id" | "team_b_id" | "bracket" | "bracket_round">>(
@@ -489,12 +503,14 @@ export async function getMatchupWeek(
       [league.id, w.week],
     ),
     gamesInProgress(db),
+    importedLines(db, league.id, w.starts_on),
   ]);
   const played = countedRows(starts.rows, limits);
   const totals = new Map<number, Totals>();
   for (const r of played) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
   const gamesLeft = countedLeft(starts.rows, upcoming.rows, limits);
-  const line = (id: number) => weekLine(totals.get(id) ?? ZERO);
+  // Imported weeks show Yahoo's totals; the player rows below are still our box scores.
+  const line = (id: number) => imported?.get(id) ?? weekLine(totals.get(id) ?? ZERO);
   const cfg = configOf({ ...league, team_count: teams.length });
 
   // The pairing to show: the requested team's, else the manager's. Byes have nothing to show.
