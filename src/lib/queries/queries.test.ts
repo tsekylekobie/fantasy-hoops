@@ -41,16 +41,19 @@ test("value is per game: doubling every total and GP leaves value unchanged", ()
   assert.ok(Math.abs(a.get(2)!.value - b.get(2)!.value) < 1e-9);
 });
 
-test("pool requires 25% of max GP and caps at POOL_SIZE by minutes per game", () => {
-  const many = Array.from({ length: 200 }, (_, i) => player(i + 1, { min: 100 + i }));
-  const fewGames = player(999, { gp: 2, min: 80 }); // 40 mpg but 2 < ceil(10 * 0.25) = 3
-  const pool = selectPool([...many, fewGames]);
+test("pool requires 25% of max GP and takes the top POOL_SIZE by value, not minutes", () => {
+  const many = Array.from({ length: 200 }, (_, i) => player(i + 1, { pts: 100 + 2 * i }));
+  const fewGames = player(999, { gp: 2, pts: 80 }); // 40 ppg but 2 < ceil(10 * 0.25) = 3
+  const heavyMinutes = player(998, { min: 400, pts: 50 }); // most minutes per game, least scoring
+  const pool = selectPool([...many, fewGames, heavyMinutes]);
   assert.equal(pool.length, POOL_SIZE);
   assert.ok(!pool.some((p) => p.playerId === 999));
+  assert.ok(!pool.some((p) => p.playerId === 998));
   assert.equal(pool[0].playerId, 200);
+  assert.equal(Math.min(...pool.map((p) => p.playerId)), 200 - POOL_SIZE + 1);
   // Out-of-pool players still get a value and rank.
-  const v = valuePlayers([...many, fewGames]);
-  assert.equal(v.size, 201);
+  const v = valuePlayers([...many, fewGames, heavyMinutes]);
+  assert.equal(v.size, 202);
   assert.ok(Number.isFinite(v.get(999)!.value));
 });
 
@@ -61,16 +64,26 @@ test("players with zero GP are ignored; tiny early-season samples don't produce 
 });
 
 test("punt weights: 0 ignores a category, other weights scale it", () => {
-  const players = [player(1, { pts: 300 }), player(2, { reb: 90 }), player(3, { tov: 60 })];
+  // The scorer also rebounds a little, so the two aren't tied on value.
+  const players = [player(1, { pts: 300, reb: 60 }), player(2, { reb: 90 }), player(3, { tov: 60 })];
   const plain = valuePlayers(players);
   const punted = valuePlayers(players, { ...EQUAL_WEIGHTS, pts: 0 });
   // Punting points drops the scorer below the rebounder.
   assert.ok(plain.get(1)!.rank < plain.get(2)!.rank);
   assert.ok(punted.get(2)!.rank < punted.get(1)!.rank);
-  // Turnovers at 0.25 cost the high-turnover player a quarter as much.
+  // Value is the weighted average: turnovers at 0.25 count a quarter, over 8.25 weights instead of 9.
   const quarter = valuePlayers([player(1), player(3, { tov: 60 })], { ...EQUAL_WEIGHTS, tov: 0.25 });
   const full = valuePlayers([player(1), player(3, { tov: 60 })]);
-  assert.ok(Math.abs(quarter.get(3)!.value - full.get(3)!.value / 4) < 1e-9);
+  assert.ok(Math.abs(quarter.get(3)!.value * 8.25 - (full.get(3)!.value * 9) / 4) < 1e-9);
+});
+
+test("value is the weighted average of the z-scores: scaling every weight changes nothing", () => {
+  const players = [player(1, { pts: 300 }), player(2, { reb: 90 }), player(3, { tov: 60 }), player(4)];
+  const ones = valuePlayers(players);
+  const twos = valuePlayers(players, Object.fromEntries(Object.keys(EQUAL_WEIGHTS).map((c) => [c, 2])) as typeof EQUAL_WEIGHTS);
+  for (const id of [1, 2, 3, 4]) assert.ok(Math.abs(ones.get(id)!.value - twos.get(id)!.value) < 1e-9);
+  const none = valuePlayers(players, Object.fromEntries(Object.keys(EQUAL_WEIGHTS).map((c) => [c, 0])) as typeof EQUAL_WEIGHTS);
+  for (const id of [1, 2, 3, 4]) assert.equal(none.get(id)!.value, 0);
 });
 
 test("parsePlayersQuery: weights in CATEGORIES order", () => {

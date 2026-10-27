@@ -57,7 +57,7 @@ export const CATEGORIES = ["fgPct", "ftPct", "fg3m", "pts", "reb", "ast", "stl",
 export type Category = (typeof CATEGORIES)[number];
 
 /**
- * Punt weights: each category's z-score is multiplied by its weight in the players page's value.
+ * Punt weights: the players page's value is the average of the category z-scores weighted by these.
  * 0 ignores (punts) the category, 1 counts it fully; 0 to MAX_WEIGHT.
  */
 export type CategoryWeights = Record<Category, number>;
@@ -103,7 +103,7 @@ export interface PlayerRow extends PlayerSummary {
   /** Minutes per game in avg mode, total minutes in total mode. */
   min: number;
   stats: CategoryLine;
-  /** 9CAT value (sum of category z-scores times the request's weights; higher is better). */
+  /** 9CAT value (average of category z-scores weighted by the request's weights; 0 = average rosterable player, higher is better). */
   value: number;
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
