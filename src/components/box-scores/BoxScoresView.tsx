@@ -248,6 +248,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
               <th scope="col" className={styles.n}>FT%</th>
               <th scope="col" className={styles.n}>TO</th>
               <th scope="col" className={`${styles.n} ${styles.srt}`} aria-sort="descending">Value</th>
+              <th scope="col" className={styles.n} title="Rank by Value among every player who played on this date">Rank</th>
             </tr>
           </thead>
           <tbody>
@@ -272,6 +273,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
                 <small>{t.totals.ftm}/{t.totals.fta}</small>
               </td>
               <td className={styles.n}>{t.totals.tov}</td>
+              <td />
               <td />
             </tr>
           </tfoot>
@@ -349,9 +351,12 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
           <Cell k="value" r={p.ranks.value} of={of}>
             <b>{fmtValue(p.value ?? 0)}</b>
           </Cell>
+          <td className={`${styles.n} ${styles.rk}`} title={rankTitle("value", p.ranks.value, of)}>
+            {p.ranks.value ? `${p.ranks.value.tied ? "T-" : ""}${p.ranks.value.rank}` : "–"}
+          </td>
         </>
       ) : (
-        <td colSpan={11} className={styles.dnp}>DNP</td>
+        <td colSpan={12} className={styles.dnp}>DNP</td>
       )}
     </tr>
   );

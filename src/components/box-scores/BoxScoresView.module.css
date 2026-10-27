@@ -415,6 +415,12 @@ a.arw:hover,
   width: 52px;
 }
 
+/* Daily rank by Value, after the Value column. */
+.rk {
+  color: var(--ink-subtle);
+  font-weight: 600;
+}
+
 .n small,
 .c small {
   display: block;
