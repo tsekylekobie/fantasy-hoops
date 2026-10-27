@@ -11,7 +11,7 @@
 
 .table {
   width: 100%;
-  min-width: 1214px;
+  min-width: 1238px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -42,8 +42,8 @@
   width: 82px;
 }
 .cOwner {
-  /* Fits "Claim (Wed, Oct 28)". */
-  width: 160px;
+  /* Fits "Claim (Wed, Oct 28)" with a stat-column gap before it. */
+  width: 184px;
 }
 
 .table th,
@@ -312,7 +312,7 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   .table {
-    min-width: 1150px;
+    min-width: 1174px;
   }
 
   .cRank {
