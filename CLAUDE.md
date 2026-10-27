@@ -40,6 +40,11 @@ stored game logs), and neither is `/plays` (no play-by-play).
   limits (`league_weeks.game_limits`, migration 0015); saving settings copies them onto weeks not yet started, so a change
   starts next week. Matchup scoring (`queries/matchups.ts`: `weekLines`, used by standings, rankings and playoffs) applies
   them; My team shows games used (`teamGameLimitUsage`).
+- `src/lib/queries/projections.ts`: the Matchup page's Projected view (`?view=projected`): the week so far plus each
+  start still to tip off that will count (lineups as set, game limits applied) at the player's last-30-day average
+  (5+ games, else season); players listed Out add nothing until their return. `getMatchupWeek` applies it.
+- Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`); the player modal shows
+  his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.

@@ -2,6 +2,7 @@
 import {
   CATEGORIES,
   CURRENT_SEASON,
+  STAT_RANGES,
   DEFAULT_WEIGHTS,
   MAX_WEIGHT,
   type Category,
@@ -94,8 +95,8 @@ export function parseSeason(params: URLSearchParams): number {
 export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   const mode = params.get("mode")?.trim() || "avg";
   if (mode !== "avg" && mode !== "total") throw new BadRequest("mode must be avg or total");
-  const range = params.get("range")?.trim() || "season";
-  if (range !== "season" && range !== "last14") throw new BadRequest("range must be season or last14");
+  const range = (params.get("range")?.trim() || "season") as StatRange;
+  if (!STAT_RANGES.includes(range)) throw new BadRequest(`range must be ${STAT_RANGES.join(", ")}`);
   const sort = (params.get("sort")?.trim() || "value") as SortKey;
   if (!SORT_KEYS.includes(sort)) throw new BadRequest(`sort must be one of ${SORT_KEYS.join(", ")}`);
   const dir = params.get("dir")?.trim() || defaultSortDir(sort);

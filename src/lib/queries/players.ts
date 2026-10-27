@@ -11,10 +11,12 @@
 import type { Pool } from "pg";
 import type {
   CategoryLine,
+  CategoryWeights,
   GameLogRow,
   PlayDay,
   PlayerDetailResponse,
   PlayerOwner,
+  PlayerRanks,
   PlayerRow,
   PlayerUpcomingGame,
   PlayersResponse,
@@ -22,6 +24,7 @@ import type {
   SeasonRow,
   SortKey,
   StatMode,
+  StatRange,
 } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals } from "./value";
@@ -51,6 +54,7 @@ const SEASON_TOTALS_SQL = `
     FROM player_game_stats s
     JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
     WHERE s.season = $1 AND s.min > 0 AND g.status_state = 'final' AND ($2::date IS NULL OR g.date >= $2::date)
+      AND ($3::int[] IS NULL OR s.player_id = ANY($3::int[]))
     GROUP BY s.player_id
   )
   SELECT t.*, p.first_name, p.last_name, nullif(p.position, '') AS position,
@@ -109,10 +113,10 @@ export function categoryLine(t: TotalsRow, mode: StatMode): CategoryLine & { min
   };
 }
 
-// The last-14-days window ends at today, or at the season's last played game
-// for a finished season, so past seasons get their final two weeks.
-const LAST14_WINDOW_SQL = `
-  SELECT to_char(d - 13, 'YYYY-MM-DD') AS "from", to_char(d, 'YYYY-MM-DD') AS "to"
+// The last-N-days window ($2 days) ends at today, or at the season's last
+// played game for a finished season, so past seasons get their final weeks.
+const WINDOW_SQL = `
+  SELECT to_char(d - ($2::int - 1), 'YYYY-MM-DD') AS "from", to_char(d, 'YYYY-MM-DD') AS "to"
   FROM (
     SELECT least(current_date, max(g.date)) AS d
     FROM games g
@@ -127,6 +131,15 @@ const ROSTERED_SQL = `
   FROM roster_players rp
   JOIN fantasy_teams ft ON ft.id = rp.fantasy_team_id
   WHERE rp.league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)`;
+
+/** Days in each range's window; null = the whole season. */
+const RANGE_DAYS: Record<StatRange, number | null> = { season: null, last30: 30, last14: 14 };
+
+/** The inclusive dates of the last `days` days of `season` (see WINDOW_SQL); null before any game is played. */
+export async function statWindow(db: Pool, season: number, days: number): Promise<{ from: string; to: string } | null> {
+  const { rows } = await db.query<{ from: string; to: string }>(WINDOW_SQL, [season, days]);
+  return rows[0] ?? null;
+}
 
 /** The team filters' choices: the season league's fantasy teams and the NBA's teams, by name. */
 async function getTeamOptions(db: Pool, season: number): Promise<PlayersResponse["teamOptions"]> {
@@ -197,8 +210,17 @@ export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) =
 
 /** Season totals (finished regular-season games) for every player with a game in `season`. */
 export async function getSeasonTotals(db: Pool, season: number): Promise<SeasonTotals[]> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]);
   return rows.map(toTotals);
+}
+
+/** Totals (finished regular-season games) of `playerIds` in `season`, from `from` (yyyy-mm-dd) on, or all season when null. */
+export async function getTotalsFor(
+  db: Pool, season: number, from: string | null, playerIds: number[],
+): Promise<Map<number, SeasonTotals>> {
+  if (playerIds.length === 0) return new Map();
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, playerIds]);
+  return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
 }
 
 /** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */
@@ -206,20 +228,17 @@ export async function getSeasonValues(
   db: Pool,
   season: number,
 ): Promise<Map<number, { totals: TotalsRow; value: number }>> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]);
   const values = valuePlayers(rows.map(toTotals));
   return new Map(rows.map((r) => [r.player_id, { totals: r, value: values.get(r.player_id)!.value }]));
 }
 
 export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResponse> {
-  let window: { from: string; to: string } | null = null;
-  if (q.range === "last14") {
-    const res = await db.query<{ from: string; to: string }>(LAST14_WINDOW_SQL, [q.season]);
-    window = res.rows[0] ?? null;
-  }
-  // No played games yet: a null bound returns no rows for last14 either way.
+  const days = RANGE_DAYS[q.range];
+  const window = days === null ? null : await statWindow(db, q.season, days);
+  // No played games yet: a null bound returns no rows for the windows either way.
   const [{ rows }, owners, waivers, injuries, teamOptions] = await Promise.all([
-    db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
+    db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
     getInjuries(db),
@@ -307,12 +326,25 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
   return { season, gp: t.gp, ...categoryLine(t, "avg") };
 }
 
+/** His 9CAT rank among every player with a game in each range, as the Players page ranks them with `weights`. */
+async function getRanks(db: Pool, playerId: number, season: number, weights: CategoryWeights): Promise<PlayerRanks> {
+  const rank = async (range: StatRange) => {
+    const days = RANGE_DAYS[range];
+    const window = days === null ? null : await statWindow(db, season, days);
+    if (days !== null && window === null) return null;
+    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null]);
+    return valuePlayers(rows.map(toTotals), weights).get(playerId)?.rank ?? null;
+  };
+  const [all, last30, last14] = await Promise.all([rank("season"), rank("last30"), rank("last14")]);
+  return { season: all, last30, last14 };
+}
+
 /** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
- *  Returns null when the player id does not exist. */
+ *  Ranks use `weights`. Returns null when the player id does not exist. */
 export async function getPlayerDetail(
-  db: Pool, playerId: number, season: number,
+  db: Pool, playerId: number, season: number, weights: CategoryWeights,
 ): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
-  const [playerRes, seasonsRes, logRes, owners, waivers, injuries] = await Promise.all([
+  const [playerRes, seasonsRes, logRes, owners, waivers, injuries, ranks] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -364,6 +396,7 @@ export async function getPlayerDetail(
     getOwners(db, season),
     getWaiverStatus(db, season),
     getInjuries(db, [playerId]),
+    getRanks(db, playerId, season, weights),
   ]);
 
   const p = playerRes.rows[0];
@@ -397,6 +430,7 @@ export async function getPlayerDetail(
     timeZone: waivers.timeZone,
     season,
     seasonAverages: current ? seasonRow(season, current) : null,
+    ranks,
     gameLog,
     pastSeasons: seasonsRes.rows.filter((r) => r.season < season).map((r) => seasonRow(r.season, r)),
   };

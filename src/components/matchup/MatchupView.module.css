@@ -36,9 +36,55 @@
   color: var(--ink-muted);
 }
 
+.wkTools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .pager {
   display: flex;
   gap: 8px;
+}
+
+/* Actual / Projected: SegmentedToggle's pill, as links */
+.toggle {
+  display: inline-flex;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.segment:hover:not([aria-current]) {
+  background: var(--surface-muted);
+}
+
+.segment[aria-current] {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .pageBtn {
@@ -164,6 +210,21 @@ a.pageBtn:hover {
   font-weight: 600;
 }
 
+.scoreBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.scoreTag {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--board-link);
+}
+
 .score {
   font-family: var(--font-display);
   font-weight: 700;
@@ -200,6 +261,15 @@ a.pageBtn:hover {
   letter-spacing: 0.05em;
   margin: 0;
   padding: 16px 20px 10px;
+}
+
+.h3Tag {
+  margin-left: 10px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
 }
 
 .notice p {
@@ -600,6 +670,10 @@ a.pageBtn:hover {
 
   .wk h1 {
     font-size: 17px;
+  }
+
+  .wkTools {
+    flex: 1 1 100%;
   }
 
   .pager {

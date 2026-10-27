@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerWeek, SeasonRow } from "@/lib/types";
+import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerWeek, SeasonRow } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
@@ -206,6 +206,7 @@ function DetailHead({
           {subline}
           {owner && ` · ${owner.teamId === myTeamId ? "On your team" : `On ${owner.abbreviation}`}`}
         </p>
+        <Ranks ranks={data.ranks} />
         {injury && (injuryLine || injury.note) && (
           <div className={styles.injury}>
             {injuryLine && <p className={styles.injuryLine}>{injuryLine}</p>}
@@ -229,6 +230,39 @@ function DetailHead({
         </button>
       )}
     </>
+  );
+}
+
+/** 9CAT rank for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
+function Ranks({ ranks }: { ranks: PlayerRanks }) {
+  if (ranks.season === null && ranks.last30 === null && ranks.last14 === null) return null;
+  const items = [
+    { label: "Season", rank: ranks.season },
+    { label: "Last 30", rank: ranks.last30 },
+    { label: "Last 14", rank: ranks.last14 },
+  ];
+  const trend = (rank: number | null) =>
+    rank === null || ranks.season === null || rank === ranks.season ? null : rank < ranks.season ? "up" : "down";
+  return (
+    <dl className={styles.ranks} aria-label="9CAT rank">
+      {items.map(({ label, rank }, i) => {
+        const t = i === 0 ? null : trend(rank);
+        return (
+          <div key={label} className={styles.rank}>
+            <dt>{label}</dt>
+            <dd>
+              {rank === null ? "—" : `#${rank}`}
+              {t && (
+                <span className={t === "up" ? styles.rankUp : styles.rankDown}>
+                  <span aria-hidden="true">{t === "up" ? " ▲" : " ▼"}</span>
+                  <span className={styles.sr}>{t === "up" ? " (up from season)" : " (down from season)"}</span>
+                </span>
+              )}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
   );
 }
 

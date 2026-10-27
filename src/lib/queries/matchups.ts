@@ -10,6 +10,7 @@
 // count either. FG%/FT% = summed makes / summed attempts of the games that
 // count; TO is lower-is-better. Scores are computed on read (no scoring job yet),
 // except weeks imported from Yahoo (week_results), which keep Yahoo's totals.
+// Projections (the page's Projected view) follow queries/projections.ts.
 import type { Pool } from "pg";
 import { countStarts, gameLimitUsage, parseGameLimits, type Start } from "../lineup/gameLimits";
 import type {
@@ -29,7 +30,16 @@ import type {
 import { CATEGORY_KEYS, LINEUP_SLOTS } from "../types";
 import { getInjuries } from "./injuries";
 import { gamesInProgress } from "./live";
+import { getTotalsFor, statWindow } from "./players";
 import { bracketTag, configOf, type BracketRow } from "./playoffs";
+import {
+  PROJECTION_DAYS,
+  perGameBasis,
+  projectStarts,
+  roundLine,
+  sitsOut,
+  type ProjectedLine,
+} from "./projections";
 import { toTeamSummary } from "./teamLogo";
 
 const NON_SCORING = `('BN','IL','IL+')`;
@@ -220,17 +230,43 @@ function countedRows(starts: PlayedStartRow[], limits: GameLimits | null): Playe
   return [...out.values()];
 }
 
-/** Each team's starts still to tip off that will count under `limits`. */
-function countedLeft(played: PlayedStartRow[], upcoming: StartRow[], limits: GameLimits | null): Map<number, number> {
+/** The starts still to tip off that will count under `limits`, after the games already played. */
+function countedUpcoming(played: PlayedStartRow[], upcoming: StartRow[], limits: GameLimits | null): StartRow[] {
   const playedByTeam = byTeam(played);
-  const out = new Map<number, number>();
+  const out: StartRow[] = [];
   for (const [team, rows] of byTeam(upcoming)) {
     const before = playedByTeam.get(team) ?? [];
     const outcomes = countStarts([...before, ...rows].map(toStart), limits);
-    out.set(team, outcomes.slice(before.length).filter((o) => o === "counted").length);
+    rows.forEach((r, i) => outcomes[before.length + i] === "counted" && out.push(r));
   }
   return out;
 }
+
+/** Each team's starts still to tip off that will count under `limits`. */
+function countedLeft(played: PlayedStartRow[], upcoming: StartRow[], limits: GameLimits | null): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const r of countedUpcoming(played, upcoming, limits)) out.set(r.team_id, (out.get(r.team_id) ?? 0) + 1);
+  return out;
+}
+
+/** Each player's per-game basis for projections (projections.ts), for players with games this season. */
+async function projectionBases(db: Pool, season: number, playerIds: number[]): Promise<Map<number, ProjectedLine>> {
+  if (playerIds.length === 0) return new Map();
+  const window = await statWindow(db, season, PROJECTION_DAYS);
+  const [all, recent] = await Promise.all([
+    getTotalsFor(db, season, null, playerIds),
+    window ? getTotalsFor(db, season, window.from, playerIds) : new Map(),
+  ]);
+  const out = new Map<number, ProjectedLine>();
+  for (const id of playerIds) {
+    const basis = perGameBasis(recent.get(id), all.get(id));
+    if (basis) out.set(id, basis);
+  }
+  return out;
+}
+
+/** What remaining starts add, per team and player: see projections.ts. */
+type Remaining = Map<string, ProjectedLine & { team_id: number; player_id: number }>;
 
 async function weekLimits(db: Pool, leagueId: number, startsOn: string): Promise<GameLimits | null> {
   const { rows: [w] } = await db.query<{ game_limits: unknown }>(
@@ -376,8 +412,12 @@ async function loadPlayers(
   statsDate: string | null,
   refDate: string,
   played: PlayedRow[],
+  remaining: Remaining,
 ): Promise<Map<number, MatchupPlayer[]>> {
-  type Row = { teamId: number; playerId: number; slot: LineupSlot | null; game: LineupGame | null; stats: MatchupPlayer["stats"] };
+  type Row = {
+    teamId: number; playerId: number; slot: LineupSlot | null; game: LineupGame | null;
+    stats: MatchupPlayer["stats"]; projected: MatchupPlayer["projected"];
+  };
   const rows: Row[] = [];
   if (statsDate) {
     const { rows: day } = await db.query<DayRow>(DAY_SQL, [...params, teamIds, statsDate]);
@@ -385,6 +425,7 @@ async function loadPlayers(
       rows.push({
         teamId: r.team_id, playerId: r.player_id, slot: r.slot, game: toGame(r),
         stats: r.min === null ? null : { ...weekLine(r), gp: r.gp, min: Math.round(r.min) },
+        projected: null,
       });
     }
   } else {
@@ -394,12 +435,25 @@ async function loadPlayers(
     const key = (t: number, p: number) => `${t}:${p}`;
     const byKey = new Map(played.filter((r) => teamIds.includes(r.team_id)).map((r) => [key(r.team_id, r.player_id), r]));
     const line = (r: PlayedRow | undefined) => (r ? { ...weekLine(r), gp: r.gp, min: Math.round(r.min) } : null);
+    const projected = (r: PlayedRow | undefined, k: string) => {
+      const left = remaining.get(k);
+      if (!r && !left) return null;
+      const t = roundLine(addTotals(r ?? ZERO, left ?? ZERO));
+      return { ...weekLine(t), gp: t.gp };
+    };
     for (const s of slots) {
-      rows.push({ teamId: s.team_id, playerId: s.player_id, slot: s.slot, game: null, stats: line(byKey.get(key(s.team_id, s.player_id))) });
-      byKey.delete(key(s.team_id, s.player_id));
+      const k = key(s.team_id, s.player_id);
+      const r = byKey.get(k);
+      rows.push({ teamId: s.team_id, playerId: s.player_id, slot: s.slot, game: null, stats: line(r), projected: projected(r, k) });
+      byKey.delete(k);
     }
     // Started earlier in the week but no longer on the roster.
-    for (const r of byKey.values()) rows.push({ teamId: r.team_id, playerId: r.player_id, slot: null, game: null, stats: line(r) });
+    for (const r of byKey.values()) {
+      rows.push({
+        teamId: r.team_id, playerId: r.player_id, slot: null, game: null, stats: line(r),
+        projected: projected(r, key(r.team_id, r.player_id)),
+      });
+    }
   }
 
   const ids = rows.map((r) => r.playerId);
@@ -421,7 +475,7 @@ async function loadPlayers(
     out.get(r.teamId)!.push({
       id: p.id, firstName: p.first_name, lastName: p.last_name, teamAbbr: p.team_abbr,
       position: p.position, nbaPersonId: p.nba_person_id, slot: r.slot, game: r.game, stats: r.stats,
-      injury: injuries.get(p.id) ?? null,
+      projected: r.projected, injury: injuries.get(p.id) ?? null,
     });
   }
   for (const list of out.values()) {
@@ -435,6 +489,8 @@ export interface MatchupOptions {
   teamId?: number | null;
   /** A date in the week for that day's stats, "week" for week totals; default today while live, else week. */
   stats?: string | null;
+  /** Show projected week totals (rosters show the week, so `stats` is ignored). */
+  projected?: boolean;
 }
 
 /**
@@ -486,8 +542,9 @@ export async function getMatchupWeek(
 
   const status = today < w.starts_on ? "upcoming" : today > w.ends_on ? "final" : "live";
   const inWeek = (d: string) => d >= w.starts_on && d <= w.ends_on;
+  const projectedView = opts.projected === true;
   const statsDate =
-    opts.stats === "week" ? null
+    projectedView || opts.stats === "week" ? null
     : opts.stats && /^\d{4}-\d{2}-\d{2}$/.test(opts.stats) && inWeek(opts.stats) ? opts.stats
     : status === "live" ? today : null;
   const refDate = today < w.starts_on ? w.starts_on : today > w.ends_on ? w.ends_on : today;
@@ -509,8 +566,19 @@ export async function getMatchupWeek(
   const totals = new Map<number, Totals>();
   for (const r of played) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
   const gamesLeft = countedLeft(starts.rows, upcoming.rows, limits);
-  // Imported weeks show Yahoo's totals; the player rows below are still our box scores.
+  // Projections: games listed Out are skipped before the limits, so they don't use one up.
+  const upcomingIds = [...new Set(upcoming.rows.map((r) => r.player_id))];
+  const [bases, injuries] = await Promise.all([
+    projectionBases(db, season, upcomingIds),
+    getInjuries(db, upcomingIds),
+  ]);
+  const playing = upcoming.rows.filter((r) => !sitsOut(injuries.get(r.player_id), r.date));
+  const remaining = projectStarts(countedUpcoming(starts.rows, playing, limits), bases);
+  const projTotals = new Map(totals);
+  for (const r of remaining.values()) projTotals.set(r.team_id, addTotals(projTotals.get(r.team_id) ?? ZERO, r));
+  // Imported weeks show Yahoo's totals (finished, so also the projection); the player rows below are still our box scores.
   const line = (id: number) => imported?.get(id) ?? weekLine(totals.get(id) ?? ZERO);
+  const projLine = (id: number) => imported?.get(id) ?? weekLine(roundLine(projTotals.get(id) ?? ZERO));
   const cfg = configOf({ ...league, team_count: teams.length });
 
   // The pairing to show: the requested team's, else the manager's. Byes have nothing to show.
@@ -524,15 +592,20 @@ export async function getMatchupWeek(
     // The manager's team goes on the left when it plays; otherwise the team asked for.
     const leftId = involves(shown, mine?.id) ? mine!.id : focusId!;
     const rightId = shown.team_a_id === leftId ? shown.team_b_id : shown.team_a_id;
-    const players = await loadPlayers(db, params, [leftId, rightId], statsDate, refDate, played);
+    const players = await loadPlayers(db, params, [leftId, rightId], statsDate, refDate, played, remaining);
     const side = (id: number): MatchupSide => ({
-      ...summary(id), managerName: teamById.get(id)!.manager_name, stats: line(id), gamesPlayed: totals.get(id)?.gp ?? 0,
-      gamesLeft: gamesLeft.get(id) ?? 0, players: players.get(id) ?? [], ...(limits && { gameLimit: limits.total }),
+      ...summary(id), managerName: teamById.get(id)!.manager_name, stats: line(id), projected: projLine(id),
+      gamesPlayed: totals.get(id)?.gp ?? 0, gamesLeft: gamesLeft.get(id) ?? 0,
+      players: players.get(id) ?? [], ...(limits && { gameLimit: limits.total }),
     });
     const team = side(leftId);
     const opponent = side(rightId);
     const bracket = bracketTag(shown, cfg);
-    matchup = { team, opponent, ...compareLines(team.stats, opponent.stats), isMine: leftId === mine?.id, ...(bracket && { bracket }) };
+    const proj = compareLines(team.projected, opponent.projected);
+    matchup = {
+      team, opponent, ...compareLines(team.stats, opponent.stats), projectedResults: proj.results, projectedScore: proj.score,
+      isMine: leftId === mine?.id, ...(bracket && { bracket }),
+    };
   }
 
   const others: MatchupWeek["others"] = pairs.rows
@@ -543,6 +616,9 @@ export async function getMatchupWeek(
         teamA: summary(p.team_a_id),
         teamB: p.team_b_id === null ? null : summary(p.team_b_id),
         score: p.team_b_id === null ? { wins: 0, losses: 0, ties: 0 } : compareLines(line(p.team_a_id), line(p.team_b_id)).score,
+        projectedScore: p.team_b_id === null
+          ? { wins: 0, losses: 0, ties: 0 }
+          : compareLines(projLine(p.team_a_id), projLine(p.team_b_id)).score,
         isMine: mine !== undefined && (p.team_a_id === mine.id || p.team_b_id === mine.id),
         ...(bracket && { bracket }),
       };
@@ -563,6 +639,7 @@ export async function getMatchupWeek(
     timeZone: league.time_zone,
     slots: LINEUP_SLOTS.map((slot) => ({ slot, count: league.roster_slots[slot] ?? 0 })).filter((x) => x.count > 0),
     statsDate,
+    projected: projectedView,
     matchup,
     myTeam: mine ? summary(mine.id) : null,
     others,

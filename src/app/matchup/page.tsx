@@ -17,15 +17,17 @@ const positiveInt = (raw: string | undefined) => {
 
 // Server-rendered from our DB. ?week=N picks a week (default this week),
 // ?team=ID another team's matchup (default yours), ?stats=yyyy-mm-dd|week the
-// rosters' stats (default today while the week is live, else week totals).
+// rosters' stats (default today while the week is live, else week totals),
+// ?view=projected projected week totals instead.
 export default async function MatchupPage({ searchParams }: {
-  searchParams: Promise<{ week?: string; team?: string; stats?: string }>;
+  searchParams: Promise<{ week?: string; team?: string; stats?: string; view?: string }>;
 }) {
-  const { week, team, stats } = await searchParams;
+  const { week, team, stats, view } = await searchParams;
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
   const data = await getMatchupWeek(pool, CURRENT_SEASON, positiveInt(week), session?.user.id ?? null, {
     teamId: positiveInt(team),
     stats: stats ?? null,
+    projected: view === "projected",
   });
   return <MatchupView data={data} signedIn={session !== null} />;
 }

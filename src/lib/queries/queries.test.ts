@@ -131,4 +131,5 @@ test("parsePlayersQuery: defaults and validation", () => {
     "weights=1,1,1", "weights=1,1,1,1,1,1,1,1,2.5", "weights=1,1,1,1,1,1,1,1,-1", "weights=1,1,1,1,1,1,1,1,x"]) {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }
+  assert.equal(parsePlayersQuery(new URLSearchParams("range=last30")).range, "last30");
 });

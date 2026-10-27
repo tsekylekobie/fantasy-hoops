@@ -1,6 +1,7 @@
 // The /matchup page: docs/design/matchup.mockup.html.
 // While games are live and the page shows today or the live week's totals, it
 // re-renders with fresh stats (LiveRefresh) and changed numbers flash (Flash).
+// Projected (?view=projected) swaps every score and line for the projected week.
 import Link from "next/link";
 import type {
   CategoryKey,
@@ -86,17 +87,19 @@ function sumLines(lines: CategoryLine[]): CategoryLine {
   return { ...t, fgPct: pct(t.fgm, t.fga), ftPct: pct(t.ftm, t.fta) };
 }
 
-/** Where a link goes: the week, whose matchup (null = yours), and whose stats (null = the default). */
+/** Where a link goes: the week, whose matchup (null = yours), whose stats (null = the default), and projected or not. */
 interface View {
   week: number;
   team: number | null;
   stats: string | null;
+  projected: boolean;
 }
 
 function viewHref(v: View): string {
   const q = new URLSearchParams({ week: String(v.week) });
   if (v.team !== null) q.set("team", String(v.team));
-  if (v.stats !== null) q.set("stats", v.stats);
+  if (v.projected) q.set("view", "projected");
+  else if (v.stats !== null) q.set("stats", v.stats);
   return `/matchup?${q}`;
 }
 
@@ -109,7 +112,11 @@ export default function MatchupView({ data, signedIn }: { data: MatchupWeek | nu
           {data ? (
             // Keyed by what's shown, so moving to another week, team or day remounts
             // the cells instead of flashing them all.
-            <Week key={`${data.week}:${data.matchup?.team.id ?? ""}:${data.statsDate ?? "week"}`} data={data} signedIn={signedIn} />
+            <Week
+              key={`${data.week}:${data.matchup?.team.id ?? ""}:${data.projected ? "projected" : data.statsDate ?? "week"}`}
+              data={data}
+              signedIn={signedIn}
+            />
           ) : (
             <p className={styles.empty}>No league schedule for this season yet.</p>
           )}
@@ -125,6 +132,7 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
     week: data.week,
     team: m && !m.isMine ? m.team.id : null,
     stats: data.statsDate ?? "week",
+    projected: data.projected,
   };
   const live = data.live && data.status === "live" && (data.statsDate === null || data.statsDate === data.today);
   return (
@@ -132,19 +140,22 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
       <LiveRefresh active={live} />
       <div className={styles.wk}>
         <h1>{weekTitle(data)}</h1>
-        <nav className={styles.pager} aria-label="Weeks">
-          <PagerLink href={viewHref({ ...view, week: data.week - 1, stats: null })} disabled={data.week <= 1}>
-            Previous week
-          </PagerLink>
-          <PagerLink href={viewHref({ ...view, week: data.week + 1, stats: null })} disabled={data.week >= data.weekCount}>
-            Next week
-          </PagerLink>
-        </nav>
+        <div className={styles.wkTools}>
+          <ProjectionToggle view={view} />
+          <nav className={styles.pager} aria-label="Weeks">
+            <PagerLink href={viewHref({ ...view, week: data.week - 1, stats: null })} disabled={data.week <= 1}>
+              Previous week
+            </PagerLink>
+            <PagerLink href={viewHref({ ...view, week: data.week + 1, stats: null })} disabled={data.week >= data.weekCount}>
+              Next week
+            </PagerLink>
+          </nav>
+        </div>
       </div>
 
-      {m && <Scoreboard m={m} />}
+      {m && <Scoreboard m={m} projected={data.projected} />}
       <div className={styles.top}>
-        {m ? <Categories m={m} /> : (
+        {m ? <Categories m={m} projected={data.projected} /> : (
           <div className={`${styles.card} ${styles.notice}`}>
             {!signedIn ? (
               <p>Sign in to see your matchup, or pick one from around the league.</p>
@@ -159,19 +170,45 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
       </div>
       {m && (
         <>
-          <DayPicker data={data} view={view} />
+          {!data.projected && <DayPicker data={data} view={view} />}
           <div className={styles.ros}>
             <Roster side={m.team} data={data} />
             <Roster side={m.opponent} data={data} />
           </div>
           <p className={styles.note}>
-            {data.statsDate
-              ? "Bench and IL rows are greyed out: their games don’t count."
-              : "Week totals count only the days each player started. Slots are today’s lineup."}
+            {data.projected
+              ? "Projected: the week so far plus each starter’s remaining games at his last-30-day average (season average with fewer than 5 games in that span), on the lineups as set. Benched days and players listed Out add nothing. Slots are today’s lineup."
+              : data.statsDate
+                ? "Bench and IL rows are greyed out: their games don’t count."
+                : "Week totals count only the days each player started. Slots are today’s lineup."}
           </p>
         </>
       )}
     </>
+  );
+}
+
+/** Actual / Projected: one pill, like SegmentedToggle, but links (the page is server-rendered). */
+function ProjectionToggle({ view }: { view: View }) {
+  const options = [
+    { projected: false, label: "Actual" },
+    { projected: true, label: "Projected" },
+  ];
+  return (
+    <nav className={styles.toggle} aria-label="Totals">
+      {options.map((o) => (
+        <Link
+          key={o.label}
+          className={styles.segment}
+          // Back to Actual opens on the default stats (today while live).
+          href={viewHref({ ...view, projected: o.projected, stats: null })}
+          scroll={false}
+          aria-current={o.projected === view.projected ? "page" : undefined}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -180,7 +217,8 @@ function PagerLink({ href, disabled, children }: { href: string; disabled: boole
   return <Link className={styles.pageBtn} href={href}>{children}</Link>;
 }
 
-function Scoreboard({ m }: { m: Matchup }) {
+function Scoreboard({ m, projected }: { m: Matchup; projected: boolean }) {
+  const score = projected ? m.projectedScore : m.score;
   const sub = (s: MatchupSide) =>
     `${s.managerName ? `${s.managerName} · ` : ""}${s.gamesPlayed}/${s.gamesPlayed + s.gamesLeft} games played${s.gameLimit ? ` (limit ${s.gameLimit})` : ""}`;
   return (
@@ -190,9 +228,17 @@ function Scoreboard({ m }: { m: Matchup }) {
         <p>{sub(m.team)}</p>
         {m.isMine && <Link href="/my-team">Set lineup</Link>}
       </div>
-      <Flash as="div" className={styles.score} value={fmtScore(m.score)} aria-label={`Categories won, lost, tied: ${fmtScore(m.score)}`}>
-        {fmtScore(m.score)}
-      </Flash>
+      <div className={styles.scoreBox}>
+        <Flash
+          as="div"
+          className={styles.score}
+          value={fmtScore(score)}
+          aria-label={`${projected ? "Projected categories" : "Categories"} won, lost, tied: ${fmtScore(score)}`}
+        >
+          {fmtScore(score)}
+        </Flash>
+        {projected && <span className={styles.scoreTag} aria-hidden="true">Projected</span>}
+      </div>
       <div className={`${styles.side} ${styles.r}`}>
         <div className={styles.t}><TeamBadge team={m.opponent} /><h2>{m.opponent.name}</h2></div>
         <p>{sub(m.opponent)}</p>
@@ -215,28 +261,30 @@ function statValue(k: CategoryKey, line: CategoryLine): string {
   return k === "fgPct" ? `${line.fgm}/${line.fga}` : k === "ftPct" ? `${line.ftm}/${line.fta}` : String(line[k]);
 }
 
-function Categories({ m }: { m: Matchup }) {
+function Categories({ m, projected }: { m: Matchup; projected: boolean }) {
+  const results = projected ? m.projectedResults : m.results;
   const rows = [
-    { side: m.team, results: m.results },
+    { side: m.team, line: projected ? m.team.projected : m.team.stats, results },
     {
       side: m.opponent,
-      results: Object.fromEntries(CATEGORY_KEYS.map((k) => [k, FLIP[m.results[k]]])) as Record<CategoryKey, CategoryResult>,
+      line: projected ? m.opponent.projected : m.opponent.stats,
+      results: Object.fromEntries(CATEGORY_KEYS.map((k) => [k, FLIP[results[k]]])) as Record<CategoryKey, CategoryResult>,
     },
   ];
   return (
     <section className={styles.card}>
-      <h3>Categories</h3>
+      <h3>Categories{projected && <span className={styles.h3Tag}>Projected</span>}</h3>
       <div role="table" aria-label="Categories">
         <div className={`${styles.cs} ${styles.csHead}`} role="row">
           <span role="columnheader">Team</span>
           {CATEGORY_KEYS.map((k) => <span role="columnheader" className={styles.n} key={k}>{LABELS[k]}</span>)}
         </div>
-        {rows.map(({ side, results }) => (
+        {rows.map(({ side, line, results }) => (
           <div className={`${styles.cs} ${styles.csRow}`} role="row" key={side.id}>
             <span role="rowheader" className={styles.tn}>{side.name}</span>
             {CATEGORY_KEYS.map((k) => (
-              <Flash role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`} value={statValue(k, side.stats)}>
-                <Stat k={k} line={side.stats} />
+              <Flash role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`} value={statValue(k, line)}>
+                <Stat k={k} line={line} />
                 {results[k] === "win" && <span className={styles.sr}> (leads)</span>}
               </Flash>
             ))}
@@ -244,7 +292,10 @@ function Categories({ m }: { m: Matchup }) {
         ))}
       </div>
       <p className={styles.foot}>
-        Week totals from starters. FG% and FT% are total makes over total attempts. Fewer turnovers wins TO.
+        {projected
+          ? "Projected week totals: games so far plus starters’ remaining games at their recent averages. "
+          : "Week totals from starters. "}
+        FG% and FT% are total makes over total attempts. Fewer turnovers wins TO.
       </p>
     </section>
   );
@@ -254,13 +305,14 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
   if (data.others.length === 0) return null;
   return (
     <section className={styles.card}>
-      <h3>Around the league</h3>
+      <h3>Around the league{data.projected && <span className={styles.h3Tag}>Projected</span>}</h3>
       {data.others.map((o) => {
+        const score = data.projected ? o.projectedScore ?? o.score : o.score;
         const body = (
           <>
             {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
             <span>{o.teamA.name}</span>
-            <Flash as="b" value={o.teamB ? fmtScore(o.score) : null}>{o.teamB ? fmtScore(o.score) : "Bye"}</Flash>
+            <Flash as="b" value={o.teamB ? fmtScore(score) : null}>{o.teamB ? fmtScore(score) : "Bye"}</Flash>
             <span>{o.teamB?.name ?? ""}</span>
           </>
         );
@@ -271,7 +323,7 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
             key={o.teamA.id}
             href={viewHref({ ...view, team: o.isMine ? null : o.teamA.id })}
             scroll={false}
-            aria-label={`${o.teamA.name} ${fmtScore(o.score)} ${o.teamB.name}${o.isMine ? " (your matchup)" : ""}`}
+            aria-label={`${o.teamA.name} ${fmtScore(score)} ${o.teamB.name}${data.projected ? " (projected)" : ""}${o.isMine ? " (your matchup)" : ""}`}
           >
             {body}
           </Link>
@@ -314,10 +366,14 @@ const isStarter = (p: MatchupPlayer) => p.slot !== null && STARTING_SLOTS.includ
 
 function Roster({ side, data }: { side: MatchupSide; data: MatchupWeek }) {
   const day = data.statsDate;
-  const total = day
-    ? sumLines(side.players.filter((p) => isStarter(p) && p.stats && p.stats.min > 0).map((p) => p.stats!))
-    : side.stats;
-  const hint = day ? (day === data.today ? "Today" : `${weekday(day)}, ${fmtGameDate(day)}`) : "Week totals";
+  const total = data.projected
+    ? side.projected
+    : day
+      ? sumLines(side.players.filter((p) => isStarter(p) && p.stats && p.stats.min > 0).map((p) => p.stats!))
+      : side.stats;
+  const hint = data.projected
+    ? "Projected week"
+    : day ? (day === data.today ? "Today" : `${weekday(day)}, ${fmtGameDate(day)}`) : "Week totals";
   return (
     <section className={styles.card}>
       <h3 className={styles.rosH}>{side.name}<span>{hint}</span></h3>
@@ -328,11 +384,11 @@ function Roster({ side, data }: { side: MatchupSide; data: MatchupWeek }) {
           {CATEGORY_KEYS.map((k) => <span role="columnheader" className={styles.n} key={k}>{LABELS[k]}</span>)}
         </div>
         {rosterRows(side.players, data).map((r) => r.player
-          ? <PlayerRow key={r.player.id} p={r.player} day={day !== null} timeZone={data.timeZone} />
+          ? <PlayerRow key={r.player.id} p={r.player} day={day !== null} projected={data.projected} timeZone={data.timeZone} />
           : <EmptyRow key={r.key} slot={r.slot} />)}
         <div className={`${styles.g} ${styles.gTotal}`} role="row">
           <span role="cell" />
-          <span role="rowheader">{day ? "Starters" : "Week"}</span>
+          <span role="rowheader">{data.projected ? "Projected" : day ? "Starters" : "Week"}</span>
           {CATEGORY_KEYS.map((k) => (
             <Flash role="cell" className={styles.n} key={k} value={statValue(k, total)}><Stat k={k} line={total} /></Flash>
           ))}
@@ -367,13 +423,17 @@ function EmptyRow({ slot }: { slot: LineupSlot }) {
   );
 }
 
-function PlayerRow({ p, day, timeZone }: { p: MatchupPlayer; day: boolean; timeZone: string }) {
+function PlayerRow({ p, day, projected, timeZone }: { p: MatchupPlayer; day: boolean; projected: boolean; timeZone: string }) {
+  const line = projected ? p.projected : p.stats;
   const dim = day && !isStarter(p);
   let sub: string;
   let idle = false;
   if (day) {
     sub = p.game ? gameText(p.game, timeZone) : "No game";
     idle = p.game === null && isStarter(p);
+  } else if (projected) {
+    const played = p.stats?.gp ?? 0;
+    sub = `${played} GP · ${(p.projected?.gp ?? 0) - played} left${p.slot === null ? " · Left roster" : ""}`;
   } else {
     sub = `${p.stats?.gp ?? 0} GP${p.slot === null ? " · Left roster" : ""}`;
   }
@@ -397,8 +457,8 @@ function PlayerRow({ p, day, timeZone }: { p: MatchupPlayer; day: boolean; timeZ
         <span role="cell" className={styles.dnp}>DNP</span>
       ) : (
         CATEGORY_KEYS.map((k) => (
-          <Flash role="cell" className={styles.n} key={k} value={p.stats && statValue(k, p.stats)}>
-            {p.stats && <Stat k={k} line={p.stats} />}
+          <Flash role="cell" className={styles.n} key={k} value={line && statValue(k, line)}>
+            {line && <Stat k={k} line={line} />}
           </Flash>
         ))
       )}

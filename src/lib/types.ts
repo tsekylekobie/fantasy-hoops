@@ -15,8 +15,9 @@ export function defaultSortDir(key: SortKey): SortDir {
   return key === "tov" || key === "name" ? "asc" : "desc";
 }
 
-/** Which games count: the whole season, or the 14 days ending at the season's latest game (or today). */
-export type StatRange = "season" | "last14";
+/** Which games count: the whole season, or the 30 or 14 days ending at the season's latest game (or today). */
+export type StatRange = "season" | "last30" | "last14";
+export const STAT_RANGES: readonly StatRange[] = ["season", "last30", "last14"];
 
 /** Which players GET /api/players?scope= lists: free agents (on no team in the season's league) or everyone. */
 export type PlayerScope = "fa" | "all";
@@ -145,7 +146,7 @@ export interface PlayersResponse {
   range: StatRange;
   sort: SortKey;
   dir: SortDir;
-  /** Inclusive ISO dates (yyyy-mm-dd) of the last-14-days window; null for the whole season. */
+  /** Inclusive ISO dates (yyyy-mm-dd) of the last-30 or last-14 days window; null for the whole season. */
   from: string | null;
   to: string | null;
   mode: StatMode;
@@ -229,6 +230,8 @@ export interface PlayerDetailResponse {
   season: number;
   /** Per-game averages for `season`; null if the player has no games in it. */
   seasonAverages: SeasonRow | null;
+  /** His 9CAT rank for `season` and its last 30 and 14 days, as the Players page ranks them (your punt weights). */
+  ranks: PlayerRanks;
   /** Newest game first. */
   gameLog: GameLogRow[];
   /** Seasons before `season`, newest first. */
@@ -236,6 +239,9 @@ export interface PlayerDetailResponse {
   /** His games in the league's current matchup week; null outside the schedule. */
   thisWeek: PlayerWeek | null;
 }
+
+/** 1-based 9CAT ranks over each StatRange; null when he has no games in it. */
+export type PlayerRanks = Record<StatRange, number | null>;
 
 /** A player's NBA games in one matchup week. */
 export interface PlayerWeek {
@@ -296,6 +302,12 @@ export interface MatchupPlayer extends PlayerSummary {
    * started (null if none yet).
    */
   stats: (CategoryLine & { min: number; gp: number }) | null;
+  /**
+   * Week totals only (null in the day view): his projected week, `stats` plus
+   * his starts still to tip off that will count, at his recent average (see
+   * MatchupSide.projected), in whole numbers; gp counts both. Null when neither.
+   */
+  projected: (CategoryLine & { gp: number }) | null;
   /** His current injury report entry (not as of the day shown); null when not on the report. */
   injury: PlayerInjury | null;
 }
@@ -305,6 +317,14 @@ export interface MatchupSide extends FantasyTeamSummary {
   managerName: string | null;
   /** Week totals from starters' games (FG%/FT% = summed makes / summed attempts). */
   stats: CategoryLine;
+  /**
+   * Projected week totals: `stats` plus one game at the player's per-game average
+   * (last 30 days with 5+ games, else season) for every start still to tip off
+   * that will count, on the lineups as set (benched days add nothing). Players
+   * listed Out add nothing until their estimated return. Whole numbers; FG%/FT%
+   * from the projected makes / attempts.
+   */
+  projected: CategoryLine;
   /** Starter games played so far this week (that counted, under game limits). */
   gamesPlayed: number;
   /** Starter games still to tip off this week (current lineup and NBA teams) that will count under game limits. */
@@ -322,6 +342,9 @@ export interface Matchup {
   /** Outcome of each category for `team`. */
   results: Record<CategoryKey, CategoryResult>;
   score: MatchupScore;
+  /** The same for the sides' `projected` lines. */
+  projectedResults: Record<CategoryKey, CategoryResult>;
+  projectedScore: MatchupScore;
   /** Whether `team` is the signed-in manager's. */
   isMine: boolean;
   /** Set for playoff and toilet bowl matchups (absent in the regular season). */
@@ -333,6 +356,8 @@ export interface OtherMatchup {
   teamA: FantasyTeamSummary;
   teamB: FantasyTeamSummary | null;
   score: MatchupScore;
+  /** The matchup page only: the score of the teams' projected week totals (MatchupSide.projected). */
+  projectedScore?: MatchupScore;
   /** Contains the signed-in manager's team. */
   isMine: boolean;
   /** Set for playoff and toilet bowl matchups (absent in the regular season). */
@@ -359,6 +384,8 @@ export interface MatchupWeek {
   slots: { slot: LineupSlot; count: number }[];
   /** Whose stats the rosters show: a date in the week, or null for week totals. */
   statsDate: string | null;
+  /** The page shows projected week totals (?view=projected); statsDate is then null. */
+  projected: boolean;
   /**
    * The matchup asked for (?team=), else the signed-in manager's. Null when
    * neither applies or that team has a bye.

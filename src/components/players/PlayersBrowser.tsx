@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CategoryWeights, PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter, WeightsResponse,
 } from "@/lib/types";
-import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
+import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, STAT_RANGES, defaultSortDir } from "@/lib/types";
 import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
@@ -34,8 +34,11 @@ const POSITIONS: SegmentedOption<PositionFilter>[] = [
 
 const RANGES: SegmentedOption<StatRange>[] = [
   { value: "season", label: "Season" },
+  { value: "last30", label: "Last 30 days" },
   { value: "last14", label: "Last 14 days" },
 ];
+
+const RANGE_TITLES: Record<StatRange, string> = { season: "Season averages", last30: "Last 30 days", last14: "Last 14 days" };
 
 const MODES: SegmentedOption<StatMode>[] = [
   { value: "avg", label: "Per game" },
@@ -87,7 +90,7 @@ function readUrlState(params: URLSearchParams): UrlState {
     q: params.get("q") ?? "",
     scope: params.get("scope") === "all" ? "all" : "fa",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
-    range: params.get("range") === "last14" ? "last14" : "season",
+    range: STAT_RANGES.find((r) => r === params.get("range")) ?? "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers: waivers === "on" || waivers === "clears" ? waivers : "any",
@@ -333,8 +336,8 @@ export default function PlayersBrowser() {
       <div className={styles.inner}>
         <SiteHeader />
 
-        <h1 className={styles.title}>{range === "last14" ? "Last 14 days" : "Season averages"}</h1>
-        {data?.range === "last14" && data.from && data.to && (
+        <h1 className={styles.title}>{RANGE_TITLES[range]}</h1>
+        {data?.range !== "season" && data?.from && data.to && (
           <p className={styles.sub}>
             {fmtGameDate(data.from)} – {fmtGameDate(data.to)}
           </p>
