@@ -1,5 +1,17 @@
 # fantasy-hoops
 
+A self-hosted fantasy basketball app for one 12-team, 9-category league (FG%, FT%, 3PM, PTS, REB, AST, STL, BLK,
+TO). It replaces Yahoo so the league can set its own waiver schedule (or FAAB), IL rules and game limits. There's
+no draft room: rosters are set up directly.
+
+Pages: Players (season stats, 9CAT value with punt weights, player modal with news and game log), Roster
+(lineups, add/drop, waiver claims), Matchup, League (standings and recent transactions), Rankings (power rankings),
+Box scores, trades (built from another team's page, with a review period), and the commissioner's League
+settings. Playoffs and a toilet bowl run themselves once the regular season ends.
+
+Stats come from [BALLDONTLIE](https://www.balldontlie.io) into our Postgres database; the app only reads the
+database, and a background worker keeps it current. Player news comes from ESPN's public fantasy endpoints.
+
 ## Requirements
 
 - Node.js 20+
@@ -74,6 +86,10 @@ npm run dev
 
 Open http://localhost:3000.
 
+**Signing in locally:** with `AUTH_MOCK=1` (the default in `.env.example`), or whenever `GOOGLE_CLIENT_ID` is
+empty, sign-in goes to a mock page where you pick a test user instead of using Google. After
+`npm run db:seed:league` you can sign in as any of the 12 managers; the first is the commissioner.
+
 For a production build: `npm run build && npm start`.
 
 ## Keeping the current season up to date
@@ -88,10 +104,13 @@ It keeps the database current on its own, logging one line per pass:
 
 | Task | Cadence | What it pulls |
 |---|---|---|
-| `live` | every 2 min while a game is live; otherwise every 30 min, or just after the next tip-off | today's and yesterday's games (scores, status, clock), and stat lines for games in progress or finished in the last 5 hours |
+| `live` | every 30 s while a game is live; otherwise every 30 min, or just after the next tip-off | today's and yesterday's games (scores, status, clock), and stat lines for games in progress or finished in the last 5 hours |
 | `injuries` | every 15 min on game days, every 2 h otherwise | the injury report; a `player_injuries` row is added only when a player's report changes |
 | `corrections` | once a day after 9 AM | the last 3 days of games and stat lines again, for stat corrections |
 | `rosters` | every 12 h | teams, players and the season schedule (about 90 requests, 2 minutes) |
+| `lineups` | every 15 min and just after midnight | database only: saves each team's lineup for every day through today, then processes trades whose review window has ended |
+| `waivers` | at the league's waiver time, on its waiver days | database only: processes due claims (FAAB bids in a FAAB league) and clears players off waivers |
+| `playoffs` | every 15 min and just after midnight | database only: after the regular season, creates the playoff and toilet bowl rounds as they come due |
 
 Ctrl-C stops it after the current pass, and restarting is safe: each task's last run is saved in
 `sync_state` (`worker:<task>`), so a restart doesn't redo the slow passes. `npm run worker -- --once`
@@ -99,6 +118,16 @@ runs every task once and exits. All tasks share one API client, so together they
 `BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 30),
 `WORKER_CORRECTIONS_HOUR` (default 9) and `WORKER_TIME_ZONE` (default `America/New_York`).
 In production it runs as its own process (the `worker` service under Deploying).
+
+To run the league jobs by hand (e.g. to test against the seeded league):
+
+```sh
+npm run waivers                             # the next scheduled waiver run, now
+npm run waivers -- --at now                 # only claims and waivers already due (or --at <ISO time>)
+npm run playoffs -- --today 2027-04-20      # create due playoff rounds as if it were this date
+```
+
+In dev the same jobs are also at `POST /api/dev/waivers?at=...` and `POST /api/dev/playoffs?today=...`.
 
 Without the worker, `npm run backfill -- --seasons 2026` pulls in everything since the last run.
 
@@ -142,7 +171,7 @@ For debugging, `railway logs --service worker` (Railway CLI) or the Railway MCP 
 
 ```sh
 npm run typecheck
-npx tsx --test src/lib/queries/*.test.ts
+npx tsx --test 'src/**/*.test.ts'
 npm run build
 ```
 

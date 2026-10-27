@@ -1,6 +1,6 @@
 // Long-running sync worker: keeps games, stat lines, injuries and players
-// current so nobody has to run the backfill by hand (PLAN.md, "Refresh
-// strategy"). Runs next to the app as its own process:
+// current so nobody has to run the backfill by hand. Runs next to the app as
+// its own process:
 //   npm run worker            # loop forever
 //   npm run worker -- --once  # run every task once and exit
 //

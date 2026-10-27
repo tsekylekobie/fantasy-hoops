@@ -1,6 +1,9 @@
 # Fantasy Hoops
 
-See PLAN.md for the product plan. Milestone 1: players table + player modal.
+A self-hosted fantasy basketball app for one 12-team, 9-category league (FG%, FT%, 3PM, PTS, REB, AST, STL, BLK, TO),
+built to replace Yahoo with configurable waivers, IL rules and game limits. README.md covers setup, the worker and deploying.
+Data comes from BALLDONTLIE's ALL-STAR tier (60 requests/min); `/season_averages` isn't on it (averages are computed from
+stored game logs), and neither is `/plays` (no play-by-play).
 
 ## Layout
 - `src/lib/types.ts`: the API contract between routes and UI. Change both sides together.
@@ -44,7 +47,8 @@ See PLAN.md for the product plan. Milestone 1: players table + player modal.
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).
-- `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (PLAN.md links it). M1 is `players-table` and `player-modal`;
+- `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (https://claude.ai/artifact/3ZpzKr2ULidGFpMvgVcvAm, private to the owner).
+  `players-table` and `player-modal` are the Players page;
   `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`,
   `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
   and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.

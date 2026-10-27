@@ -2,7 +2,7 @@
 
 // Player headshot from the NBA CDN, falling back to an initials circle when
 // the player has no NBA person id or the image fails to load. The CDN is not
-// an official API (PLAN.md), so the fallback is the normal path, not an edge case.
+// an official API, so the fallback is the normal path, not an edge case.
 import { useEffect, useRef, useState } from "react";
 import type { PlayerSummary } from "@/lib/types";
 import styles from "./Avatar.module.css";
