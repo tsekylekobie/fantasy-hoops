@@ -366,3 +366,8 @@
     font-size: 14px;
   }
 }
+
+/* Watchlist star, ahead of the headshot; pulled in so the column doesn't grow by the whole button. */
+.star {
+  margin: 0 -6px 0 -6px;
+}

@@ -7,6 +7,7 @@ import { getPlayerTransactions } from "@/lib/queries/league";
 import { getPlayerWeek } from "@/lib/queries/lineup";
 import { getPlayerDetail } from "@/lib/queries/players";
 import type { PlayerDetailResponse } from "@/lib/types";
+import { sessionUserId } from "../../team/lineup/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     throw err;
   }
   try {
+    const userId = await sessionUserId();
     const [detail, thisWeek, transactions] = await Promise.all([
-      getPlayerDetail(pool, id, season), getPlayerWeek(pool, id, season), getPlayerTransactions(pool, id, season),
+      getPlayerDetail(pool, id, season, userId), getPlayerWeek(pool, id, season), getPlayerTransactions(pool, id, season),
     ]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
     const body: PlayerDetailResponse = { ...detail, thisWeek, transactions };
-    // No caching: owners change with every add and drop.
-    return NextResponse.json(body, { headers: { "Cache-Control": "no-cache" } });
+    // No caching: owners change with every add and drop; private: the star is per user.
+    return NextResponse.json(body, { headers: { "Cache-Control": "private, no-cache" } });
   } catch (err) {
     console.error(`GET /api/players/${id} failed`, err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

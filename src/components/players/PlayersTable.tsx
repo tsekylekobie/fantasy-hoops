@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
 import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
+import WatchStar from "./WatchStar";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -36,10 +37,12 @@ interface Props {
   onAddPlayer: (id: number) => void;
   /** The signed-in manager's team, whose players get a dark chip. */
   myTeamId: number | null;
+  /** A star was toggled (rows with `watched` null, signed out, get no star). */
+  onWatch: (id: number, watched: boolean) => void;
 }
 
 export default function PlayersTable({
-  data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer, onAddPlayer, myTeamId,
+  data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer, onAddPlayer, myTeamId, onWatch,
 }: Props) {
   const rows = data?.players ?? [];
   // The data's own mode decides formatting, so stale rows shown while the
@@ -60,7 +63,9 @@ export default function PlayersTable({
   } else if (!data) {
     message = <span>Loading players…</span>;
   } else if (rows.length === 0 && status === "ready") {
-    message = <span>No players match</span>;
+    message = (
+      <span>{data.scope === "watch" && data.total === 0 ? "No watched players match. Star a player to watch him." : "No players match"}</span>
+    );
   }
 
   return (
@@ -104,7 +109,7 @@ export default function PlayersTable({
             rows.map((p) => (
               <Row
                 key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId}
-                timeZone={data?.timeZone ?? "America/New_York"}
+                onWatch={onWatch} timeZone={data?.timeZone ?? "America/New_York"}
               />
             ))
           )}
@@ -121,6 +126,7 @@ function Row({
   onOpen,
   onAdd,
   myTeamId,
+  onWatch,
   timeZone,
 }: {
   p: PlayerRow;
@@ -129,6 +135,7 @@ function Row({
   onOpen: (id: number) => void;
   onAdd: (id: number) => void;
   myTeamId: number | null;
+  onWatch: (id: number, watched: boolean) => void;
   timeZone: string;
 }) {
   const s = p.stats;
@@ -137,6 +144,7 @@ function Row({
       <td>{p.rank}</td>
       <td>
         <span className={styles.player}>
+          {p.watched !== null && <WatchStar playerId={p.id} name={fullName(p)} watched={p.watched} onChange={onWatch} className={styles.star} />}
           <Avatar player={p} size={40} />
           <span className={styles.who}>
             <button type="button" className={styles.name} data-player-id={p.id} onClick={() => onOpen(p.id)}>

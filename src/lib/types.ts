@@ -18,8 +18,11 @@ export function defaultSortDir(key: SortKey): SortDir {
 /** Which games count: the whole season, or the 14 days ending at the season's latest game (or today). */
 export type StatRange = "season" | "last14";
 
-/** Which players GET /api/players?scope= lists: free agents (on no team in the season's league) or everyone. */
-export type PlayerScope = "fa" | "all";
+/**
+ * Which players GET /api/players?scope= lists: free agents (on no team in the season's league), everyone, or the
+ * signed-in user's watchlist, rostered or not (401 signed out).
+ */
+export type PlayerScope = "fa" | "all" | "watch";
 
 /** Position filter values for GET /api/players?pos=. "all" means no filter. */
 export type PositionFilter = "all" | "G" | "F" | "C";
@@ -113,6 +116,8 @@ export interface PlayerRow extends PlayerSummary {
   games: PlayerUpcomingGame[];
   /** Null when healthy. */
   injury: PlayerInjury | null;
+  /** On the signed-in user's watchlist; null when signed out (no star). */
+  watched: boolean | null;
 }
 
 /** A scheduled (not started, not postponed) NBA game, for the streaming filter. */
@@ -237,6 +242,14 @@ export interface PlayerDetailResponse {
   thisWeek: PlayerWeek | null;
   /** Every completed move of his in the season's league, newest first. */
   transactions: PlayerTransaction[];
+  /** On the signed-in user's watchlist; null when signed out (no star). */
+  watched: boolean | null;
+}
+
+/** PUT (watch) or DELETE (unwatch) /api/players/:id/watch; 401 signed out, 404 no such player. */
+export interface WatchResponse {
+  playerId: number;
+  watched: boolean;
 }
 
 /** One completed move of a player (an add, drop, claim, trade or commissioner move), for the player modal. */
