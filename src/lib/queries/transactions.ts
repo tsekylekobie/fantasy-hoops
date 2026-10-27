@@ -178,7 +178,7 @@ function addBlocked(
     return t.owner_team_id === team.teamId ? `${who} is already on your team.` : `${who} is on ${t.owner_abbr}.`;
   }
   if (t.my_claim && !forClaim) {
-    return `You already have a claim for ${who}. Change or cancel it under My claims on My team.`;
+    return `You already have a claim for ${who}. Change or cancel it under My claims on Roster.`;
   }
   if (rules.maxAddsPerWeek !== null && adds.week >= rules.maxAddsPerWeek) {
     return `You've used all ${rules.maxAddsPerWeek} adds this week.`;

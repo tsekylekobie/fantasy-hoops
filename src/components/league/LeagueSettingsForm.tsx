@@ -531,7 +531,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
               <Row label="Past the limit" help="Games are counted in tip-off order.">
                 <p className={`${styles.hint} ${styles.text}`}>
                   Once a slot or the team is at its limit, later starts in it score nothing for the rest of the week. Managers see
-                  their games used on My team and are warned before starts that won’t count.
+                  their games used on Roster and are warned before starts that won’t count.
                 </p>
               </Row>
             </>

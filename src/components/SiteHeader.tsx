@@ -22,7 +22,7 @@ const TABS = [
       </>
     ),
   },
-  { href: "/my-team", label: "My team", icon: <path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2 3-4 3S8.5 4.7 8 3z" /> },
+  { href: "/my-team", label: "Roster", icon: <path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2 3-4 3S8.5 4.7 8 3z" /> },
   {
     href: "/matchup",
     label: "Matchup",
@@ -33,7 +33,6 @@ const TABS = [
       </>
     ),
   },
-  { href: "/rankings", label: "Rankings", icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/players",
     label: "Players",
@@ -44,6 +43,7 @@ const TABS = [
       </>
     ),
   },
+  { href: "/rankings", label: "Rankings", icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/box-scores",
     label: "Box scores",

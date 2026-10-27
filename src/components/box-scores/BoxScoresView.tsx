@@ -53,19 +53,9 @@ function summary(d: BoxScoresResponse): string {
   return `${label} · ${d.games.length} ${d.games.length === 1 ? "game" : "games"} · ${parts.join(", ")}`;
 }
 
-/** The started game with the most of your players, else every game. */
-function defaultGame(d: BoxScoresResponse): number | "all" {
-  let best: BoxScoreGame | null = null;
-  for (const g of d.games) {
-    if (g.state !== "live" && g.state !== "final") continue;
-    if (!best || g.mine.length > best.mine.length) best = g;
-  }
-  return best?.id ?? "all";
-}
-
 export default function BoxScoresView({ data }: { data: BoxScoresResponse }) {
   const router = useRouter();
-  const [game, setGame] = useState<number | "all">(() => defaultGame(data));
+  const [game, setGame] = useState<number | "all">("all");
   const [adding, setAdding] = useState<number | null>(null);
   const shown = game === "all" ? data.games : data.games.filter((g) => g.id === game);
   const prev = addDays(data.date, -1);

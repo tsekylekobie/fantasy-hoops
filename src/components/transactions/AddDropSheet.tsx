@@ -212,7 +212,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                 </>
               ) : (
                 <p className={styles.lede}>
-                  You can&apos;t add players or place claims until it&apos;s fixed. <Link href="/my-team">Fix it on My team</Link>.
+                  You can&apos;t add players or place claims until it&apos;s fixed. <Link href="/my-team">Fix it on Roster</Link>.
                 </p>
               )}
             </div>
@@ -420,8 +420,8 @@ function Done({ data, result, onClose }: { data: RosterMovesContext; result: Ros
       <h3 className={styles.doneTitle}>{pending ? "Claim placed" : "Player added"}</h3>
       <p>
         {pending
-          ? `${result.faabBid !== null ? `You bid $${result.faabBid}. ` : ""}If it goes through ${when}, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}. You can ${result.faabBid !== null ? "change the bid, " : ""}cancel or reorder claims from My team until then.`
-          : `${added} is on ${data.team.name}'s bench${result.dropped ? ` and ${fullName(result.dropped)} ${droppedTo}` : ""}. Set your lineup on My team.`}
+          ? `${result.faabBid !== null ? `You bid $${result.faabBid}. ` : ""}If it goes through ${when}, ${added} joins your bench${result.dropped ? ` and ${fullName(result.dropped)} is dropped` : ""}. You can ${result.faabBid !== null ? "change the bid, " : ""}cancel or reorder claims from Roster until then.`
+          : `${added} is on ${data.team.name}'s bench${result.dropped ? ` and ${fullName(result.dropped)} ${droppedTo}` : ""}. Set your lineup on Roster.`}
       </p>
       {cancelError && (
         <p className={styles.error} role="alert">
