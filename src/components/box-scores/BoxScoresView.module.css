@@ -384,8 +384,7 @@ a.arw:hover,
 }
 
 .table thead th.n {
-  text-align: right;
-  padding-right: 8px;
+  text-align: center;
 }
 
 .table thead th.srt {
@@ -422,7 +421,7 @@ a.arw:hover,
 }
 
 .n {
-  text-align: right;
+  text-align: center;
   width: 52px;
 }
 
