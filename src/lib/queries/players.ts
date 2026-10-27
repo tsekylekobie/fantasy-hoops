@@ -6,6 +6,8 @@
 // Rules: games played = stat rows with min > 0 (DNP rows have min 0);
 // only regular-season games count (games.game_type = 'regular': no playoffs,
 // play-in or NBA Cup final); FG%/FT% = summed makes / summed attempts.
+// Season totals and averages count finished games only (games.status_state =
+// 'final'), so a game in progress doesn't move them; the game log shows it.
 import type { Pool } from "pg";
 import type {
   CategoryLine,
@@ -47,7 +49,7 @@ const SEASON_TOTALS_SQL = `
     SELECT s.player_id, ${AGG}
     FROM player_game_stats s
     JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
-    WHERE s.season = $1 AND s.min > 0 AND ($2::date IS NULL OR g.date >= $2::date)
+    WHERE s.season = $1 AND s.min > 0 AND g.status_state = 'final' AND ($2::date IS NULL OR g.date >= $2::date)
     GROUP BY s.player_id
   )
   SELECT t.*, p.first_name, p.last_name, nullif(p.position, '') AS position,
@@ -298,7 +300,7 @@ export async function getPlayerDetail(
       `SELECT s.season, s.player_id, ${AGG}
        FROM player_game_stats s
        JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
-       WHERE s.player_id = $1 AND s.season <= $2 AND s.min > 0
+       WHERE s.player_id = $1 AND s.season <= $2 AND s.min > 0 AND g.status_state = 'final'
        GROUP BY s.season, s.player_id
        ORDER BY s.season DESC`,
       [playerId, season],
