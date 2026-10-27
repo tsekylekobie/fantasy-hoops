@@ -347,7 +347,7 @@ a.arw:hover,
 
 .table {
   width: 100%;
-  min-width: 960px;
+  min-width: 1012px;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
   font-size: 14px;

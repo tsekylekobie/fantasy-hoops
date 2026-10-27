@@ -248,6 +248,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
               <th scope="col" className={styles.n}>FG%</th>
               <th scope="col" className={styles.n}>FT%</th>
               <th scope="col" className={styles.n}>TO</th>
+              <th scope="col" className={styles.n} title="Personal fouls">PF</th>
               <th scope="col" className={`${styles.n} ${styles.srt}`} aria-sort="descending">Value</th>
             </tr>
           </thead>
@@ -274,6 +275,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
                 <small>{t.totals.ftm}/{t.totals.fta}</small>
               </td>
               <td className={styles.n}>{t.totals.tov}</td>
+              <td className={styles.n}>{t.totals.pf}</td>
               <td />
             </tr>
           </tfoot>
@@ -351,12 +353,13 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
             <small>{l.ftm}/{l.fta}</small>
           </Cell>
           <Cell k="tov" r={p.ranks.tov} of={of}>{l.tov}</Cell>
+          <td className={styles.n} title={l.pf >= 6 ? "Fouled out" : undefined}>{l.pf}</td>
           <Cell k="value" r={p.ranks.value} of={of}>
             <b>{fmtValue(p.value ?? 0)}</b>
           </Cell>
         </>
       ) : (
-        <td colSpan={11} className={styles.dnp}>DNP</td>
+        <td colSpan={12} className={styles.dnp}>DNP</td>
       )}
     </tr>
   );

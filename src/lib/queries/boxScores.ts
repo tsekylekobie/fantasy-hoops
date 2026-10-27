@@ -119,6 +119,7 @@ interface StatRow {
   stl: number;
   blk: number;
   tov: number;
+  pf: number;
 }
 
 // $1 date
@@ -141,7 +142,7 @@ const STATS_SQL = `
          coalesce(s.fg3m, 0)::int AS fg3m, coalesce(s.pts, 0)::int AS pts,
          coalesce(s.reb, 0)::int AS reb, coalesce(s.ast, 0)::int AS ast,
          coalesce(s.stl, 0)::int AS stl, coalesce(s.blk, 0)::int AS blk,
-         coalesce(s.turnover, 0)::int AS tov
+         coalesce(s.turnover, 0)::int AS tov, coalesce(s.pf, 0)::int AS pf
   FROM player_game_stats s
   JOIN games g ON g.id = s.game_id
   JOIN players p ON p.id = s.player_id
@@ -182,17 +183,17 @@ function statusText(g: GameRow): string | null {
   return g.status && !/^\d{4}-\d{2}-\d{2}T/.test(g.status) ? g.status : "Live";
 }
 
-function emptyTotals(): CategoryLine & { min: number } {
-  return { min: 0, fgm: 0, fga: 0, fgPct: null, ftm: 0, fta: 0, ftPct: null, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0 };
+function emptyTotals(): CategoryLine & { min: number; pf: number } {
+  return { min: 0, fgm: 0, fga: 0, fgPct: null, ftm: 0, fta: 0, ftPct: null, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
 }
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
 const pct = (m: number, a: number) => (a > 0 ? r3(m / a) : null);
 
-function toLine(r: StatRow): CategoryLine & { min: number } {
+function toLine(r: StatRow): CategoryLine & { min: number; pf: number } {
   return {
     min: Math.round(r.min), fgm: r.fgm, fga: r.fga, fgPct: pct(r.fgm, r.fga), ftm: r.ftm, fta: r.fta, ftPct: pct(r.ftm, r.fta),
-    fg3m: r.fg3m, pts: r.pts, reb: r.reb, ast: r.ast, stl: r.stl, blk: r.blk, tov: r.tov,
+    fg3m: r.fg3m, pts: r.pts, reb: r.reb, ast: r.ast, stl: r.stl, blk: r.blk, tov: r.tov, pf: r.pf,
   };
 }
 
@@ -247,7 +248,7 @@ export async function getBoxScores(
       const line = r.min > 0 ? toLine(r) : null;
       if (line) {
         totals.min += r.min;
-        for (const k of ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const) totals[k] += line[k];
+        for (const k of ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov", "pf"] as const) totals[k] += line[k];
       }
       return {
         id: r.player_id, firstName: r.first_name, lastName: r.last_name, position: r.position,
