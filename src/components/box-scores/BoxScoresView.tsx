@@ -3,7 +3,7 @@
 // The /box-scores page: the Box scores artboard in the Fantasy Hoops design
 // canvas. A date's scoreboard, then each game's box score. Every stat cell is
 // shaded by where it ranks among all players who played that date (queries/boxScores.ts).
-// Keyed by date (page.tsx), so the picked game resets when the date changes.
+// Keyed by date and ?game (page.tsx), so the picked game resets when either changes.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -53,9 +53,9 @@ function summary(d: BoxScoresResponse): string {
   return `${label} · ${d.games.length} ${d.games.length === 1 ? "game" : "games"} · ${parts.join(", ")}`;
 }
 
-export default function BoxScoresView({ data }: { data: BoxScoresResponse }) {
+export default function BoxScoresView({ data, initialGame = null }: { data: BoxScoresResponse; initialGame?: number | null }) {
   const router = useRouter();
-  const [game, setGame] = useState<number | "all">("all");
+  const [game, setGame] = useState<number | "all">(initialGame ?? "all");
   const [adding, setAdding] = useState<number | null>(null);
   const shown = game === "all" ? data.games : data.games.filter((g) => g.id === game);
   const prev = addDays(data.date, -1);

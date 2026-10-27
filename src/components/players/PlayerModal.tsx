@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerWeek, SeasonRow } from "@/lib/types";
@@ -122,7 +124,7 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
           <CloseButton onClose={requestClose} />
         </div>
         {data ? (
-          <Detail data={data} />
+          <Detail key={data.player.id} data={data} onClose={requestClose} />
         ) : (
           <>
             <div className={styles.state} role={current?.status === "error" ? "alert" : "status"}>
@@ -230,9 +232,39 @@ function DetailHead({
   );
 }
 
-function Detail({ data }: { data: PlayerDetailResponse }) {
+const TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "stats", label: "Game log & seasons" },
+] as const;
+type Tab = (typeof TABS)[number]["value"];
+
+/** A game's box score (the box scores page opens on ?game). */
+const boxScoreHref = (date: string, gameId: number) => `/box-scores?date=${date}&game=${gameId}`;
+
+function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => void }) {
   const { season, seasonAverages: avg, gameLog, pastSeasons } = data;
   const label = seasonLabel(season);
+  // Remounted per player (keyed by id), so each player opens on Overview; a refresh keeps the tab.
+  const [tab, setTab] = useState<Tab>("overview");
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const router = useRouter();
+
+  // Leaving the page unmounts the modal; a link to the box score already on screen just closes it.
+  const openBoxScore = (e: React.MouseEvent, url: string) => {
+    e.preventDefault();
+    if (url === location.pathname + location.search) onClose();
+    else router.push(url);
+  };
+
+  // Arrow keys move between tabs (the WAI-ARIA tabs pattern, automatic activation).
+  const onTabKey = (e: React.KeyboardEvent, i: number) => {
+    const next = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    const j = (next + TABS.length) % TABS.length;
+    setTab(TABS[j].value);
+    tabRefs.current[j]?.focus();
+  };
 
   const tiles: [string, string][] = [
     ["FG%", avg ? fmtPct(avg.fgPct) : "—"],
@@ -257,92 +289,139 @@ function Detail({ data }: { data: PlayerDetailResponse }) {
         ))}
       </dl>
 
-      {data.thisWeek && <ThisWeek week={data.thisWeek} />}
+      <div className={styles.tabs} role="tablist" aria-label="Player details">
+        {TABS.map((t, i) => (
+          <button
+            key={t.value}
+            ref={(el) => { tabRefs.current[i] = el; }}
+            type="button"
+            role="tab"
+            id={`player-tab-${t.value}`}
+            aria-controls={`player-panel-${t.value}`}
+            aria-selected={tab === t.value}
+            tabIndex={tab === t.value ? 0 : -1}
+            className={styles.tab}
+            onClick={() => setTab(t.value)}
+            onKeyDown={(e) => onTabKey(e, i)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <News playerId={data.player.id} />
+      {/* Both panels stay mounted (hidden) so switching tabs doesn't refetch the news. */}
+      <div role="tabpanel" id="player-panel-overview" aria-labelledby="player-tab-overview" className={styles.tabPanel} hidden={tab !== "overview"}>
+        {data.thisWeek && <ThisWeek week={data.thisWeek} />}
 
-      <section className={styles.section} aria-labelledby="game-log-heading">
-        <h3 id="game-log-heading" className={styles.h3}>
-          Game log · {label}
-        </h3>
-        {gameLog.length === 0 ? (
-          <p className={styles.empty}>No games played this season yet.</p>
-        ) : (
-          <div className={styles.scroll}>
-            <table className={`${styles.table} ${styles.logTable}`}>
-              <colgroup>
-                <col className={styles.cDate} />
-                <col className={styles.cOpp} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Opp</th>
-                  {["MIN", "FG", "FT", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (
-                    <th key={c} scope="col" className={styles.n}>
-                      {c}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {gameLog.map((g) => (
-                  <tr key={g.gameId}>
-                    <td>{fmtGameDate(g.date)}</td>
-                    <td>{fmtOpponent(g.opponentAbbr, g.home, g.result)}</td>
-                    <td className={styles.n}>{fmtInt(g.min)}</td>
-                    <td className={styles.n}>
-                      {g.fgm}-{g.fga}
-                    </td>
-                    <td className={styles.n}>
-                      {g.ftm}-{g.fta}
-                    </td>
-                    <td className={styles.n}>{g.fg3m}</td>
-                    <td className={`${styles.n} ${styles.key}`}>{g.pts}</td>
-                    <td className={styles.n}>{g.reb}</td>
-                    <td className={styles.n}>{g.ast}</td>
-                    <td className={styles.n}>{g.stl}</td>
-                    <td className={styles.n}>{g.blk}</td>
-                    <td className={styles.n}>{g.tov}</td>
+        <News playerId={data.player.id} />
+      </div>
+
+      <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
+        <section className={styles.section} aria-labelledby="game-log-heading">
+          <h3 id="game-log-heading" className={styles.h3}>
+            Game log · {label}
+          </h3>
+          {gameLog.length === 0 ? (
+            <p className={styles.empty}>No games played this season yet.</p>
+          ) : (
+            <div className={styles.scroll}>
+              <table className={`${styles.table} ${styles.logTable}`}>
+                <colgroup>
+                  <col className={styles.cDate} />
+                  <col className={styles.cOpp} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Opp</th>
+                    {["MIN", "FG", "FT", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (
+                      <th key={c} scope="col" className={styles.n}>
+                        {c}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {gameLog.map((g) => {
+                    const url = boxScoreHref(g.date, g.gameId);
+                    return (
+                      // The date is the real link (keyboard, new tab); the rest of the row clicks through too.
+                      <tr
+                        key={g.gameId}
+                        className={styles.linkRow}
+                        title="Open box score"
+                        onClick={(e) => {
+                          if (!(e.target as Element).closest("a")) openBoxScore(e, url);
+                        }}
+                      >
+                        <td>
+                          <Link
+                            href={url}
+                            className={styles.gameLink}
+                            onClick={(e) => {
+                              // Let modified clicks open a new tab as usual.
+                              if (!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) openBoxScore(e, url);
+                            }}
+                          >
+                            {fmtGameDate(g.date)}
+                          </Link>
+                        </td>
+                        <td>{fmtOpponent(g.opponentAbbr, g.home, g.result)}</td>
+                        <td className={styles.n}>{fmtInt(g.min)}</td>
+                        <td className={styles.n}>
+                          {g.fgm}-{g.fga}
+                        </td>
+                        <td className={styles.n}>
+                          {g.ftm}-{g.fta}
+                        </td>
+                        <td className={styles.n}>{g.fg3m}</td>
+                        <td className={`${styles.n} ${styles.key}`}>{g.pts}</td>
+                        <td className={styles.n}>{g.reb}</td>
+                        <td className={styles.n}>{g.ast}</td>
+                        <td className={styles.n}>{g.stl}</td>
+                        <td className={styles.n}>{g.blk}</td>
+                        <td className={styles.n}>{g.tov}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
-      <section className={`${styles.section} ${styles.lastSection}`} aria-labelledby="past-seasons-heading">
-        <h3 id="past-seasons-heading" className={styles.h3}>
-          Past seasons
-        </h3>
-        {pastSeasons.length === 0 ? (
-          <p className={styles.empty}>No past seasons on record.</p>
-        ) : (
-          <div className={styles.scroll}>
-            <table className={`${styles.table} ${styles.seasonTable}`}>
-              <colgroup>
-                <col className={styles.cSeason} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Season</th>
-                  {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (
-                    <th key={c} scope="col" className={styles.n}>
-                      {c}
-                    </th>
+        <section className={styles.section} aria-labelledby="past-seasons-heading">
+          <h3 id="past-seasons-heading" className={styles.h3}>
+            Past seasons
+          </h3>
+          {pastSeasons.length === 0 ? (
+            <p className={styles.empty}>No past seasons on record.</p>
+          ) : (
+            <div className={styles.scroll}>
+              <table className={`${styles.table} ${styles.seasonTable}`}>
+                <colgroup>
+                  <col className={styles.cSeason} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Season</th>
+                    {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (
+                      <th key={c} scope="col" className={styles.n}>
+                        {c}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pastSeasons.map((s) => (
+                    <SeasonLine key={s.season} s={s} />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pastSeasons.map((s) => (
-                  <SeasonLine key={s.season} s={s} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
     </>
   );
 }
