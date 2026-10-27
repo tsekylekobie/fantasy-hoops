@@ -392,8 +392,19 @@ a.arw:hover,
   color: var(--ink);
 }
 
-.table thead th.srt::after {
-  content: " ▾";
+/* The caret sits before the label, as on Players, so the narrow column never wraps it. */
+.table thead th.srt {
+  white-space: nowrap;
+}
+
+.table thead th.srt::before {
+  content: "▼";
+  display: inline-block;
+  width: 9px;
+  margin-right: 2px;
+  font-size: 8px;
+  text-align: center;
+  vertical-align: 1px;
   color: var(--accent);
 }
 
@@ -415,10 +426,19 @@ a.arw:hover,
   width: 52px;
 }
 
-/* Daily rank by Value, after the Value column. */
-.rk {
+/* Daily rank by Value, the first column, left of the player's name. */
+.table .rk {
+  box-sizing: border-box;
+  width: 60px;
+  min-width: 60px;
+  padding-right: 10px;
+  text-align: right;
   color: var(--ink-subtle);
   font-weight: 600;
+}
+
+.table thead th.rk {
+  text-align: right;
 }
 
 .n small,
@@ -552,7 +572,7 @@ tr.out {
   line-height: 1.5;
 }
 
-/* Phones: the player column stays put while the stats scroll. */
+/* Phones: the rank and player columns stay put while the stats scroll. */
 @media (max-width: 640px) {
   .page {
     padding: 8px 16px 24px;
@@ -567,20 +587,28 @@ tr.out {
     margin-left: 0;
   }
 
+  .table .rk,
   .table .pl {
     position: sticky;
     left: 0;
     z-index: 1;
     background: var(--surface);
+  }
+
+  .table .pl {
+    left: 60px;
     min-width: 150px;
     max-width: 150px;
   }
 
+  .table thead .rk,
+  .table tfoot .rk,
   .table thead .pl,
   .table tfoot .pl {
     background: var(--surface-muted);
   }
 
+  tr.mine .rk,
   tr.mine .pl {
     background: var(--live-row);
   }
