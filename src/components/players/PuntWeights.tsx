@@ -8,15 +8,19 @@ const LABELS: Record<Category, string> = {
   fgPct: "FG%", ftPct: "FT%", fg3m: "3PM", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", tov: "TO",
 };
 
-/** Sliders move in tenths. Defaults off the grid (TO's 0.25) stay until moved. */
+/** Sliders move in tenths. Weights off the grid (saved before TO's default became 0.3, or from a URL) stay until moved. */
 const STEP = 0.1;
 const CACHE_KEY = "fantasy-hoops:punt-weights";
 
-/** This browser's copy of the weights; null when there is none, it's unreadable or storage is blocked. */
+/** The defaults before TO moved to 0.3. A cached copy of exactly these was never customized (see migration 0016). */
+const OLD_DEFAULT_WEIGHTS: CategoryWeights = { ...DEFAULT_WEIGHTS, tov: 0.25 };
+
+/** This browser's copy of the weights; null when there is none, it's the old defaults, it's unreadable or storage is blocked. */
 export function readCachedWeights(): CategoryWeights | null {
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
-    return raw ? toWeights(JSON.parse(raw)) : null;
+    const w = raw ? toWeights(JSON.parse(raw)) : null;
+    return w && CATEGORIES.every((c) => w[c] === OLD_DEFAULT_WEIGHTS[c]) ? null : w;
   } catch {
     return null;
   }
@@ -30,7 +34,7 @@ export function writeCachedWeights(w: CategoryWeights): void {
   }
 }
 
-/** "1.0", "0.3", and "0.25" for the TO default. */
+/** "1.0", "0.3", and "0.25" for a weight off the tenths. */
 function fmtWeight(w: number): string {
   return Number.isInteger(Math.round(w * 100) / 10) ? w.toFixed(1) : w.toFixed(2);
 }
@@ -39,7 +43,7 @@ export function isDefaultWeights(w: CategoryWeights): boolean {
   return CATEGORIES.every((c) => w[c] === DEFAULT_WEIGHTS[c]);
 }
 
-/** "1,1,1,1,1,1,1,1,0.25" for GET /api/players?weights= */
+/** "1,1,1,1,1,1,1,1,0.3" for GET /api/players?weights= */
 export function weightsParam(w: CategoryWeights): string {
   return CATEGORIES.map((c) => String(w[c])).join(",");
 }
@@ -74,7 +78,7 @@ export default function PuntWeights({ weights, onChange, signedIn, saveError }: 
               aria-valuetext={weights[c] === 0 ? "0, ignored" : fmtWeight(weights[c])}
               onChange={(e) => onChange({ ...weights, [c]: Math.round(Number(e.target.value) * 10) / 10 })}
               onKeyDown={(e) => {
-                // Off the grid (TO's 0.25), the browser would snap to 0.3 before stepping: step to the neighbor instead.
+                // Off the grid (e.g. an older saved 0.25), the browser would snap to 0.3 before stepping: step to the neighbor instead.
                 const tenths = weights[c] * 10;
                 const dir = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
                 if (dir === 0 || Math.abs(tenths - Math.round(tenths)) < 1e-9) return;
@@ -89,7 +93,7 @@ export default function PuntWeights({ weights, onChange, signedIn, saveError }: 
         <span className={saveError ? styles.error : undefined} aria-live="polite">
           {saveError
             ? `Couldn’t save: ${saveError}`
-            : `0 ignores a category, 1 is the default (TO counts 0.25). ${signedIn ? "Saved to your account and this browser." : "Saved in this browser; sign in to keep them on every device."}`}
+            : `0 ignores a category, 1 is the default (TO counts 0.3). ${signedIn ? "Saved to your account and this browser." : "Saved in this browser; sign in to keep them on every device."}`}
         </span>
         <button
           type="button"

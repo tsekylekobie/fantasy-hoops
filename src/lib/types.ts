@@ -62,9 +62,9 @@ export type Category = (typeof CATEGORIES)[number];
  */
 export type CategoryWeights = Record<Category, number>;
 export const MAX_WEIGHT = 2;
-/** Turnovers count a quarter by default. Reset goes back to these. */
+/** Turnovers count 0.3 by default (on the sliders' tenths). Reset goes back to these. */
 export const DEFAULT_WEIGHTS: CategoryWeights = {
-  fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 0.25,
+  fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 0.3,
 };
 
 /** GET /api/me/weights (defaults when signed out or never saved); PUT the same shape to save (signed in). */
@@ -129,7 +129,7 @@ export interface PlayerUpcomingGame {
 
 /**
  * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&plays=&waivers=any&page=1&perPage=50
- *   &weights=1,1,1,1,1,1,1,1,0.25  (one per CATEGORIES entry, in order; omitted = DEFAULT_WEIGHTS)
+ *   &weights=1,1,1,1,1,1,1,1,0.3  (one per CATEGORIES entry, in order; omitted = DEFAULT_WEIGHTS)
  * GP, stats, value and rank all cover `range`; value and rank use `weights`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */

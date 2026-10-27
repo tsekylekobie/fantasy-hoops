@@ -72,7 +72,7 @@ export function toWeights(value: unknown): CategoryWeights | null {
   return out;
 }
 
-/** "?weights=1,1,1,1,1,1,1,1,0.25": one number per CATEGORIES entry, in order. Omitted = DEFAULT_WEIGHTS. */
+/** "?weights=1,1,1,1,1,1,1,1,0.3": one number per CATEGORIES entry, in order. Omitted = DEFAULT_WEIGHTS. */
 function parseWeights(params: URLSearchParams): CategoryWeights {
   const raw = params.get("weights")?.trim();
   if (!raw) return { ...DEFAULT_WEIGHTS };
