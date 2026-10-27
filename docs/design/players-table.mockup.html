@@ -73,6 +73,10 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 .add.w{background:#fff;color:#C2410C;border:1px solid #C2410C}
 .ft{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px;color:#4A4F57;flex-wrap:wrap;gap:12px}
 .ft button{height:44px;padding:0 18px;border:1px solid #CFC9BD;border-radius:10px;background:#fff;font:500 13px Inter,sans-serif;color:#16181D;margin-left:8px}
+.sels{display:inline-flex;flex-wrap:wrap;gap:8px}
+.sel{height:44px;padding:0 14px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;font:500 13px Inter,sans-serif;text-transform:none;letter-spacing:0;cursor:pointer}
+.inj{font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;letter-spacing:.02em}
+.inj.dtd{background:#FEF3C7;color:#92400E}.inj.out{background:#FEE2E2;color:#991B1B}
 </style>
 </helmet>
 <div class="pg"><div class="in">
@@ -94,14 +98,15 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 <div class="wgrid">
 <sc-for list="{{weights}}" as="w" hint-placeholder-count="9"><label class="cat"><span class="hd2">{{w.label}}<b>{{w.text}}</b></span><input type="range" min="0" max="1" step="0.1" value="{{w.v}}" aria-label="{{w.aria}}" onInput="{{w.set}}"></label></sc-for>
 </div>
-<div class="pfoot"><span>0 ignores a category, 1 is the default (TO counts 0.25). Saved to your account and this browser.</span><button onClick="{{resetW}}" disabled="{{isDefault}}">Reset to defaults</button></div>
+<div class="pfoot"><span>0 ignores a category, 1 is the default (TO counts 0.3). Saved to your account and this browser.</span><button onClick="{{resetW}}" disabled="{{isDefault}}">Reset to defaults</button></div>
 </section>
 </sc-if>
 <div class="flt">
-<button class="ftog" aria-expanded="{{showF}}" onClick="{{flipF}}"><span class="chev" aria-hidden="true"></span>Filters<sc-if value="{{hideF}}" hint-placeholder-val="{{ true }}"><small>All players · All positions · Plays any day · Any waiver status</small></sc-if></button>
+<button class="ftog" aria-expanded="{{showF}}" onClick="{{flipF}}"><span class="chev" aria-hidden="true"></span>Filters<sc-if value="{{hideF}}" hint-placeholder-val="{{ true }}"><small>{{summary}}</small></sc-if></button>
 <sc-if value="{{showF}}" hint-placeholder-val="{{ false }}">
 <div class="fpanel">
-<span class="fgrp">Players<span class="seg"><button aria-pressed="false">Free agents</button><button aria-pressed="true">All players</button></span></span>
+<span class="fgrp">Players<span class="seg"><button aria-pressed="{{faOn}}" onClick="{{pickFa}}">Free agents</button><button aria-pressed="{{allOn}}" onClick="{{pickAll}}">All players</button></span></span>
+<span class="fgrp">Team<span class="sels"><select class="sel" aria-label="Fantasy team" value="{{team}}" onChange="{{pickTeam}}"><option value="">Any fantasy team</option><option value="Back Door Cuts">Back Door Cuts</option><option value="Bench Mob">Bench Mob</option><option value="Corner Three Club">Corner Three Club</option><option value="Euro Steppers">Euro Steppers</option><option value="Fast Break Fund">Fast Break Fund</option><option value="Free Throw Line Dancers">Free Throw Line Dancers</option><option value="Full Court Press">Full Court Press</option><option value="Glass Cleaners">Glass Cleaners</option><option value="Moving Screens">Moving Screens</option><option value="Paint Protectors">Paint Protectors</option><option value="Pick &amp; Pop Culture">Pick &amp; Pop Culture</option><option value="Splash Zone">Splash Zone</option></select><select class="sel" aria-label="NBA team" value="{{nba}}" onChange="{{pickNba}}"><option value="">Any NBA team</option><option value="ATL">ATL</option><option value="BOS">BOS</option><option value="BKN">BKN</option><option value="CHA">CHA</option><option value="CHI">CHI</option><option value="CLE">CLE</option><option value="DAL">DAL</option><option value="DEN">DEN</option><option value="DET">DET</option><option value="GSW">GSW</option><option value="HOU">HOU</option><option value="IND">IND</option><option value="LAC">LAC</option><option value="LAL">LAL</option><option value="MEM">MEM</option><option value="MIA">MIA</option><option value="MIL">MIL</option><option value="MIN">MIN</option><option value="NOP">NOP</option><option value="NYK">NYK</option><option value="OKC">OKC</option><option value="ORL">ORL</option><option value="PHI">PHI</option><option value="PHX">PHX</option><option value="POR">POR</option><option value="SAC">SAC</option><option value="SAS">SAS</option><option value="TOR">TOR</option><option value="UTA">UTA</option><option value="WAS">WAS</option></select></span></span>
 <span class="fgrp">Position<span class="seg"><button aria-pressed="true">All positions</button><button aria-pressed="false">G</button><button aria-pressed="false">F</button><button aria-pressed="false">C</button></span></span>
 <span class="fgrp">Plays<span class="seg"><button aria-pressed="true">Any day</button><button aria-pressed="false">Today</button><button aria-pressed="false">Tomorrow</button><button aria-pressed="false">In 2 days</button></span></span>
 <span class="fgrp">Waivers<span class="seg"><button aria-pressed="true">Any</button><button aria-pressed="false">On waivers</button><button aria-pressed="false">Clears by tomorrow</button></span></span>
@@ -109,36 +114,38 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 </sc-if>
 </div>
 <div class="card">
-<div class="g hd"><span title="9CAT rank">#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span class="n srt">Value</span><span class="n">Owner</span></div>
+<div class="g hd"><span title="9CAT rank">#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span class="n srt" title="9CAT value: average of the nine category z-scores, weighted by your punt weights. 0 is an average rostered player">Value</span><span class="n">Owner</span></div>
 <sc-for list="{{rows}}" as="p" hint-placeholder-count="10">
-<div class="g r"><span>{{p.rank}}</span><span class="pl"><i class="av2">{{p.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{p.name}}</a><span class="tm">{{p.tm}}</span><span class="up">{{p.up}}</span></span></span><span class="n">{{p.gp}}</span><span class="n">{{p.min}}</span><span class="n">{{p.fg}}<small>{{p.fgma}}</small></span><span class="n">{{p.ft}}<small>{{p.ftma}}</small></span><span class="n">{{p.s0}}</span><span class="n k">{{p.s1}}</span><span class="n">{{p.s2}}</span><span class="n">{{p.s3}}</span><span class="n">{{p.s4}}</span><span class="n">{{p.s5}}</span><span class="n">{{p.s6}}</span><span class="n val">{{p.value}}</span>
+<div class="g r"><span>{{p.rank}}</span><span class="pl"><i class="av2">{{p.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{p.name}}</a><span class="tm">{{p.tm}}<sc-if value="{{p.hasInj}}" hint-placeholder-val="{{ false }}"><span class="{{p.injCls}}">{{p.inj}}</span></sc-if></span><span class="up">{{p.up}}</span></span></span><span class="n">{{p.gp}}</span><span class="n">{{p.min}}</span><span class="n">{{p.fg}}<small>{{p.fgma}}</small></span><span class="n">{{p.ft}}<small>{{p.ftma}}</small></span><span class="n">{{p.s0}}</span><span class="n k">{{p.s1}}</span><span class="n">{{p.s2}}</span><span class="n">{{p.s3}}</span><span class="n">{{p.s4}}</span><span class="n">{{p.s5}}</span><span class="n">{{p.s6}}</span><span class="n val">{{p.value}}</span>
 <span class="own"><sc-if value="{{p.isAdd}}" hint-placeholder-val="{{ false }}"><a class="add" href="claim-player.mockup.html">Add</a></sc-if><sc-if value="{{p.isClaim}}" hint-placeholder-val="{{ false }}"><a class="add w" href="claim-player.mockup.html" title="On waivers until Sun, Oct 25 · 3:00 AM ET">Claim (Oct 25)</a></sc-if><sc-if value="{{p.isMine}}" hint-placeholder-val="{{ false }}"><span class="mine">BDC</span></sc-if><sc-if value="{{p.isOther}}" hint-placeholder-val="{{ true }}">{{p.owner}}</sc-if></span></div>
 </sc-for>
 </div>
-<div class="ft"><span>Showing 1–10 of 540 players · Sorted by Value (9CAT, with your punt weights) · Click any column to sort</span><span><button disabled>Previous</button><button>Next</button></span></div>
+<div class="ft"><span>Showing 1–10 of 540 players · Value is the weighted average of the nine category z-scores; 0 is an average rostered player · Click any column to sort</span><span><button disabled>Previous</button><button>Next</button></span></div>
 </div></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
-// name, team · pos, upcoming games, GP, MIN, FGM, FGA, FTM, FTA, 3PM, PTS, REB, AST, STL, BLK, TO, value, owner
+// name, team · pos, upcoming games, GP, MIN, FGM, FGA, FTM, FTA, 3PM, PTS, REB, AST, STL, BLK, TO, value, owner, [injury status]
 var P=[
-['Marcus Delaney','BOS · SG/SF','Today vs ORL 7:30 PM · Tomorrow @ CHI 8:00 PM',3,35.0,9.7,19.7,6.0,7.0,3.0,29.0,6.0,5.3,1.3,0.7,2.7,9.84,'PPC'],
-['Tomas Veric','DEN · C','Today @ UTA 9:00 PM',3,33.8,9.1,14.9,3.8,5.1,0.4,24.1,12.3,8.9,1.2,1.1,3.4,9.12,'GLC'],
-['Jalen Okoro','OKC · PG','Today vs SAC 8:00 PM · Tue @ DAL 8:30 PM',3,34.6,9.9,19.8,6.6,7.3,2.4,27.8,4.4,7.2,1.8,0.4,2.6,8.97,'mine'],
-['Devin Park','MIN · PF/C','Tomorrow vs PHX 8:00 PM',2,32.1,7.7,14.1,4.1,5.1,1.8,21.3,10.8,3.1,1.0,2.2,1.9,8.40,'add'],
-['Andre Whitlock','PHX · SG','Today @ LAL 10:30 PM · Tomorrow @ MIN 8:00 PM',3,36.0,9.0,19.7,4.7,5.4,3.9,26.6,4.9,4.8,1.1,0.3,2.9,7.71,'mine'],
-['Luis Ferrer','MIA · SF/PF','Today @ TOR 7:30 PM',2,31.4,7.3,13.9,3.1,4.4,1.2,18.9,8.2,4.6,1.6,1.4,1.8,7.25,'mine'],
-['Kofi Mensah','MEM · C','Tomorrow vs NOP 8:00 PM',3,30.5,6.2,9.3,1.8,3.0,0.0,14.2,11.5,2.1,0.8,2.9,1.4,6.88,'claim'],
-['Ryan Calloway','NYK · PG','Today vs BKN 7:30 PM',3,33.0,7.0,15.9,3.7,4.0,2.9,19.7,3.2,8.1,1.3,0.2,2.1,6.52,'mine'],
-['Isaiah Brandt','CLE · PF','Today vs DET 7:00 PM · Tue vs BOS 7:00 PM',3,28.9,6.0,11.7,2.9,3.8,1.5,16.4,7.9,2.8,1.4,1.0,1.5,6.03,'mine'],
-['Nico Santoro','LAL · SF','Today vs PHX 10:30 PM',2,32.7,7.3,15.3,3.5,4.2,2.1,20.2,5.5,4.0,1.5,0.5,2.3,5.77,'CTC']
+['Marcus Delaney','BOS · SG/SF','Today vs ORL 7:30 PM · Tomorrow @ CHI 8:00 PM',3,35.0,9.7,19.7,6.0,7.0,3.0,29.0,6.0,5.3,1.3,0.7,2.7,1.12,'PPC'],
+['Tomas Veric','DEN · C','Today @ UTA 9:00 PM',3,33.8,9.1,14.9,3.8,5.1,0.4,24.1,12.3,8.9,1.2,1.1,3.4,1.05,'GLC',['DTD']],
+['Jalen Okoro','OKC · PG','Today vs SAC 8:00 PM · Tue @ DAL 8:30 PM',3,34.6,9.9,19.8,6.6,7.3,2.4,27.8,4.4,7.2,1.8,0.4,2.6,0.98,'mine'],
+['Devin Park','MIN · PF/C','Tomorrow vs PHX 8:00 PM',2,32.1,7.7,14.1,4.1,5.1,1.8,21.3,10.8,3.1,1.0,2.2,1.9,0.93,'add',['Out']],
+['Andre Whitlock','PHX · SG','Today @ LAL 10:30 PM · Tomorrow @ MIN 8:00 PM',3,36.0,9.0,19.7,4.7,5.4,3.9,26.6,4.9,4.8,1.1,0.3,2.9,0.86,'mine'],
+['Luis Ferrer','MIA · SF/PF','Today @ TOR 7:30 PM',2,31.4,7.3,13.9,3.1,4.4,1.2,18.9,8.2,4.6,1.6,1.4,1.8,0.81,'mine'],
+['Kofi Mensah','MEM · C','Tomorrow vs NOP 8:00 PM',3,30.5,6.2,9.3,1.8,3.0,0.0,14.2,11.5,2.1,0.8,2.9,1.4,0.76,'claim'],
+['Ryan Calloway','NYK · PG','Today vs BKN 7:30 PM',3,33.0,7.0,15.9,3.7,4.0,2.9,19.7,3.2,8.1,1.3,0.2,2.1,0.72,'mine'],
+['Isaiah Brandt','CLE · PF','Today vs DET 7:00 PM · Tue vs BOS 7:00 PM',3,28.9,6.0,11.7,2.9,3.8,1.5,16.4,7.9,2.8,1.4,1.0,1.5,0.67,'mine'],
+['Nico Santoro','LAL · SF','Today vs PHX 10:30 PM',2,32.7,7.3,15.3,3.5,4.2,2.1,20.2,5.5,4.0,1.5,0.5,2.3,0.64,'CTC']
 ];
-var CATS=[['FG%','fg',1],['FT%','ft',1],['3PM','3pm',1],['PTS','pts',1],['REB','reb',1],['AST','ast',1],['STL','stl',1],['BLK','blk',1],['TO','to',0.25]];
+var CATS=[['FG%','fg',1],['FT%','ft',1],['3PM','3pm',1],['PTS','pts',1],['REB','reb',1],['AST','ast',1],['STL','stl',1],['BLK','blk',1],['TO','to',0.3]];
 function pct(m,a){return (m/a).toFixed(3).replace(/^0/,'');}
 function f1(x){return x.toFixed(1);}
 class Component extends DCLogic {
 renderVals(){
 var self=this;var s=this.state||{};
 var range=s.range||'season';var mode=s.mode||'avg';var showW=s.showW===undefined?true:s.showW;var showF=!!s.showF;
+var scope=s.scope||'all';var team=s.team||'';var nba=s.nba||'';
+var tl=[team,nba].filter(Boolean);
 var w=s.w||CATS.map(function(c){return c[2];});
 var isDefault=w.every(function(v,i){return v===CATS[i][2];});
 var tot=mode==='total';
@@ -148,14 +155,20 @@ title:range==='last14'?'Last 14 days':'Season averages',last14:range==='last14',
 ranges:[['season','Season'],['last14','Last 14 days']].map(function(o){return {label:o[1],on:o[0]===range?'true':'false',pick:function(){self.setState({range:o[0]});}};}),
 modes:[['avg','Per game'],['total','Totals']].map(function(o){return {label:o[1],on:o[0]===mode?'true':'false',pick:function(){self.setState({mode:o[0]});}};}),
 showW:showW,flipW:function(){self.setState({showW:!showW});},pwLabel:'Punt weights'+(isDefault?'':' · custom'),
-showF:showF,hideF:!showF,flipF:function(){self.setState({showF:!showF});},
-weights:CATS.map(function(c,i){return {label:c[0],v:w[i],text:w[i]===0?'Punt':(i===8&&w[i]===0.25?'0.25':w[i].toFixed(1)),aria:c[0]+' weight',
+showF:showF,hideF:!showF,
+summary:[scope==='all'?'All players':'Free agents',tl.length?tl.join(' · '):'Any team','All positions','Plays any day','Any waiver status'].join(' · '),
+faOn:scope==='fa'?'true':'false',allOn:scope==='all'?'true':'false',team:team,nba:nba,
+pickFa:function(){self.setState({scope:'fa',team:''});},pickAll:function(){self.setState({scope:'all'});},
+pickTeam:function(e){var v=e.target.value;self.setState(v?{team:v,scope:'all'}:{team:''});},
+pickNba:function(e){self.setState({nba:e.target.value});},flipF:function(){self.setState({showF:!showF});},
+weights:CATS.map(function(c,i){return {label:c[0],v:w[i],text:w[i]===0?'Punt':w[i].toFixed(1),aria:c[0]+' weight',
 set:function(e){var nw=w.slice();nw[i]=Math.round(Number(e.target.value)*10)/10;self.setState({w:nw});}};}),
 isDefault:isDefault,resetW:function(){self.setState({w:null});},
 rows:P.map(function(p,i){var gp=p[3];return {rank:i+1,name:p[0],ini:p[0].split(' ').map(function(x){return x[0];}).join(''),tm:p[1],up:p[2],gp:gp,min:v(p[4],gp),
 fg:pct(p[5],p[6]),fgma:tot?Math.round(p[5]*gp)+'/'+Math.round(p[6]*gp):f1(p[5])+'/'+f1(p[6]),
 ft:pct(p[7],p[8]),ftma:tot?Math.round(p[7]*gp)+'/'+Math.round(p[8]*gp):f1(p[7])+'/'+f1(p[8]),
 s0:v(p[9],gp),s1:v(p[10],gp),s2:v(p[11],gp),s3:v(p[12],gp),s4:v(p[13],gp),s5:v(p[14],gp),s6:v(p[15],gp),value:p[16].toFixed(2),
+hasInj:!!p[18],inj:p[18]?p[18][0]:'',injCls:p[18]&&p[18][0]==='Out'?'inj out':'inj dtd',
 isAdd:p[17]==='add',isClaim:p[17]==='claim',isMine:p[17]==='mine',isOther:['add','claim','mine'].indexOf(p[17])<0,owner:p[17]};})
 };
 }

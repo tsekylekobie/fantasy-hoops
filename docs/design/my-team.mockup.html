@@ -115,6 +115,8 @@ a.sc:hover{border-color:#C2410C;color:#16181D}
 .cl.done{color:#4A4F57}
 .fail{font-size:12px;font-weight:600;color:#991B1B;background:#FEE2E2;border-radius:999px;padding:3px 10px}
 .pg{min-height:1800px}
+.r.live{background:#FFF4EA}
+.gm.lv{color:#C2410C;font-weight:600}
 </style>
 </helmet>
 <div class="pg"><div class="in">
@@ -159,7 +161,7 @@ a.sc:hover{border-color:#C2410C;color:#16181D}
 </sc-if>
 </sc-for>
 </div>
-<p class="foot">Season per-game averages (the app shows the selected day's box score, with a Starters total row). Lineup changes save right away and lock for each player at his game's tip-off. IL slots take players listed Out (league setting).</p>
+<p class="foot">Season per-game averages (the app shows the selected day's box score, with a Starters total row). Starters in a game that’s on now are tinted; while today’s games are live the lineup refreshes every 30 seconds and changed stats flash. Lineup changes save right away and lock for each player at his game's tip-off. IL slots take players listed Out (league setting).</p>
 <section class="card2">
 <h3>Trades</h3>
 <div class="tr"><div class="who"><b>Corner Three Club ⇄ Back Door Cuts<span class="chip2 rv">Offered</span></b>
@@ -187,9 +189,9 @@ var BLANK=['','','','','','','','','',''];
 var P={
 ok:{n:'Jalen Okoro',t:'OKC',pos:['PG'],g:'vs SAC · 8:00 PM',s:['34.6','.501','.904','2.4','27.8','4.4','7.2','1.8','0.4','2.6']},
 aw:{n:'Andre Whitlock',t:'PHX',pos:['SG'],g:'@ LAL · 10:30 PM',s:['36.0','.458','.867','3.9','26.6','4.9','4.8','1.1','0.3','2.9']},
-rc:{n:'Ryan Calloway',t:'NYK',pos:['PG'],g:'vs BKN · 7:30 PM',s:['33.0','.441','.925','2.9','19.7','3.2','8.1','1.3','0.2','2.1']},
+rc:{n:'Ryan Calloway',t:'NYK',pos:['PG'],g:'vs BKN · 3rd Qtr · 71–66',live:true,s:['33.0','.441','.925','2.9','19.7','3.2','8.1','1.3','0.2','2.1']},
 lf:{n:'Luis Ferrer',t:'MIA',pos:['SF','PF'],g:'@ TOR · 7:30 PM',s:['31.4','.527','.712','1.2','18.9','8.2','4.6','1.6','1.4','1.8']},
-ib:{n:'Isaiah Brandt',t:'CLE',pos:['PF'],g:'vs DET · 7:00 PM',s:['28.9','.513','.768','1.5','16.4','7.9','2.8','1.4','1.0','1.5']},
+ib:{n:'Isaiah Brandt',t:'CLE',pos:['PF'],g:'vs DET · 4th Qtr · 96–90',live:true,s:['28.9','.513','.768','1.5','16.4','7.9','2.8','1.4','1.0','1.5']},
 tl:{n:'Theo Lindqvist',t:'SAS',pos:['SF','PF'],g:'vs DAL · 8:30 PM',s:['30.2','.489','.790','1.9','15.8','6.7','3.0','1.2','0.8','1.6']},
 ba:{n:'Bram Adeyemi',t:'UTA',pos:['C'],g:null,s:['29.4','.602','.688','0.1','13.6','10.9','1.9','0.7','1.9','1.7']},
 so:{n:'Silas Ortega',t:'CHA',pos:['PF','C'],g:'@ ATL · 7:30 PM',s:['27.7','.554','.731','0.8','14.1','9.4','2.2','0.9','1.6','1.5']},
@@ -238,9 +240,9 @@ var mode='idle';
 if(sel)mode=id===sel?'sel':(canSwap(a,sel,id)?'target':'off');
 var btn=mode==='sel'?'Cancel':mode==='target'?'Move here':(p?'Move':'');
 return {isRow:true,hdr:false,slot:t,has:!!p,empty:!p,name:p?p.n:'',ini:p?p.n.split(' ').map(function(w){return w[0];}).join(''):'',
-rem:p?REM[pid]:'',remCls:p?'gr g'+REM[pid].charAt(0):'',meta:p?p.t+' · '+p.pos.join('/'):'',game:p?(p.g||'No game'):'',gcls:p&&!p.g?(starter?'gm ng':'gm bn'):'gm',
+rem:p?REM[pid]:'',remCls:p?'gr g'+REM[pid].charAt(0):'',meta:p?p.t+' · '+p.pos.join('/'):'',game:p?(p.g||'No game'):'',gcls:p&&!p.g?(starter?'gm ng':'gm bn'):p&&p.live?'gm lv':'gm',
 hasStatus:!!(p&&p.st),status:p&&p.st?p.st:'',stCls:'st '+(p&&p.st?p.st:''),
-stats:(p?p.s:BLANK).map(function(v){return {v:v};}),cls:'g r '+mode,btn:btn,
+stats:(p?p.s:BLANK).map(function(v){return {v:v};}),cls:'g r '+mode+(starter&&p&&p.live&&mode==='idle'?' live':''),btn:btn,
 bc:mode==='sel'?'mvb cx':mode==='target'?'mvb go':'mvb',disabled:mode==='off'||(!sel&&!p),
 aria:(btn||'Move')+' '+(p?p.n:'empty '+t+' slot'),click:function(){self.tap(id);}};
 }

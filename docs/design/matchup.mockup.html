@@ -90,6 +90,10 @@ a{color:#C2410C}a:hover{color:#7C2D12}
 .pl span.ng{color:#9A3412}
 .dnp{color:#5A5F68;font-size:11px;font-weight:600;text-align:right;grid-column:span 9}
 .thm{width:44px;height:44px;box-sizing:border-box;border:1px solid #CFC9BD;border-radius:999px;background:#fff;color:#16181D;display:flex;align-items:center;justify-content:center;cursor:pointer}.acct{width:44px;height:44px;box-sizing:border-box;padding:4px;border:1px solid #CFC9BD;border-radius:999px;background:#fff;cursor:pointer}.acct i{width:34px;height:34px;border-radius:50%;background:#16181D;color:#fff;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center}
+.g.p.live{background:#FFF4EA}
+@keyframes fla{from{box-shadow:inset 0 0 0 100vmax #FDE68A}to{box-shadow:inset 0 0 0 100vmax transparent}}
+@keyframes flb{from{box-shadow:inset 0 0 0 100vmax #FDE68A}to{box-shadow:inset 0 0 0 100vmax transparent}}
+.fa{animation:fla 1.8s ease-out}.fb{animation:flb 1.8s ease-out}
 </style>
 </helmet>
 <div class="pg"><div class="in">
@@ -128,14 +132,14 @@ a{color:#C2410C}a:hover{color:#7C2D12}
 <sc-for list="{{r.rows}}" as="p" hint-placeholder-count="15">
 <div class="{{p.cls}}"><span><span class="slot">{{p.slot}}</span></span><span class="pl"><b>{{p.name}}</b><span class="{{p.subCls}}">{{p.sub}}</span></span>
 <sc-if value="{{p.dnp}}" hint-placeholder-val="{{ false }}"><span class="dnp">DNP</span></sc-if>
-<sc-for list="{{p.stats}}" as="s" hint-placeholder-count="9"><span class="n">{{s.v}}<small>{{s.sub}}</small></span></sc-for>
+<sc-for list="{{p.stats}}" as="s" hint-placeholder-count="9"><span class="{{s.cls}}">{{s.v}}<small>{{s.sub}}</small></span></sc-for>
 </div>
 </sc-for>
-<div class="g tot"><span></span><span>Starters</span><sc-for list="{{r.tot}}" as="s" hint-placeholder-count="9"><span class="n">{{s.v}}</span></sc-for></div>
+<div class="g tot"><span></span><span>Starters</span><sc-for list="{{r.tot}}" as="s" hint-placeholder-count="9"><span class="{{s.cls}}">{{s.v}}</span></sc-for></div>
 </div>
 </sc-for>
 </div>
-<p class="foot" style="padding-left:0">Bench and IL rows are greyed out: their games don't count. Week shows each player's totals from the days he started.</p>
+<p class="foot" style="padding-left:0">Bench and IL rows are greyed out: their games don't count. Week shows each player's totals from the days he started. Starters in a game that’s on now are tinted; while games are live the page updates every 30 seconds and a stat that changed flashes.</p>
 </div></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1600}}'>
@@ -171,7 +175,9 @@ var pending=day===6&&row.sub.indexOf('PM')>=0;
 if(out||noGame||pending){rows.push(row);continue;}
 if(day>0&&r()<.06){row.dnp=true;rows.push(row);continue;}
 var l=line(r,day===0?gp:1);l.pts=l.fgm*2+l.fg3m+l.ftm;
+if(day===6&&starter&&row.sub.indexOf('3rd Qtr')>=0){row.cls='g p live';row.live=true;}
 row.stats=[{v:pct(l.fgm,l.fga),sub:l.fgm+'/'+l.fga},{v:pct(l.ftm,l.fta),sub:l.ftm+'/'+l.fta},{v:l.fg3m},{v:l.pts},{v:l.reb},{v:l.ast},{v:l.stl},{v:l.blk},{v:l.tov}];
+row.stats.forEach(function(s){s.cls='n';});
 if(starter)for(var k in tot)tot[k]+=l[k];
 rows.push(row);}
 return {rows:rows,tot:tot};
@@ -181,20 +187,27 @@ function val(t,k){return k==='fg'?(t.fga?t.fgm/t.fga:-1):k==='ft'?(t.fta?t.ftm/t
 function cmp(a,b){var s=[0,0,0];var res=KEYS.map(function(k){var x=val(a,k),y=val(b,k);var d=k==='tov'?y-x:x-y;if(k==='fg'||k==='ft'){x=Math.round(x*1000);y=Math.round(y*1000);d=x-y;}var o=d>0?0:d<0?1:2;s[o]++;return o;});return {res:res,s:s};}
 function cells(t){return [{v:pct(t.fgm,t.fga),sub:t.fgm+'/'+t.fga},{v:pct(t.ftm,t.fta),sub:t.ftm+'/'+t.fta},{v:t.fg3m},{v:t.pts},{v:t.reb},{v:t.ast},{v:t.stl},{v:t.blk},{v:t.tov}];}
 class Component extends DCLogic {
-constructor(p){super(p);this.state={pair:0,day:6};}
+constructor(p){super(p);this.state={pair:0,day:6,tick:0};}
+// Stands in for the 30-second live refresh: a live starter scores, and the changed cells flash.
+componentDidMount(){var self=this;this.timer=setInterval(function(){if(self.state.tick>=12)return clearInterval(self.timer);self.setState({tick:self.state.tick+1});},4000);}
+componentWillUnmount(){clearInterval(this.timer);}
 renderVals(){
 var self=this;var pr=PAIRS[this.state.pair];var day=this.state.day;
 var wa=roster(pr[0],0),wb=roster(pr[1],0);var da=day===0?wa:roster(pr[0],day),db=day===0?wb:roster(pr[1],day);
 var c=cmp(wa.tot,wb.tot);
 function side(i,w){var played=0;w.rows.slice(0,10).forEach(function(r){var m=/(\d) GP/.exec(r.sub);if(m)played+=+m[1];});return {ab:TEAMS[i][0],name:TEAMS[i][1],gp:played+'/'+(played+4+(i%3)*2)};}
 function strip(i,w,flip){var cs=cells(w.tot);c.res.forEach(function(o,j){var win=flip?o===1:o===0;cs[j].cls=win?'n w':'n';});var s=flip?[c.s[1],c.s[0],c.s[2]]:c.s;return {name:TEAMS[i][1],cells:cs,score:s.join('–')};}
-function ros(i,d){var t=d.tot;return {name:TEAMS[i][1],hint:day===0?'Week totals':DAYS[day].label==='Today'?'Today':DAYS[day].label,rows:d.rows,tot:cells(t).map(function(x){return {v:x.v};})};}
+var tick=this.state.tick;
+function ros(i,d,bump){var t=d.tot;var fl=tick%2?'n fa':'n fb';var hit=false;
+if(bump&&day===6&&tick>0){for(var j=0;j<d.rows.length&&!hit;j++){var r=d.rows[j];if(r.live){r.stats[3]={v:r.stats[3].v+2*tick,cls:fl};hit=true;}}}
+var tc=cells(t).map(function(x){return {v:x.v,cls:'n'};});if(hit){tc[3]={v:t.pts+2*tick,cls:fl};}
+return {name:TEAMS[i][1],hint:day===0?'Week totals':DAYS[day].label==='Today'?'Today':DAYS[day].label,rows:d.rows,tot:tc};}
 return {
 a:side(pr[0],wa),b:side(pr[1],wb),mine:this.state.pair===0,score:c.s.join('–'),
 strip:[strip(pr[0],wa,false),strip(pr[1],wb,true)],
 others:PAIRS.map(function(p,i){var x=cmp(roster(p[0],0).tot,roster(p[1],0).tot);return {a:TEAMS[p[0]][1],b:TEAMS[p[1]][1],score:x.s.join('–'),cls:i===self.state.pair?'other on':'other',pick:function(){self.setState({pair:i});}};}),
 days:DAYS.map(function(d,i){return {label:d.label,sub:d.sub,cls:i===day?'day on':'day',pick:function(){self.setState({day:i});}};}),
-rosters:[ros(pr[0],da),ros(pr[1],db)]
+rosters:[ros(pr[0],da,true),ros(pr[1],db,false)]
 };
 }
 }
