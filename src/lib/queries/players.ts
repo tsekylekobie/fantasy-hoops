@@ -18,6 +18,7 @@ import type {
   PlayerRow,
   PlayerUpcomingGame,
   PlayersResponse,
+  PlayersTeamOption,
   SeasonRow,
   SortKey,
   StatMode,
@@ -127,6 +128,20 @@ const ROSTERED_SQL = `
   JOIN fantasy_teams ft ON ft.id = rp.fantasy_team_id
   WHERE rp.league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)`;
 
+/** The team filters' choices: the season league's fantasy teams and the NBA's teams, by name. */
+async function getTeamOptions(db: Pool, season: number): Promise<PlayersResponse["teamOptions"]> {
+  const [fantasy, nba] = await Promise.all([
+    db.query<PlayersTeamOption>(
+      `SELECT id::int, abbreviation, name FROM fantasy_teams
+        WHERE league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)
+        ORDER BY name`,
+      [season],
+    ),
+    db.query<PlayersTeamOption>(`SELECT id, abbreviation, coalesce(full_name, abbreviation) AS name FROM teams ORDER BY name`),
+  ]);
+  return { fantasy: fantasy.rows, nba: nba.rows };
+}
+
 async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOwner>> {
   const { rows } = await db.query<{ player_id: number; team_id: number; abbreviation: string }>(ROSTERED_SQL, [season]);
   return new Map(rows.map((r) => [r.player_id, { teamId: r.team_id, abbreviation: r.abbreviation }]));
@@ -197,11 +212,12 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     window = res.rows[0] ?? null;
   }
   // No played games yet: a null bound returns no rows for last14 either way.
-  const [{ rows }, owners, waivers, injuries] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries, teamOptions] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
     getInjuries(db),
+    getTeamOptions(db, q.season),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -216,6 +232,8 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
     .filter((r) => q.scope === "all" || !owners.has(r.player_id))
+    .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
+    .filter((r) => q.nba === null || r.team_abbr === q.nba)
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
     .filter((r) => q.plays.length === 0 || (r.team_id !== null && upcoming.has(r.team_id)))
     .filter((r) =>
@@ -267,6 +285,9 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
     plays: q.plays,
     playDates: dates,
     waivers: q.waivers,
+    team: q.team,
+    nba: q.nba,
+    teamOptions,
     weights: q.weights,
     page: q.page,
     perPage: q.perPage,

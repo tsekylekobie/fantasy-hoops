@@ -133,6 +133,13 @@ export interface PlayerUpcomingGame {
  * GP, stats, value and rank all cover `range`; value and rank use `weights`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */
+/** One choice in a Players team filter: a fantasy team (fantasy_teams.id) or an NBA team (teams.id). */
+export interface PlayersTeamOption {
+  id: number;
+  abbreviation: string;
+  name: string;
+}
+
 export interface PlayersResponse {
   season: number;
   range: StatRange;
@@ -147,6 +154,12 @@ export interface PlayersResponse {
   plays: PlayDay[];
   playDates: Record<PlayDay, string>;
   waivers: WaiverFilter;
+  /** Fantasy team filtered on (fantasy_teams.id), or null. */
+  team: number | null;
+  /** NBA team filtered on (abbreviation), or null. */
+  nba: string | null;
+  /** Choices for the team filters: the season league's fantasy teams and the NBA's, by name. */
+  teamOptions: { fantasy: PlayersTeamOption[]; nba: PlayersTeamOption[] };
   weights: CategoryWeights;
   page: number;
   perPage: number;

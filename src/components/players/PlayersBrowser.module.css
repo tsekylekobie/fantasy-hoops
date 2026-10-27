@@ -148,6 +148,33 @@
   max-width: 100%;
 }
 
+/* Team filter: a fantasy team and an NBA team, side by side. */
+.selects {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.select {
+  height: 44px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .filterLabel {
   font-size: 12px;
   font-weight: 600;
@@ -267,6 +294,14 @@
 
   .filter > [role="group"] {
     width: 100%;
+  }
+
+  .selects {
+    width: 100%;
+  }
+
+  .select {
+    flex: 1 1 140px;
   }
 
   .filter > [role="group"] > button {

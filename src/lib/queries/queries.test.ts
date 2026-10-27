@@ -111,10 +111,10 @@ test("position filter matches any letter in a combined position", () => {
 
 test("parsePlayersQuery: defaults and validation", () => {
   const d = parsePlayersQuery(new URLSearchParams(""));
-  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
-  const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20&plays=tomorrow&waivers=on"));
-  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
-  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5",
+  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", team: null, nba: null, weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
+  const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20&plays=tomorrow&waivers=on&team=7&nba=bos"));
+  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", team: 7, nba: "BOS", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
+  for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5", "team=0", "team=x", "nba=B", "nba=LA-L",
     "weights=1,1,1", "weights=1,1,1,1,1,1,1,1,2.5", "weights=1,1,1,1,1,1,1,1,-1", "weights=1,1,1,1,1,1,1,1,x"]) {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }

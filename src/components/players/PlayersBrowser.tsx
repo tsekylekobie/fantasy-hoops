@@ -62,6 +62,10 @@ interface UrlState {
   mode: StatMode;
   plays: PlayDay[];
   waivers: WaiverFilter;
+  /** Fantasy team id, or null for any. */
+  team: number | null;
+  /** NBA team abbreviation, or null for any. */
+  nba: string | null;
   sort: SortKey;
   dir: SortDir;
   page: number;
@@ -77,6 +81,8 @@ function readUrlState(params: URLSearchParams): UrlState {
   const player = Number(params.get("player"));
   const plays = (params.get("plays") ?? "").split(",");
   const waivers = params.get("waivers");
+  const team = Number(params.get("team"));
+  const nba = params.get("nba")?.toUpperCase() ?? "";
   return {
     q: params.get("q") ?? "",
     scope: params.get("scope") === "all" ? "all" : "fa",
@@ -85,6 +91,8 @@ function readUrlState(params: URLSearchParams): UrlState {
     mode: params.get("mode") === "total" ? "total" : "avg",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers: waivers === "on" || waivers === "clears" ? waivers : "any",
+    team: Number.isInteger(team) && team > 0 ? team : null,
+    nba: /^[A-Z]{2,4}$/.test(nba) ? nba : null,
     sort,
     dir: dir === "asc" || dir === "desc" ? dir : defaultSortDir(sort),
     page: Number.isInteger(page) && page > 1 ? page : 1,
@@ -102,6 +110,8 @@ function toQueryString(s: UrlState): string {
   if (s.mode !== "avg") p.set("mode", s.mode);
   if (s.plays.length > 0) p.set("plays", s.plays.join(","));
   if (s.waivers !== "any") p.set("waivers", s.waivers);
+  if (s.team !== null) p.set("team", String(s.team));
+  if (s.nba !== null) p.set("nba", s.nba);
   if (s.sort !== "value") p.set("sort", s.sort);
   if (s.dir !== defaultSortDir(s.sort)) p.set("dir", s.dir);
   if (s.page > 1) p.set("page", String(s.page));
@@ -114,10 +124,15 @@ function toQueryString(s: UrlState): string {
 const POSITION_NAMES: Record<Exclude<PositionFilter, "all">, string> = { G: "Guards", F: "Forwards", C: "Centers" };
 
 /** One phrase per folded filter, for the closed Filters button. `changed` marks a non-default pick. */
-function filterSummary(s: UrlState): { text: string; changed: boolean }[] {
+function filterSummary(s: UrlState, teams: PlayersResponse["teamOptions"] | null): { text: string; changed: boolean }[] {
   const playLabels = PLAYS.filter((o) => s.plays.includes(o.value)).map((o) => o.label.toLowerCase());
+  const teamLabels = [
+    s.team !== null ? teams?.fantasy.find((t) => t.id === s.team)?.name ?? "One team" : null,
+    s.nba,
+  ].filter((x): x is string => x !== null);
   return [
     { text: s.scope === "all" ? "All players" : "Free agents", changed: s.scope !== "fa" },
+    { text: teamLabels.length > 0 ? teamLabels.join(" · ") : "Any team", changed: teamLabels.length > 0 },
     { text: s.pos === "all" ? "All positions" : POSITION_NAMES[s.pos], changed: s.pos !== "all" },
     { text: `Plays ${playLabels.length > 0 ? playLabels.join(" or ") : "any day"}`, changed: playLabels.length > 0 },
     {
@@ -137,7 +152,7 @@ export default function PlayersBrowser() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = readUrlState(new URLSearchParams(searchParams.toString()));
-  const { q, scope, pos, range, mode, plays, waivers, sort, dir, page, player } = state;
+  const { q, scope, pos, range, mode, plays, waivers, team, nba, sort, dir, page, player } = state;
   const playsKey = plays.join(",");
 
   const navigate = useCallback(
@@ -261,6 +276,8 @@ export default function PlayersBrowser() {
       pos,
       plays: playsKey,
       waivers,
+      ...(team !== null && { team: String(team) }),
+      ...(nba !== null && { nba }),
       weights: appliedKey,
       page: String(page),
       perPage: String(PER_PAGE),
@@ -276,7 +293,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, playsKey, waivers, sort, dir, page, retryKey, movesKey, appliedKey]);
+  }, [q, scope, pos, range, mode, playsKey, waivers, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -298,6 +315,7 @@ export default function PlayersBrowser() {
   }, [navigate, router]);
 
   const data = load.data;
+  const teamOptions = data?.teamOptions ?? null;
   const total = data?.total ?? 0;
   const shown = data?.players.length ?? 0;
   const first = data ? (data.page - 1) * data.perPage + 1 : 0;
@@ -361,7 +379,7 @@ export default function PlayersBrowser() {
             {!filtersOpen && (
               <span className={styles.filtersSummary}>
                 <span className={styles.summaryParts}>
-                  {filterSummary(state).map((part) => (
+                  {filterSummary(state, teamOptions).map((part) => (
                     <span key={part.text} className={part.changed ? styles.changed : undefined}>
                       {part.text}
                     </span>
@@ -374,7 +392,40 @@ export default function PlayersBrowser() {
           <div id="player-filters" className={styles.filtersPanel} hidden={!filtersOpen}>
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Players</span>
-              <SegmentedToggle label="Players" options={SCOPES} value={scope} onChange={(v) => navigate({ scope: v, page: 1 })} />
+              {/* Free agents have no fantasy team, so that pick clears the team filter. */}
+              <SegmentedToggle
+                label="Players"
+                options={SCOPES}
+                value={scope}
+                onChange={(v) => navigate({ scope: v, ...(v === "fa" && { team: null }), page: 1 })}
+              />
+            </span>
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Team</span>
+              <span className={styles.selects}>
+                {/* A fantasy team's players are rostered, so picking one shows all players. */}
+                <select
+                  className={styles.select}
+                  aria-label="Fantasy team"
+                  value={team ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    navigate({ team: id, ...(id !== null && { scope: "all" }), page: 1 });
+                  }}
+                >
+                  <option value="">All fantasy teams</option>
+                  {teamOptions?.fantasy.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <select
+                  className={styles.select}
+                  aria-label="NBA team"
+                  value={nba ?? ""}
+                  onChange={(e) => navigate({ nba: e.target.value || null, page: 1 })}
+                >
+                  <option value="">All NBA teams</option>
+                  {teamOptions?.nba.map((t) => <option key={t.abbreviation} value={t.abbreviation}>{t.name}</option>)}
+                </select>
+              </span>
             </span>
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Position</span>

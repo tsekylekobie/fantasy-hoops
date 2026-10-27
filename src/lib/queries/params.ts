@@ -33,6 +33,10 @@ export interface PlayersQuery {
   /** Empty = any day. Deduplicated, in PLAY_DAYS order. */
   plays: PlayDay[];
   waivers: WaiverFilter;
+  /** Players on this fantasy team (fantasy_teams.id); null = any. */
+  team: number | null;
+  /** Players on this NBA team (teams.abbreviation, uppercase); null = any. */
+  nba: string | null;
   weights: CategoryWeights;
   page: number;
   perPage: number;
@@ -106,6 +110,8 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   }
   const waivers = params.get("waivers")?.trim() || "any";
   if (waivers !== "any" && waivers !== "on" && waivers !== "clears") throw new BadRequest("waivers must be any, on or clears");
+  const nba = params.get("nba")?.trim().toUpperCase() || null;
+  if (nba !== null && !/^[A-Z]{2,4}$/.test(nba)) throw new BadRequest("nba must be a team abbreviation, e.g. BOS");
   return {
     season: parseSeason(params),
     range,
@@ -117,6 +123,8 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers,
+    team: params.get("team")?.trim() ? intParam(params, "team", 0, 1, 2147483647) : null,
+    nba,
     weights: parseWeights(params),
     page: intParam(params, "page", 1, 1, 100000),
     perPage: intParam(params, "perPage", DEFAULT_PER_PAGE, 1, MAX_PER_PAGE),
