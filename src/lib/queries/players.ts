@@ -311,7 +311,7 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
  *  Returns null when the player id does not exist. */
 export async function getPlayerDetail(
   db: Pool, playerId: number, season: number,
-): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
+): Promise<Omit<PlayerDetailResponse, "thisWeek" | "transactions"> | null> {
   const [playerRes, seasonsRes, logRes, owners, waivers, injuries] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;

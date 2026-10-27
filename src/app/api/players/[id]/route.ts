@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { BadRequest, parsePlayerId, parseSeason } from "@/lib/queries/params";
+import { getPlayerTransactions } from "@/lib/queries/league";
 import { getPlayerWeek } from "@/lib/queries/lineup";
 import { getPlayerDetail } from "@/lib/queries/players";
 import type { PlayerDetailResponse } from "@/lib/types";
@@ -20,9 +21,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     throw err;
   }
   try {
-    const [detail, thisWeek] = await Promise.all([getPlayerDetail(pool, id, season), getPlayerWeek(pool, id, season)]);
+    const [detail, thisWeek, transactions] = await Promise.all([
+      getPlayerDetail(pool, id, season), getPlayerWeek(pool, id, season), getPlayerTransactions(pool, id, season),
+    ]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
-    const body: PlayerDetailResponse = { ...detail, thisWeek };
+    const body: PlayerDetailResponse = { ...detail, thisWeek, transactions };
     // No caching: owners change with every add and drop.
     return NextResponse.json(body, { headers: { "Cache-Control": "no-cache" } });
   } catch (err) {

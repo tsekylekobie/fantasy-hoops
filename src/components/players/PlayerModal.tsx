@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerWeek, SeasonRow } from "@/lib/types";
+import TeamBadge from "@/components/TeamBadge";
+import type {
+  PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerTransaction, PlayerWeek, SeasonRow,
+} from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
 import styles from "./PlayerModal.module.css";
@@ -314,6 +317,8 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
         {data.thisWeek && <ThisWeek week={data.thisWeek} />}
 
         <News playerId={data.player.id} />
+
+        <Transactions transactions={data.transactions} timeZone={data.timeZone} />
       </div>
 
       <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
@@ -488,6 +493,79 @@ function timeAgo(iso: string): string {
   if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
   if (mins < 7 * 24 * 60) return `${Math.round(mins / (24 * 60))}d ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+const TRANSACTIONS_PREVIEW = 5;
+
+/** How he moved: "Added by", "Claimed for $12 by", "Dropped by", or a trade's two teams. */
+function moveText(tx: PlayerTransaction): { sign: "+" | "−" | "→"; verb: string } {
+  if (tx.to === null) return { sign: "−", verb: tx.type === "commissioner" ? "Removed by commissioner from" : "Dropped by" };
+  if (tx.from === null) {
+    const verb =
+      tx.type === "waiver_claim" ? `Claimed${tx.faabBid !== null ? ` for $${tx.faabBid}` : ""} by`
+      : tx.type === "commissioner" ? "Added by commissioner to"
+      : "Added by";
+    return { sign: "+", verb };
+  }
+  return { sign: "→", verb: tx.type === "trade" ? "Traded" : "Moved by commissioner" };
+}
+
+/** Everyone who has added, dropped, claimed or traded him in this league, newest first. */
+function Transactions({ transactions, timeZone }: { transactions: PlayerTransaction[]; timeZone: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? transactions : transactions.slice(0, TRANSACTIONS_PREVIEW);
+  return (
+    <section className={styles.section} aria-labelledby="transactions-heading">
+      <h3 id="transactions-heading" className={styles.h3}>
+        Transactions
+      </h3>
+      {transactions.length === 0 ? (
+        <p className={styles.empty}>No transactions in this league yet.</p>
+      ) : (
+        <>
+          <ul className={styles.txList}>
+            {shown.map((tx) => {
+              const { sign, verb } = moveText(tx);
+              const cls = sign === "+" ? styles.txPlus : sign === "−" ? styles.txMinus : styles.txAcross;
+              const team = tx.to ?? tx.from;
+              return (
+                <li key={tx.id} className={styles.txItem}>
+                  <b className={`${styles.txSign} ${cls}`} aria-hidden="true">{sign}</b>
+                  <span className={styles.txText}>
+                    {verb}{" "}
+                    {tx.from && tx.to ? (
+                      <>
+                        <TeamBadge team={tx.from} className={styles.txBadge} />
+                        <span className={styles.txTeam}>{tx.from.name}</span>
+                        {" to "}
+                        <TeamBadge team={tx.to} className={styles.txBadge} />
+                        <span className={styles.txTeam}>{tx.to.name}</span>
+                      </>
+                    ) : (
+                      team && (
+                        <>
+                          <TeamBadge team={team} className={styles.txBadge} />
+                          <span className={styles.txTeam}>{team.name}</span>
+                        </>
+                      )
+                    )}
+                  </span>
+                  <time className={styles.txWhen} dateTime={tx.at}>
+                    {fmtWaiverTime(tx.at, timeZone, "date")}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
+          {transactions.length > TRANSACTIONS_PREVIEW && (
+            <button type="button" className={styles.newsMore} onClick={() => setExpanded((e) => !e)}>
+              {expanded ? "Show less" : `Show ${transactions.length - TRANSACTIONS_PREVIEW} more`}
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 const GAME_STATE = { scheduled: styles.gameScheduled, live: styles.gameLive, final: styles.gameFinal };

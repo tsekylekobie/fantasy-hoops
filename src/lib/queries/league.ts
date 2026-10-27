@@ -11,6 +11,7 @@ import type {
   LeagueOverview,
   LeagueTransaction,
   OtherMatchup,
+  PlayerTransaction,
   RecentTransactions,
   PlayerSummary,
   StandingsRow,
@@ -194,6 +195,36 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
     transactions: [...byId.values()],
     waiverRuns: await getWaiverRunEntries(db, league.id, team),
   };
+}
+
+/** Every completed move of one player in the season's league, newest first (none without a league). */
+export async function getPlayerTransactions(db: Pool, playerId: number, season: number): Promise<PlayerTransaction[]> {
+  const { rows } = await db.query<{
+    id: number; type: PlayerTransaction["type"]; at: string; faab_bid: number | null;
+    from_id: number | null; from_name: string | null; from_abbr: string | null; from_logo: Date | null;
+    to_id: number | null; to_name: string | null; to_abbr: string | null; to_logo: Date | null;
+  }>(
+    `SELECT t.id::int, t.type, to_char(coalesce(t.processed_at, t.created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
+            CASE WHEN t.type = 'waiver_claim' THEN t.faab_bid END AS faab_bid,
+            f.id::int AS from_id, f.name AS from_name, f.abbreviation AS from_abbr, f.logo_updated_at AS from_logo,
+            o.id::int AS to_id, o.name AS to_name, o.abbreviation AS to_abbr, o.logo_updated_at AS to_logo
+       FROM transaction_players tp
+       JOIN transactions t ON t.id = tp.transaction_id AND t.status = 'completed'
+       JOIN leagues l ON l.id = t.league_id
+       LEFT JOIN fantasy_teams f ON f.id = tp.from_team_id
+       LEFT JOIN fantasy_teams o ON o.id = tp.to_team_id
+      WHERE tp.player_id = $1
+        AND l.id = (SELECT id FROM leagues WHERE season = $2 ORDER BY id LIMIT 1)
+      ORDER BY coalesce(t.processed_at, t.created_at) DESC, t.id DESC`,
+    [playerId, season],
+  );
+  const team = (id: number | null, name: string | null, abbr: string | null, logo: Date | null) =>
+    id === null ? null : toTeamSummary({ id, name: name ?? "", abbreviation: abbr ?? "", logo_updated_at: logo });
+  return rows.map((r) => ({
+    id: r.id, type: r.type, at: r.at, faabBid: r.faab_bid,
+    from: team(r.from_id, r.from_name, r.from_abbr, r.from_logo),
+    to: team(r.to_id, r.to_name, r.to_abbr, r.to_logo),
+  }));
 }
 
 /**

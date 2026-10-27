@@ -235,6 +235,22 @@ export interface PlayerDetailResponse {
   pastSeasons: SeasonRow[];
   /** His games in the league's current matchup week; null outside the schedule. */
   thisWeek: PlayerWeek | null;
+  /** Every completed move of his in the season's league, newest first. */
+  transactions: PlayerTransaction[];
+}
+
+/** One completed move of a player (an add, drop, claim, trade or commissioner move), for the player modal. */
+export interface PlayerTransaction {
+  id: number;
+  type: TransactionType;
+  /** When rosters changed (processed_at, else created_at), ISO timestamp. */
+  at: string;
+  /** The team he left; null = came from free agents or waivers. */
+  from: FantasyTeamSummary | null;
+  /** The team he joined; null = dropped. */
+  to: FantasyTeamSummary | null;
+  /** A waiver claim won in a FAAB league: what it cost, in whole dollars. Null otherwise. */
+  faabBid: number | null;
 }
 
 /** A player's NBA games in one matchup week. */
