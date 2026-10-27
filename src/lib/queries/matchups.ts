@@ -26,6 +26,7 @@ import type {
   MatchupWeek,
 } from "../types";
 import { CATEGORY_KEYS, LINEUP_SLOTS } from "../types";
+import { getInjuries } from "./injuries";
 import { gamesInProgress } from "./live";
 import { bracketTag, configOf, type BracketRow } from "./playoffs";
 import { toTeamSummary } from "./teamLogo";
@@ -387,13 +388,17 @@ async function loadPlayers(
     for (const r of byKey.values()) rows.push({ teamId: r.team_id, playerId: r.player_id, slot: null, game: null, stats: line(r) });
   }
 
-  const { rows: info } = await db.query<PlayerInfoRow>(
-    `SELECT p.id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
-            t.abbreviation AS team_abbr
-     FROM players p LEFT JOIN teams t ON t.id = p.team_id
-     WHERE p.id = ANY($1)`,
-    [rows.map((r) => r.playerId)],
-  );
+  const ids = rows.map((r) => r.playerId);
+  const [{ rows: info }, injuries] = await Promise.all([
+    db.query<PlayerInfoRow>(
+      `SELECT p.id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
+              t.abbreviation AS team_abbr
+       FROM players p LEFT JOIN teams t ON t.id = p.team_id
+       WHERE p.id = ANY($1)`,
+      [ids],
+    ),
+    getInjuries(db, ids),
+  ]);
   const infoById = new Map(info.map((p) => [p.id, p]));
   const out = new Map<number, MatchupPlayer[]>(teamIds.map((id) => [id, []]));
   for (const r of rows) {
@@ -402,6 +407,7 @@ async function loadPlayers(
     out.get(r.teamId)!.push({
       id: p.id, firstName: p.first_name, lastName: p.last_name, teamAbbr: p.team_abbr,
       position: p.position, nbaPersonId: p.nba_person_id, slot: r.slot, game: r.game, stats: r.stats,
+      injury: injuries.get(p.id) ?? null,
     });
   }
   for (const list of out.values()) {

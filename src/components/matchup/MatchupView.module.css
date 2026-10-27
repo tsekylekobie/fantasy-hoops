@@ -477,6 +477,11 @@ a.pageBtn:hover {
   color: var(--ink-subtle);
 }
 
+/* A starter whose game is in progress. */
+.gRow.liveRow {
+  background: var(--live-row);
+}
+
 .gTotal {
   min-height: 48px;
   font-weight: 700;
@@ -703,6 +708,10 @@ a.pageBtn:hover {
   .gTotal > :nth-child(-n + 2),
   .gRow.dim > :nth-child(-n + 2) {
     background: var(--surface-muted);
+  }
+
+  .gRow.liveRow > :nth-child(-n + 2) {
+    background: var(--live-row);
   }
 
   .pl > [aria-hidden="true"] {

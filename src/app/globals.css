@@ -41,6 +41,8 @@
   --backdrop: rgba(22, 24, 29, 0.55);
   /* A value that just changed in a live update. */
   --flash: #fde68a;
+  /* A starter whose NBA game is in progress (matchup and my team rows). */
+  --live-row: #fff4ea;
   color-scheme: light;
   --radius: 10px;
   --radius-card: 12px;
@@ -81,6 +83,7 @@
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
   --flash: #5b4a12;
+  --live-row: #2a1e15;
   color-scheme: dark;
 }
 

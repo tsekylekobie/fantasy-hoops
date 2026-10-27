@@ -267,6 +267,8 @@ export interface MatchupPlayer extends PlayerSummary {
    * started (null if none yet).
    */
   stats: (CategoryLine & { min: number; gp: number }) | null;
+  /** His current injury report entry (not as of the day shown); null when not on the report. */
+  injury: PlayerInjury | null;
 }
 
 export interface MatchupSide extends FantasyTeamSummary {

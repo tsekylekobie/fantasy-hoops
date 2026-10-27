@@ -303,6 +303,11 @@
   border-bottom: 0;
 }
 
+/* A starter whose game is in progress. Before .sel/.target, which win while moving players. */
+.row.liveRow {
+  background: var(--live-row);
+}
+
 .row.sel {
   background: var(--accent-soft);
 }
@@ -637,6 +642,10 @@
     left: 56px;
     padding-right: 8px;
     box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  .row.liveRow > :nth-child(-n + 2) {
+    background: var(--live-row);
   }
 
   .header > :nth-child(-n + 2),

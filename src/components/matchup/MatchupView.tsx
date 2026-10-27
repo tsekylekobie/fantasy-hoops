@@ -378,8 +378,11 @@ function PlayerRow({ p, day, timeZone }: { p: MatchupPlayer; day: boolean; timeZ
     sub = `${p.stats?.gp ?? 0} GP${p.slot === null ? " · Left roster" : ""}`;
   }
   const dnp = day && p.stats !== null && p.stats.min === 0;
+  // A starter whose game is on right now (day view only: week totals have no game),
+  // unless he's listed Out and hasn't played: the report can be stale, minutes aren't.
+  const live = p.game?.state === "live" && isStarter(p) && (p.injury?.status !== "Out" || (p.stats?.min ?? 0) > 0);
   return (
-    <div className={`${styles.g} ${styles.gRow} ${dim ? styles.dim : ""}`} role="row">
+    <div className={`${styles.g} ${styles.gRow} ${dim ? styles.dim : ""} ${live ? styles.liveRow : ""}`} role="row">
       <span role="cell"><span className={styles.slot}>{p.slot ?? "—"}</span></span>
       <span role="cell" className={styles.pl}>
         <PlayerButton playerId={p.id}>

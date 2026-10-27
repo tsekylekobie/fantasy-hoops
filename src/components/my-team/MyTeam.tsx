@@ -370,12 +370,15 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
     const noGame = p && !p.game;
     const gameCls = noGame && isStarter(spot.slot) ? styles.noGame : p?.game?.state === "live" ? styles.live : "";
     const day = p?.dayStats ?? null;
+    // A starter whose game is on right now, unless he's listed Out and hasn't played
+    // (the report can be stale, minutes aren't).
+    const liveRow = p?.game?.state === "live" && isStarter(spot.slot) && (p.injury?.status !== "Out" || (day?.min ?? 0) > 0);
     // Final game but no minutes (or no stat row at all, e.g. listed Out).
     const dnp = p?.game?.state === "final" && (day === null || day.min === 0);
     return (
       <div
         key={spot.key}
-        className={`${styles.grid} ${styles.row} ${styles[mode]} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}
+        className={`${styles.grid} ${styles.row} ${styles[mode]} ${liveRow ? styles.liveRow : ""} ${p && current && ilIneligible(p) ? styles.illegalRow : ""}`}
         title={p ? injuryTooltip(p.injury) : undefined}
       >
         <span>
