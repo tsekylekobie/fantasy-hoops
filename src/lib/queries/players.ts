@@ -202,6 +202,18 @@ export async function getSeasonTotals(db: Pool, season: number): Promise<SeasonT
   return rows.map(toTotals);
 }
 
+/** The last-14-days window for `season` (see LAST14_WINDOW_SQL); null before any game is played. */
+export async function getLast14Window(db: Pool, season: number): Promise<{ from: string; to: string } | null> {
+  const { rows } = await db.query<{ from: string; to: string }>(LAST14_WINDOW_SQL, [season]);
+  return rows[0] ?? null;
+}
+
+/** Totals (finished regular-season games) for every player with a game in `season` on or after `from`. */
+export async function getTotalsSince(db: Pool, season: number, from: string): Promise<SeasonTotals[]> {
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from]);
+  return rows.map(toTotals);
+}
+
 /** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */
 export async function getSeasonValues(
   db: Pool,
@@ -215,10 +227,7 @@ export async function getSeasonValues(
 /** `userId`: the signed-in user, for the stars and scope=watch (which lists nothing signed out); null = signed out. */
 export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | null): Promise<PlayersResponse> {
   let window: { from: string; to: string } | null = null;
-  if (q.range === "last14") {
-    const res = await db.query<{ from: string; to: string }>(LAST14_WINDOW_SQL, [q.season]);
-    window = res.rows[0] ?? null;
-  }
+  if (q.range === "last14") window = await getLast14Window(db, q.season);
   // No played games yet: a null bound returns no rows for last14 either way.
   const [{ rows }, owners, waivers, injuries, teamOptions, watched] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null]),

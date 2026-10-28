@@ -5,11 +5,18 @@
 // their own, vote to veto (league vote) or veto (commissioner) during review.
 // "mine" (on /my-team) shows open trades plus your recent ones, and hides
 // itself when there's nothing; "league" (on /league) shows everything visible.
+// Each open trade can show the trade analyzer (TradeAnalysis), open by default
+// on an offer you received; there you pick your drops before accepting when
+// the trade would put you over the active limit.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { fetchJson, fmtGameDate, fullName } from "@/components/players/format";
-import type { FantasyTeamSummary, PlayerSummary, Trade, TradeAction, TradesResponse } from "@/lib/types";
+import TradeAnalysis, { AnalysisControls, type AnalysisSide } from "@/components/trades/TradeAnalysis";
+import { analyzeTrade, type WeightSet } from "@/lib/trades/analysis";
+import type {
+  FantasyTeamSummary, PlayerSummary, Trade, TradeAction, TradeActionRequest, TradeAnalysisResponse, TradesResponse, TradeWindow,
+} from "@/lib/types";
 import TeamBadge from "@/components/TeamBadge";
 import styles from "./Trades.module.css";
 
@@ -40,11 +47,12 @@ const reviewText = (d: TradesResponse) => {
   return s.review === "league_vote" ? `${window} · ${s.vetoVotes} veto votes kill a trade` : `${window} · commissioner can veto`;
 };
 
-async function postAction(id: number, action: TradeAction): Promise<Trade> {
+async function postAction(id: number, action: TradeAction, dropPlayerIds: number[]): Promise<Trade> {
+  const body: TradeActionRequest = action === "accept" && dropPlayerIds.length > 0 ? { action, dropPlayerIds } : { action };
   const res = await fetch(`/api/trades/${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify(body),
   });
   const json = (await res.json().catch(() => null)) as (Trade & { error?: string }) | null;
   if (!res.ok || !json) throw new Error(json?.error || `Request failed (${res.status}).`);
@@ -83,12 +91,12 @@ export default function TradesPanel({ scope }: { scope: "mine" | "league" }) {
     return () => ctrl.abort();
   }, [load]);
 
-  async function act(t: Trade, action: TradeAction) {
+  async function act(t: Trade, action: TradeAction, drops: number[] = []) {
     if (action === "veto" && !window.confirm("Veto this trade? It can't be undone.")) return;
     setBusy(t.id);
     setNote(null);
     try {
-      const next = await postAction(t.id, action);
+      const next = await postAction(t.id, action, drops);
       const text = action === "accept" && next.status === "completed" ? "Trade accepted and processed." : DONE_TEXT[action];
       setNote({ kind: "ok", text: next.status === "vetoed" && action === "vote" ? `${text} That was enough to veto it.` : text });
     } catch (err) {
@@ -127,7 +135,7 @@ export default function TradesPanel({ scope }: { scope: "mine" | "league" }) {
         <p className={styles.empty}>No open trades.</p>
       ) : (
         data.open.map((t) => (
-          <TradeCard key={t.id} t={t} data={data} busy={busy === t.id} onAct={(a) => void act(t, a)} />
+          <TradeCard key={t.id} t={t} data={data} busy={busy === t.id} onAct={(a, drops) => void act(t, a, drops)} />
         ))
       )}
       {recent.length > 0 && (
@@ -170,8 +178,40 @@ function Players({ players }: { players: PlayerSummary[] }) {
   );
 }
 
-function TradeCard({ t, data, busy, onAct }: { t: Trade; data: TradesResponse; busy: boolean; onAct: (a: TradeAction) => void }) {
+function TradeCard({ t, data, busy, onAct }: {
+  t: Trade; data: TradesResponse; busy: boolean; onAct: (a: TradeAction, drops?: number[]) => void;
+}) {
   const mine = data.myTeam;
+  const [open, setOpen] = useState(t.can.accept);
+  const [analysis, setAnalysis] = useState<TradeAnalysisResponse | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [statWindow, setStatWindow] = useState<TradeWindow>("season");
+  const [weights, setWeights] = useState<WeightSet>("mine");
+  const [drops, setDrops] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!open || analysis) return;
+    const ctrl = new AbortController();
+    fetchJson<TradeAnalysisResponse>(`/api/trades/analysis?teams=${t.proposer.id},${t.partner.id}`, ctrl.signal)
+      .then(setAnalysis)
+      .catch((err: unknown) => {
+        if (!ctrl.signal.aborted) setAnalysisError(err instanceof Error ? err.message : "Couldn't load the analysis.");
+      });
+    return () => ctrl.abort();
+  }, [open, analysis, t.proposer.id, t.partner.id]);
+
+  // The partner picks drops while answering; recorded drops are fixed; otherwise they're assumed.
+  const proposerSide: AnalysisSide = {
+    teamId: t.proposer.id, out: t.sends.map((p) => p.id), drops: t.proposerDrops.map((p) => p.id),
+    dropMode: t.proposerDrops.length > 0 ? "fixed" : "assume",
+  };
+  const partnerSide: AnalysisSide = t.can.accept
+    ? { teamId: t.partner.id, out: t.receives.map((p) => p.id), drops, dropMode: "pick" }
+    : { teamId: t.partner.id, out: t.receives.map((p) => p.id), drops: t.partnerDrops.map((p) => p.id), dropMode: t.partnerDrops.length > 0 ? "fixed" : "assume" };
+  const sides: [AnalysisSide, AnalysisSide] = t.role === "partner" ? [partnerSide, proposerSide] : [proposerSide, partnerSide];
+  const mustDrop = t.can.accept && analysis ? analyzeTrade(analysis, sides, statWindow, weights)[0].mustDrop : 0;
+  const myDrops = drops.slice(0, mustDrop);
+  const needDrops = mustDrop - myDrops.length;
   const involved = t.role === "proposer" || t.role === "partner";
   const getsName = (team: FantasyTeamSummary) => (team.id === mine?.id ? "You get" : `${team.name} gets`);
   let status = "";
@@ -201,6 +241,22 @@ function TradeCard({ t, data, busy, onAct }: { t: Trade; data: TradesResponse; b
           <Players players={t.receives} />
         </div>
       </div>
+      {(t.proposerDrops.length > 0 || t.partnerDrops.length > 0) && (
+        <div className={styles.sides}>
+          {t.proposerDrops.length > 0 && (
+            <div>
+              <p className={styles.label}>{t.proposer.id === mine?.id ? "You drop" : `${t.proposer.name} drops`}</p>
+              <Players players={t.proposerDrops} />
+            </div>
+          )}
+          {t.partnerDrops.length > 0 && (
+            <div>
+              <p className={styles.label}>{t.partner.id === mine?.id ? "You drop" : `${t.partner.name} drops`}</p>
+              <Players players={t.partnerDrops} />
+            </div>
+          )}
+        </div>
+      )}
       {t.note && <p className={styles.tradeNote}>“{t.note}”</p>}
       <div className={styles.tradeFoot}>
         <span className={styles.votes}>
@@ -218,8 +274,21 @@ function TradeCard({ t, data, busy, onAct }: { t: Trade; data: TradesResponse; b
         </span>
         <span className={styles.btns}>
           {t.can.reject && <button type="button" className={styles.btn} disabled={busy} onClick={() => onAct("reject")}>Reject</button>}
+          {mine && (
+            <button type="button" className={styles.btn} aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? "Hide analysis" : "Analyze"}
+            </button>
+          )}
           {t.can.accept && (
-            <button type="button" className={`${styles.btn} ${styles.primary}`} disabled={busy} onClick={() => onAct("accept")}>Accept</button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.primary}`}
+              disabled={busy || needDrops > 0}
+              title={needDrops > 0 ? `Pick ${needDrops} to drop in the analysis first` : undefined}
+              onClick={() => onAct("accept", myDrops)}
+            >
+              Accept
+            </button>
           )}
           {t.can.cancel && <button type="button" className={styles.btn} disabled={busy} onClick={() => onAct("cancel")}>Cancel offer</button>}
           {t.can.vote && (
@@ -238,6 +307,31 @@ function TradeCard({ t, data, busy, onAct }: { t: Trade; data: TradesResponse; b
           )}
         </span>
       </div>
+      {t.can.accept && needDrops > 0 && (
+        <div className={`${styles.note} ${styles.warn} ${styles.analyze}`}>
+          <p>Accepting would put you over the active limit: pick {needDrops} to drop below. They go when the trade goes through.</p>
+        </div>
+      )}
+      {open && (
+        <div className={styles.analyze}>
+          {analysis ? (
+            <TradeAnalysis
+              data={analysis}
+              sides={sides}
+              viewerTeamId={t.role === "proposer" || t.role === "partner" ? mine?.id ?? null : null}
+              statWindow={statWindow}
+              weights={weights}
+              onDrops={(_, ids) => setDrops(ids)}
+              intro={t.role === "league" ? "You’re not in this trade; values use your weights." : undefined}
+              controls={
+                <AnalysisControls data={analysis} statWindow={statWindow} weights={weights} onWindow={setStatWindow} onWeights={setWeights} />
+              }
+            />
+          ) : (
+            <p className={styles.empty}>{analysisError ?? "Loading the analysis…"}</p>
+          )}
+        </div>
+      )}
     </article>
   );
 }

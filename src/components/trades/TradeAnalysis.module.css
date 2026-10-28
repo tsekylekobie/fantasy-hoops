@@ -1,0 +1,663 @@
+/* Trade analyzer: docs/design/trade-analyzer.mockup.html */
+
+.an {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 18px 20px 4px;
+}
+
+.head h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+  max-width: 70ch;
+  line-height: 1.45;
+}
+
+/* Switches */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.seg,
+.phoneSwitch {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 3px;
+}
+
+.seg button,
+.phoneSwitch button {
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg button small {
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+.seg button.on,
+.phoneSwitch button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.seg button:focus-visible,
+.phoneSwitch button:focus-visible,
+.dropChips button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Team tiles */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 14px 20px 6px;
+}
+
+.tile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tile.you {
+  background: var(--live-row);
+  border-color: var(--accent-soft);
+}
+
+.lbl {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.tv {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tv b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv span {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
+
+.up {
+  color: var(--ok-ink);
+}
+
+.down {
+  color: var(--danger-ink);
+}
+
+.even {
+  color: var(--ink-subtle);
+}
+
+.vd {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gl {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.gl b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Category table: before, after, change and league rank for both teams */
+
+.scroll {
+  overflow-x: auto;
+}
+
+.tr {
+  display: grid;
+  grid-template-columns: 56px repeat(3, minmax(64px, 1fr)) 96px repeat(3, minmax(64px, 1fr)) 96px;
+  align-items: center;
+  column-gap: 8px;
+  padding: 0 20px;
+  min-height: 48px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  min-width: 860px;
+  box-sizing: border-box;
+}
+
+.tr > :nth-child(6) {
+  padding-left: 12px;
+}
+
+.teamsRow {
+  min-height: 40px;
+  border-top: 0;
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.teamsRow > :nth-child(3) {
+  padding-left: 12px;
+}
+
+.span4 {
+  grid-column: span 4;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+}
+
+.youHead {
+  border-bottom-color: var(--accent);
+}
+
+.tr.h,
+.pc.h {
+  min-height: 30px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.tr.h {
+  border-top: 0;
+}
+
+.n {
+  text-align: right;
+}
+
+.c {
+  text-align: center;
+}
+
+.cat {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.after {
+  font-weight: 700;
+}
+
+.change {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink-subtle);
+  font-size: 12px;
+}
+
+.rk {
+  width: 30px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  font-style: normal;
+  box-sizing: border-box;
+}
+
+/* League rank tiers, as on Rankings: 1–3, 4–6, 7–9, 10–12 */
+.t1 {
+  background: var(--rank-1-bg);
+  color: var(--rank-1-ink);
+}
+
+.t2 {
+  background: var(--rank-2-bg);
+  color: var(--ink);
+}
+
+.t3 {
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.t4 {
+  background: var(--rank-4-bg);
+  color: var(--ink-muted);
+}
+
+.was {
+  opacity: 0.7;
+  transform: scale(0.88);
+}
+
+.foot {
+  font-size: 13px;
+  color: var(--ink-muted);
+  padding: 12px 20px 16px;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--row-divider);
+  line-height: 1.5;
+}
+
+/* Phone list (one team at a time); hidden when wide */
+
+.phoneSwitch,
+.phoneList {
+  display: none;
+}
+
+.pc {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 70px 76px;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vv {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vv b {
+  font-size: 14px;
+}
+
+.vv small {
+  font-size: 11px;
+  color: var(--ink-subtle);
+}
+
+.pc .rank {
+  justify-content: flex-end;
+}
+
+.pc .rk {
+  width: 26px;
+  height: 24px;
+  font-size: 13px;
+}
+
+/* What changes: value breakdown, roster spots, lineup after */
+
+.cons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 6px 20px 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding: 14px 16px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card h3 span {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+.blk {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--row-divider);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card h3 + .blk {
+  border-top: 0;
+}
+
+.br {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  min-height: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bn {
+  min-width: 0;
+}
+
+.bn small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+.tot {
+  border-top: 1px solid var(--row-divider);
+  padding-top: 6px;
+  font-weight: 700;
+}
+
+.bt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 3px 0;
+  text-align: center;
+}
+
+.tOut {
+  background: var(--rank-4-bg);
+  color: var(--ink-muted);
+}
+
+.tIn {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.tDrop {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.bv {
+  text-align: right;
+  font-weight: 600;
+}
+
+.msg {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.msg.warn {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.msg.ok {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-border);
+  color: var(--ok-ink);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.mut {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.dropChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dropChips button {
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropChips button small {
+  font-weight: 500;
+  color: var(--ink-subtle);
+}
+
+.dropChips button.on {
+  background: var(--danger-soft);
+  border-color: var(--danger-ink);
+  color: var(--danger-ink);
+}
+
+.dropChips button.on small {
+  color: var(--danger-ink);
+}
+
+.dropChips button.assumed {
+  border-style: dashed;
+  border-color: var(--danger-ink);
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sl {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sl b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+
+.sl.new {
+  background: var(--live-row);
+  border-color: var(--accent-soft);
+}
+
+.sl.empty {
+  background: var(--warn-soft);
+  border: 1px dashed var(--warn-ink);
+  color: var(--warn-ink);
+  font-weight: 600;
+}
+
+.sl.empty b {
+  color: var(--warn-ink);
+}
+
+.pos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.pos span {
+  border-radius: 999px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos b {
+  color: var(--ink);
+}
+
+.pos span.thin {
+  background: var(--warn-soft);
+  border-color: var(--warn-ink);
+  color: var(--warn-ink);
+}
+
+.pos span.thin b {
+  color: var(--warn-ink);
+}
+
+@media (max-width: 760px) {
+  .head {
+    padding: 16px 16px 4px;
+  }
+
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px 16px 6px;
+  }
+
+  /* One team at a time: the tile, the list and the card follow the switch. */
+  .phoneSwitch {
+    display: flex;
+    margin: 6px 16px 10px;
+  }
+
+  .phoneSwitch button {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .scroll {
+    display: none;
+  }
+
+  .phoneList {
+    display: block;
+  }
+
+  .foot {
+    padding: 12px 16px 14px;
+  }
+
+  .cons {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 6px 16px 16px;
+  }
+
+  .phoneHidden {
+    display: none;
+  }
+}

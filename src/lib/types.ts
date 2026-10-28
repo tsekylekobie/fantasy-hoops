@@ -871,6 +871,9 @@ export interface Trade {
   /** Players going from the proposer to the partner, and back. */
   sends: PlayerSummary[];
   receives: PlayerSummary[];
+  /** Players each team drops when it goes through: the proposer's chosen when proposing, the partner's when accepting. */
+  proposerDrops: PlayerSummary[];
+  partnerDrops: PlayerSummary[];
   note: string | null;
   /** ISO timestamps. */
   createdAt: string;
@@ -926,6 +929,8 @@ export interface TradeProposal {
   sendPlayerIds: number[];
   /** From the partner's roster. */
   receivePlayerIds: number[];
+  /** The proposer's own players to drop when it goes through (to stay within the active limit). */
+  dropPlayerIds?: number[];
   note?: string;
 }
 
@@ -935,6 +940,55 @@ export interface TradeProposal {
  * review. veto: the commissioner, during review. Responds with the Trade.
  */
 export type TradeAction = "accept" | "reject" | "cancel" | "vote" | "unvote" | "veto";
+
+/** POST /api/trades/:id body. `dropPlayerIds`: accept only, the partner's own players to drop when it goes through. */
+export interface TradeActionRequest {
+  action: TradeAction;
+  dropPlayerIds?: number[];
+}
+
+// Trade analyzer (the builder and pending trades): GET /api/trades/analysis
+
+/** Per-game counting stats, unrounded. FG%/FT% come from the makes and attempts. */
+export type PerGameLine = Record<"fgm" | "fga" | "ftm" | "fta" | "fg3m" | "pts" | "reb" | "ast" | "stl" | "blk" | "tov", number>;
+
+/** Stats windows the analyzer offers: season averages or the last 14 days (as on the Players page). */
+export type TradeWindow = "season" | "last14";
+
+export interface TradeAnalysisWindowLine {
+  gp: number;
+  perGame: PerGameLine;
+  /** 9CAT value in this window: with the viewer's punt weights, and with the default weights. */
+  value: number;
+  defaultValue: number;
+}
+
+export interface TradeAnalysisPlayer extends PlayerSummary {
+  slot: LineupSlot;
+  /** Null when he hasn't played in that window. */
+  season: TradeAnalysisWindowLine | null;
+  last14: TradeAnalysisWindowLine | null;
+}
+
+/**
+ * GET /api/trades/analysis?teams=A,B: what the analyzer needs to price any
+ * trade between teams A and B on the client: both rosters with per-game lines
+ * and values, and every league team's active per-game totals for the ranks.
+ */
+export interface TradeAnalysisResponse {
+  /** Most players a team may carry outside IL/IL+. */
+  activeLimit: number;
+  /** Starting slot counts, in display order (zeros left out). */
+  slots: { slot: LineupSlot; count: number }[];
+  /** The viewer's punt weights, and whether they're the defaults (then there's nothing to switch). */
+  weights: CategoryWeights;
+  weightsAreDefault: boolean;
+  teams: (FantasyTeamSummary & { players: TradeAnalysisPlayer[] })[];
+  /** Every team in the league: the per-game sum of its active (non-IL) players, by window. */
+  league: { teamId: number; season: PerGameLine; last14: PerGameLine }[];
+  /** The last-14-days window, yyyy-mm-dd; null before the first game. */
+  last14: { from: string; to: string } | null;
+}
 
 // Waivers (/api/team/claims, the League page's waiver order)
 
