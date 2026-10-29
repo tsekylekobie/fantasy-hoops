@@ -637,3 +637,64 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Builder: the analyzer's switches above the rosters, drops, and Players / Analysis tabs on phones */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+
+.r.dropping {
+  opacity: 0.62;
+}
+
+.phoneTabs {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .phoneTabs {
+    display: flex;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    padding: 3px;
+    margin: 0 0 12px;
+  }
+
+  .phoneTabs button {
+    flex: 1;
+    height: 40px;
+    border: 0;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  .phoneTabs button.on {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .phoneOff {
+    display: none;
+  }
+}
+
+/* Pending trades: the analyzer under a trade card */
+
+.analyze {
+  margin-top: 12px;
+}
+
+.analyze > section {
+  margin-top: 12px;
+}

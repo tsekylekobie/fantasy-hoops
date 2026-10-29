@@ -31,6 +31,7 @@ import { valuePlayers, type SeasonTotals } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
 import { ISO, getWaiverStatus } from "./waiverStatus";
 import { getInjuries } from "./injuries";
+import { getWatchedIds } from "./watchlist";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -223,6 +224,17 @@ export async function getTotalsFor(
   return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
 }
 
+/** The last-14-days window for `season` (see WINDOW_SQL); null before any game is played. */
+export async function getLast14Window(db: Pool, season: number): Promise<{ from: string; to: string } | null> {
+  return statWindow(db, season, 14);
+}
+
+/** Totals (finished regular-season games) for every player with a game in `season` on or after `from`. */
+export async function getTotalsSince(db: Pool, season: number, from: string): Promise<SeasonTotals[]> {
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, null]);
+  return rows.map(toTotals);
+}
+
 /** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */
 export async function getSeasonValues(
   db: Pool,
@@ -233,16 +245,18 @@ export async function getSeasonValues(
   return new Map(rows.map((r) => [r.player_id, { totals: r, value: values.get(r.player_id)!.value }]));
 }
 
-export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResponse> {
+/** `userId`: the signed-in user, for the stars and scope=watch (which lists nothing signed out); null = signed out. */
+export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | null): Promise<PlayersResponse> {
   const days = RANGE_DAYS[q.range];
   const window = days === null ? null : await statWindow(db, q.season, days);
   // No played games yet: a null bound returns no rows for the windows either way.
-  const [{ rows }, owners, waivers, injuries, teamOptions] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries, teamOptions, watched] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
     getInjuries(db),
     getTeamOptions(db, q.season),
+    getWatchedIds(db, userId),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -256,7 +270,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
-    .filter((r) => q.scope === "all" || !owners.has(r.player_id))
+    .filter((r) => q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
     .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
     .filter((r) => q.nba === null || r.team_abbr === q.nba)
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
@@ -295,6 +309,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery): Promise<PlayersResp
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
       injury: injuries.get(r.player_id) ?? null,
+      watched: userId === null ? null : watched.has(r.player_id),
     };
   });
 
@@ -342,9 +357,9 @@ async function getRanks(db: Pool, playerId: number, season: number, weights: Cat
 /** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
  *  Ranks use `weights`. Returns null when the player id does not exist. */
 export async function getPlayerDetail(
-  db: Pool, playerId: number, season: number, weights: CategoryWeights,
-): Promise<Omit<PlayerDetailResponse, "thisWeek"> | null> {
-  const [playerRes, seasonsRes, logRes, owners, waivers, injuries, ranks] = await Promise.all([
+  db: Pool, playerId: number, season: number, userId: number | null, weights: CategoryWeights,
+): Promise<Omit<PlayerDetailResponse, "thisWeek" | "transactions"> | null> {
+  const [playerRes, seasonsRes, logRes, owners, waivers, injuries, watched, ranks] = await Promise.all([
     db.query<{
       id: number; first_name: string; last_name: string; position: string | null;
       nba_person_id: number | null; team_abbr: string | null; team_name: string | null;
@@ -396,6 +411,7 @@ export async function getPlayerDetail(
     getOwners(db, season),
     getWaiverStatus(db, season),
     getInjuries(db, [playerId]),
+    getWatchedIds(db, userId, [playerId]),
     getRanks(db, playerId, season, weights),
   ]);
 
@@ -433,5 +449,6 @@ export async function getPlayerDetail(
     ranks,
     gameLog,
     pastSeasons: seasonsRes.rows.filter((r) => r.season < season).map((r) => seasonRow(r.season, r)),
+    watched: userId === null ? null : watched.has(p.id),
   };
 }

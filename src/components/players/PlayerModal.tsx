@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerWeek, SeasonRow } from "@/lib/types";
+import TeamBadge from "@/components/TeamBadge";
+import type {
+  PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerTransaction, PlayerWeek, SeasonRow,
+} from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
+import WatchStar from "./WatchStar";
 import styles from "./PlayerModal.module.css";
 
 interface Props {
@@ -19,6 +23,8 @@ interface Props {
   myTeamId?: number | null;
   /** Bump to refetch (e.g. after an add changed his owner). */
   refreshKey?: number;
+  /** His watchlist star was toggled, for a page that shows stars too. */
+  onWatch?: (id: number, watched: boolean) => void;
 }
 
 type Load =
@@ -27,7 +33,7 @@ type Load =
   | { status: "ready"; id: number; data: PlayerDetailResponse }
   | { status: "error"; id: number; message: string };
 
-export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0 }: Props) {
+export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0, onWatch }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const closingFromProp = useRef(false);
@@ -113,7 +119,16 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
         {/* The close button stays mounted across loading -> loaded so focus isn't lost. */}
         <div className={styles.header}>
           {data ? (
-            <DetailHead data={data} onAdd={onAdd} myTeamId={myTeamId} />
+            <DetailHead
+              data={data}
+              onAdd={onAdd}
+              myTeamId={myTeamId}
+              onWatch={(id, watched) => {
+                setLoad((prev) =>
+                  prev.status === "ready" && prev.id === id ? { ...prev, data: { ...prev.data, watched } } : prev);
+                onWatch?.(id, watched);
+              }}
+            />
           ) : (
             <div className={styles.headText}>
               <h2 id="player-modal-title" className={styles.name}>
@@ -184,8 +199,13 @@ function InjuryNote({ note }: { note: string }) {
 }
 
 function DetailHead({
-  data, onAdd, myTeamId,
-}: { data: PlayerDetailResponse; onAdd?: (id: number) => void; myTeamId: number | null }) {
+  data, onAdd, myTeamId, onWatch,
+}: {
+  data: PlayerDetailResponse;
+  onAdd?: (id: number) => void;
+  myTeamId: number | null;
+  onWatch: (id: number, watched: boolean) => void;
+}) {
   const { player, owner, waiver } = data;
   const injury = player.injury;
   const injuryLine = injury ? fmtInjuryLine(injury) : "";
@@ -224,6 +244,11 @@ function DetailHead({
           </p>
         )}
       </div>
+      {data.watched !== null && (
+        <WatchStar
+          playerId={player.id} name={fullName(player)} watched={data.watched} onChange={onWatch} size="modal" className={styles.watch}
+        />
+      )}
       {owner === null && onAdd && (
         <button type="button" className={`${styles.add} ${waiver ? styles.claim : ""}`} onClick={() => onAdd(player.id)}>
           {waiver ? `Claim (${fmtWaiverTime(waiver.clearsAt, data.timeZone, "date")})` : "Add"}
@@ -348,6 +373,8 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
         {data.thisWeek && <ThisWeek week={data.thisWeek} />}
 
         <News playerId={data.player.id} />
+
+        <Transactions transactions={data.transactions} timeZone={data.timeZone} />
       </div>
 
       <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
@@ -522,6 +549,79 @@ function timeAgo(iso: string): string {
   if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
   if (mins < 7 * 24 * 60) return `${Math.round(mins / (24 * 60))}d ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+const TRANSACTIONS_PREVIEW = 5;
+
+/** How he moved: "Added by", "Claimed for $12 by", "Dropped by", or a trade's two teams. */
+function moveText(tx: PlayerTransaction): { sign: "+" | "−" | "→"; verb: string } {
+  if (tx.to === null) return { sign: "−", verb: tx.type === "commissioner" ? "Removed by commissioner from" : "Dropped by" };
+  if (tx.from === null) {
+    const verb =
+      tx.type === "waiver_claim" ? `Claimed${tx.faabBid !== null ? ` for $${tx.faabBid}` : ""} by`
+      : tx.type === "commissioner" ? "Added by commissioner to"
+      : "Added by";
+    return { sign: "+", verb };
+  }
+  return { sign: "→", verb: tx.type === "trade" ? "Traded" : "Moved by commissioner" };
+}
+
+/** Everyone who has added, dropped, claimed or traded him in this league, newest first. */
+function Transactions({ transactions, timeZone }: { transactions: PlayerTransaction[]; timeZone: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? transactions : transactions.slice(0, TRANSACTIONS_PREVIEW);
+  return (
+    <section className={styles.section} aria-labelledby="transactions-heading">
+      <h3 id="transactions-heading" className={styles.h3}>
+        Transactions
+      </h3>
+      {transactions.length === 0 ? (
+        <p className={styles.empty}>No transactions in this league yet.</p>
+      ) : (
+        <>
+          <ul className={styles.txList}>
+            {shown.map((tx) => {
+              const { sign, verb } = moveText(tx);
+              const cls = sign === "+" ? styles.txPlus : sign === "−" ? styles.txMinus : styles.txAcross;
+              const team = tx.to ?? tx.from;
+              return (
+                <li key={tx.id} className={styles.txItem}>
+                  <b className={`${styles.txSign} ${cls}`} aria-hidden="true">{sign}</b>
+                  <span className={styles.txText}>
+                    {verb}{" "}
+                    {tx.from && tx.to ? (
+                      <>
+                        <TeamBadge team={tx.from} className={styles.txBadge} />
+                        <span className={styles.txTeam}>{tx.from.name}</span>
+                        {" to "}
+                        <TeamBadge team={tx.to} className={styles.txBadge} />
+                        <span className={styles.txTeam}>{tx.to.name}</span>
+                      </>
+                    ) : (
+                      team && (
+                        <>
+                          <TeamBadge team={team} className={styles.txBadge} />
+                          <span className={styles.txTeam}>{team.name}</span>
+                        </>
+                      )
+                    )}
+                  </span>
+                  <time className={styles.txWhen} dateTime={tx.at}>
+                    {fmtWaiverTime(tx.at, timeZone, "date")}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
+          {transactions.length > TRANSACTIONS_PREVIEW && (
+            <button type="button" className={styles.newsMore} onClick={() => setExpanded((e) => !e)}>
+              {expanded ? "Show less" : `Show ${transactions.length - TRANSACTIONS_PREVIEW} more`}
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 const GAME_STATE = { scheduled: styles.gameScheduled, live: styles.gameLive, final: styles.gameFinal };

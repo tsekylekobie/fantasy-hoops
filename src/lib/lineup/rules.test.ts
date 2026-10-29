@@ -56,6 +56,18 @@ test("validate: moving a player off IL can't overfill the active roster", () => 
   assert.equal(validateLineup(players, new Map([[1, "C"], [2, "BN"], [3, "BN"]]), { C: 1, BN: 2, IL: 1 }, names), null);
 });
 
+test("validate: a healthy player stashed on IL stays put while the rest of the lineup moves", () => {
+  // Bo got healthy on IL: the roster is illegal (no adds), but lineup moves still work.
+  const players = [p(1, "C", "C"), p(2, "C", "BN"), p(3, "C", "IL")];
+  const counts: SlotCounts = { C: 1, BN: 1, IL: 1 };
+  const names = new Map([[3, "Bo"]]);
+  assert.match(rosterProblems(players.map((x) => ({ ...x, name: names.get(x.id) ?? "" })), counts)[0], /Bo is on IL but no longer qualifies/);
+  assert.equal(validateLineup(players, new Map([[1, "BN"], [2, "C"], [3, "IL"]]), counts, names), null);
+  // He can't go back on IL once he's off it, or into a full active roster.
+  assert.match(validateLineup(players, new Map([[1, "C"], [2, "BN"], [3, "BN"]]), counts, names)!, /roster is full/);
+  assert.deepEqual(autoLineup(players.map((x) => ({ ...x, plays: true })), counts).get(3), "IL");
+});
+
 test("validate: swapping a starter and a bench player", () => {
   const players = [p(1, "C", "C"), p(2, "C", "BN")];
   const names = new Map<number, string>();

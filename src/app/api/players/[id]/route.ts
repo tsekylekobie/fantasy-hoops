@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { BadRequest, parsePlayerId, parseSeason } from "@/lib/queries/params";
+import { getPlayerTransactions } from "@/lib/queries/league";
 import { getPlayerWeek } from "@/lib/queries/lineup";
 import { getPlayerDetail } from "@/lib/queries/players";
 import { getWeights } from "@/lib/queries/weights";
@@ -25,11 +26,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const userId = await sessionUserId();
     const weights = userId === null ? DEFAULT_WEIGHTS : await getWeights(pool, userId);
-    const [detail, thisWeek] = await Promise.all([getPlayerDetail(pool, id, season, weights), getPlayerWeek(pool, id, season)]);
+    const [detail, thisWeek, transactions] = await Promise.all([
+      getPlayerDetail(pool, id, season, userId, weights), getPlayerWeek(pool, id, season), getPlayerTransactions(pool, id, season),
+    ]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
-    const body: PlayerDetailResponse = { ...detail, thisWeek };
-    // No caching: owners change with every add and drop.
-    return NextResponse.json(body, { headers: { "Cache-Control": "no-cache" } });
+    const body: PlayerDetailResponse = { ...detail, thisWeek, transactions };
+    // No caching: owners change with every add and drop; private: the star is per user.
+    return NextResponse.json(body, { headers: { "Cache-Control": "private, no-cache" } });
   } catch (err) {
     console.error(`GET /api/players/${id} failed`, err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

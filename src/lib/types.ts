@@ -19,8 +19,11 @@ export function defaultSortDir(key: SortKey): SortDir {
 export type StatRange = "season" | "last30" | "last14";
 export const STAT_RANGES: readonly StatRange[] = ["season", "last30", "last14"];
 
-/** Which players GET /api/players?scope= lists: free agents (on no team in the season's league) or everyone. */
-export type PlayerScope = "fa" | "all";
+/**
+ * Which players GET /api/players?scope= lists: free agents (on no team in the season's league), everyone, or the
+ * signed-in user's watchlist, rostered or not (401 signed out).
+ */
+export type PlayerScope = "fa" | "all" | "watch";
 
 /** Position filter values for GET /api/players?pos=. "all" means no filter. */
 export type PositionFilter = "all" | "G" | "F" | "C";
@@ -114,6 +117,8 @@ export interface PlayerRow extends PlayerSummary {
   games: PlayerUpcomingGame[];
   /** Null when healthy. */
   injury: PlayerInjury | null;
+  /** On the signed-in user's watchlist; null when signed out (no star). */
+  watched: boolean | null;
 }
 
 /** A scheduled (not started, not postponed) NBA game, for the streaming filter. */
@@ -238,6 +243,30 @@ export interface PlayerDetailResponse {
   pastSeasons: SeasonRow[];
   /** His games in the league's current matchup week; null outside the schedule. */
   thisWeek: PlayerWeek | null;
+  /** Every completed move of his in the season's league, newest first. */
+  transactions: PlayerTransaction[];
+  /** On the signed-in user's watchlist; null when signed out (no star). */
+  watched: boolean | null;
+}
+
+/** PUT (watch) or DELETE (unwatch) /api/players/:id/watch; 401 signed out, 404 no such player. */
+export interface WatchResponse {
+  playerId: number;
+  watched: boolean;
+}
+
+/** One completed move of a player (an add, drop, claim, trade or commissioner move), for the player modal. */
+export interface PlayerTransaction {
+  id: number;
+  type: TransactionType;
+  /** When rosters changed (processed_at, else created_at), ISO timestamp. */
+  at: string;
+  /** The team he left; null = came from free agents or waivers. */
+  from: FantasyTeamSummary | null;
+  /** The team he joined; null = dropped. */
+  to: FantasyTeamSummary | null;
+  /** A waiver claim won in a FAAB league: what it cost, in whole dollars. Null otherwise. */
+  faabBid: number | null;
 }
 
 /** 1-based 9CAT ranks over each StatRange; null when he has no games in it. */
@@ -869,6 +898,9 @@ export interface Trade {
   /** Players going from the proposer to the partner, and back. */
   sends: PlayerSummary[];
   receives: PlayerSummary[];
+  /** Players each team drops when it goes through: the proposer's chosen when proposing, the partner's when accepting. */
+  proposerDrops: PlayerSummary[];
+  partnerDrops: PlayerSummary[];
   note: string | null;
   /** ISO timestamps. */
   createdAt: string;
@@ -924,6 +956,8 @@ export interface TradeProposal {
   sendPlayerIds: number[];
   /** From the partner's roster. */
   receivePlayerIds: number[];
+  /** The proposer's own players to drop when it goes through (to stay within the active limit). */
+  dropPlayerIds?: number[];
   note?: string;
 }
 
@@ -933,6 +967,55 @@ export interface TradeProposal {
  * review. veto: the commissioner, during review. Responds with the Trade.
  */
 export type TradeAction = "accept" | "reject" | "cancel" | "vote" | "unvote" | "veto";
+
+/** POST /api/trades/:id body. `dropPlayerIds`: accept only, the partner's own players to drop when it goes through. */
+export interface TradeActionRequest {
+  action: TradeAction;
+  dropPlayerIds?: number[];
+}
+
+// Trade analyzer (the builder and pending trades): GET /api/trades/analysis
+
+/** Per-game counting stats, unrounded. FG%/FT% come from the makes and attempts. */
+export type PerGameLine = Record<"fgm" | "fga" | "ftm" | "fta" | "fg3m" | "pts" | "reb" | "ast" | "stl" | "blk" | "tov", number>;
+
+/** Stats windows the analyzer offers: season averages or the last 14 days (as on the Players page). */
+export type TradeWindow = "season" | "last14";
+
+export interface TradeAnalysisWindowLine {
+  gp: number;
+  perGame: PerGameLine;
+  /** 9CAT value in this window: with the viewer's punt weights, and with the default weights. */
+  value: number;
+  defaultValue: number;
+}
+
+export interface TradeAnalysisPlayer extends PlayerSummary {
+  slot: LineupSlot;
+  /** Null when he hasn't played in that window. */
+  season: TradeAnalysisWindowLine | null;
+  last14: TradeAnalysisWindowLine | null;
+}
+
+/**
+ * GET /api/trades/analysis?teams=A,B: what the analyzer needs to price any
+ * trade between teams A and B on the client: both rosters with per-game lines
+ * and values, and every league team's active per-game totals for the ranks.
+ */
+export interface TradeAnalysisResponse {
+  /** Most players a team may carry outside IL/IL+. */
+  activeLimit: number;
+  /** Starting slot counts, in display order (zeros left out). */
+  slots: { slot: LineupSlot; count: number }[];
+  /** The viewer's punt weights, and whether they're the defaults (then there's nothing to switch). */
+  weights: CategoryWeights;
+  weightsAreDefault: boolean;
+  teams: (FantasyTeamSummary & { players: TradeAnalysisPlayer[] })[];
+  /** Every team in the league: the per-game sum of its active (non-IL) players, by window. */
+  league: { teamId: number; season: PerGameLine; last14: PerGameLine }[];
+  /** The last-14-days window, yyyy-mm-dd; null before the first game. */
+  last14: { from: string; to: string } | null;
+}
 
 // Waivers (/api/team/claims, the League page's waiver order)
 

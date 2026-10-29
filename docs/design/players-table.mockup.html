@@ -65,6 +65,10 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 .tm{font-size:12px;color:#5A5F68;display:block;margin-top:2px}
 .up{font-size:11px;color:#4A4F57;display:block;margin-top:2px}
 .pl{display:flex;align-items:center;gap:12px;padding:8px 0}
+.star{flex:none;width:28px;height:28px;margin:0 -6px;padding:0;border:0;border-radius:6px;background:none;color:#5A5F68;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.star svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.star:hover,.star[aria-pressed="true"]{color:#C2410C}
+.star[aria-pressed="true"] svg{fill:currentColor}
 .av2{width:40px;height:40px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:600 13px Inter,sans-serif;font-style:normal;display:flex;align-items:center;justify-content:center;flex:none}
 .own{text-align:right;font-size:12px;font-weight:600;letter-spacing:.04em;color:#5A5F68}
 .own .mine{color:#fff;background:#16181D;border-radius:999px;padding:4px 10px}
@@ -105,7 +109,7 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 <button class="ftog" aria-expanded="{{showF}}" onClick="{{flipF}}"><span class="chev" aria-hidden="true"></span>Filters<sc-if value="{{hideF}}" hint-placeholder-val="{{ true }}"><small>{{summary}}</small></sc-if></button>
 <sc-if value="{{showF}}" hint-placeholder-val="{{ false }}">
 <div class="fpanel">
-<span class="fgrp">Players<span class="seg"><button aria-pressed="{{faOn}}" onClick="{{pickFa}}">Free agents</button><button aria-pressed="{{allOn}}" onClick="{{pickAll}}">All players</button></span></span>
+<span class="fgrp">Players<span class="seg"><button aria-pressed="{{faOn}}" onClick="{{pickFa}}">Free agents</button><button aria-pressed="{{allOn}}" onClick="{{pickAll}}">All players</button><button aria-pressed="{{watchOn}}" onClick="{{pickWatch}}">Watchlist</button></span></span>
 <span class="fgrp">Team<span class="sels"><select class="sel" aria-label="Fantasy team" value="{{team}}" onChange="{{pickTeam}}"><option value="">Any fantasy team</option><option value="Back Door Cuts">Back Door Cuts</option><option value="Bench Mob">Bench Mob</option><option value="Corner Three Club">Corner Three Club</option><option value="Euro Steppers">Euro Steppers</option><option value="Fast Break Fund">Fast Break Fund</option><option value="Free Throw Line Dancers">Free Throw Line Dancers</option><option value="Full Court Press">Full Court Press</option><option value="Glass Cleaners">Glass Cleaners</option><option value="Moving Screens">Moving Screens</option><option value="Paint Protectors">Paint Protectors</option><option value="Pick &amp; Pop Culture">Pick &amp; Pop Culture</option><option value="Splash Zone">Splash Zone</option></select><select class="sel" aria-label="NBA team" value="{{nba}}" onChange="{{pickNba}}"><option value="">Any NBA team</option><option value="ATL">ATL</option><option value="BOS">BOS</option><option value="BKN">BKN</option><option value="CHA">CHA</option><option value="CHI">CHI</option><option value="CLE">CLE</option><option value="DAL">DAL</option><option value="DEN">DEN</option><option value="DET">DET</option><option value="GSW">GSW</option><option value="HOU">HOU</option><option value="IND">IND</option><option value="LAC">LAC</option><option value="LAL">LAL</option><option value="MEM">MEM</option><option value="MIA">MIA</option><option value="MIL">MIL</option><option value="MIN">MIN</option><option value="NOP">NOP</option><option value="NYK">NYK</option><option value="OKC">OKC</option><option value="ORL">ORL</option><option value="PHI">PHI</option><option value="PHX">PHX</option><option value="POR">POR</option><option value="SAC">SAC</option><option value="SAS">SAS</option><option value="TOR">TOR</option><option value="UTA">UTA</option><option value="WAS">WAS</option></select></span></span>
 <span class="fgrp">Position<span class="seg"><button aria-pressed="true">All positions</button><button aria-pressed="false">G</button><button aria-pressed="false">F</button><button aria-pressed="false">C</button></span></span>
 <span class="fgrp">Plays<span class="seg"><button aria-pressed="true">Any day</button><button aria-pressed="false">Today</button><button aria-pressed="false">Tomorrow</button><button aria-pressed="false">In 2 days</button></span></span>
@@ -116,7 +120,7 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 <div class="card">
 <div class="g hd"><span title="9CAT rank">#</span><span>Player</span><span class="n">GP</span><span class="n">MIN</span><span class="n">FG%</span><span class="n">FT%</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span><span class="n srt" title="9CAT value: average of the nine category z-scores, weighted by your punt weights. 0 is an average rostered player">Value</span><span class="n">Owner</span></div>
 <sc-for list="{{rows}}" as="p" hint-placeholder-count="10">
-<div class="g r"><span>{{p.rank}}</span><span class="pl"><i class="av2">{{p.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{p.name}}</a><span class="tm">{{p.tm}}<sc-if value="{{p.hasInj}}" hint-placeholder-val="{{ false }}"><span class="{{p.injCls}}">{{p.inj}}</span></sc-if></span><span class="up">{{p.up}}</span></span></span><span class="n">{{p.gp}}</span><span class="n">{{p.min}}</span><span class="n">{{p.fg}}<small>{{p.fgma}}</small></span><span class="n">{{p.ft}}<small>{{p.ftma}}</small></span><span class="n">{{p.s0}}</span><span class="n k">{{p.s1}}</span><span class="n">{{p.s2}}</span><span class="n">{{p.s3}}</span><span class="n">{{p.s4}}</span><span class="n">{{p.s5}}</span><span class="n">{{p.s6}}</span><span class="n val">{{p.value}}</span>
+<div class="g r"><span>{{p.rank}}</span><span class="pl"><button class="star" aria-pressed="{{p.watched}}" aria-label="{{p.watchLabel}}" title="{{p.watchTitle}}" onClick="{{p.flipWatch}}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.47 5.2 5.7.68-4.2 3.9 1.1 5.63L10 14.45l-5.07 2.76 1.1-5.63-4.2-3.9 5.7-.68z"/></svg></button><i class="av2">{{p.ini}}</i><span><a class="nm" href="player-modal.mockup.html">{{p.name}}</a><span class="tm">{{p.tm}}<sc-if value="{{p.hasInj}}" hint-placeholder-val="{{ false }}"><span class="{{p.injCls}}">{{p.inj}}</span></sc-if></span><span class="up">{{p.up}}</span></span></span><span class="n">{{p.gp}}</span><span class="n">{{p.min}}</span><span class="n">{{p.fg}}<small>{{p.fgma}}</small></span><span class="n">{{p.ft}}<small>{{p.ftma}}</small></span><span class="n">{{p.s0}}</span><span class="n k">{{p.s1}}</span><span class="n">{{p.s2}}</span><span class="n">{{p.s3}}</span><span class="n">{{p.s4}}</span><span class="n">{{p.s5}}</span><span class="n">{{p.s6}}</span><span class="n val">{{p.value}}</span>
 <span class="own"><sc-if value="{{p.isAdd}}" hint-placeholder-val="{{ false }}"><a class="add" href="claim-player.mockup.html">Add</a></sc-if><sc-if value="{{p.isClaim}}" hint-placeholder-val="{{ false }}"><a class="add w" href="claim-player.mockup.html" title="On waivers until Sun, Oct 25 · 3:00 AM ET">Claim (Oct 25)</a></sc-if><sc-if value="{{p.isMine}}" hint-placeholder-val="{{ false }}"><span class="mine">BDC</span></sc-if><sc-if value="{{p.isOther}}" hint-placeholder-val="{{ true }}">{{p.owner}}</sc-if></span></div>
 </sc-for>
 </div>
@@ -146,6 +150,7 @@ var self=this;var s=this.state||{};
 var range=s.range||'season';var mode=s.mode||'avg';var showW=s.showW===undefined?true:s.showW;var showF=!!s.showF;
 var scope=s.scope||'all';var team=s.team||'';var nba=s.nba||'';
 var tl=[team,nba].filter(Boolean);
+var wl=s.wl||{'Tomas Veric':1,'Kofi Mensah':1};
 var w=s.w||CATS.map(function(c){return c[2];});
 var isDefault=w.every(function(v,i){return v===CATS[i][2];});
 var tot=mode==='total';
@@ -156,15 +161,17 @@ ranges:[['season','Season'],['last14','Last 14 days']].map(function(o){return {l
 modes:[['avg','Per game'],['total','Totals']].map(function(o){return {label:o[1],on:o[0]===mode?'true':'false',pick:function(){self.setState({mode:o[0]});}};}),
 showW:showW,flipW:function(){self.setState({showW:!showW});},pwLabel:'Punt weights'+(isDefault?'':' · custom'),
 showF:showF,hideF:!showF,
-summary:[scope==='all'?'All players':'Free agents',tl.length?tl.join(' · '):'Any team','All positions','Plays any day','Any waiver status'].join(' · '),
-faOn:scope==='fa'?'true':'false',allOn:scope==='all'?'true':'false',team:team,nba:nba,
-pickFa:function(){self.setState({scope:'fa',team:''});},pickAll:function(){self.setState({scope:'all'});},
-pickTeam:function(e){var v=e.target.value;self.setState(v?{team:v,scope:'all'}:{team:''});},
+summary:[{fa:'Free agents',all:'All players',watch:'Watchlist'}[scope],tl.length?tl.join(' · '):'Any team','All positions','Plays any day','Any waiver status'].join(' · '),
+faOn:scope==='fa'?'true':'false',allOn:scope==='all'?'true':'false',watchOn:scope==='watch'?'true':'false',team:team,nba:nba,
+pickFa:function(){self.setState({scope:'fa',team:''});},pickAll:function(){self.setState({scope:'all'});},pickWatch:function(){self.setState({scope:'watch'});},
+pickTeam:function(e){var v=e.target.value;self.setState(v?{team:v,scope:scope==='fa'?'all':scope}:{team:''});},
 pickNba:function(e){self.setState({nba:e.target.value});},flipF:function(){self.setState({showF:!showF});},
 weights:CATS.map(function(c,i){return {label:c[0],v:w[i],text:w[i]===0?'Punt':w[i].toFixed(1),aria:c[0]+' weight',
 set:function(e){var nw=w.slice();nw[i]=Math.round(Number(e.target.value)*10)/10;self.setState({w:nw});}};}),
 isDefault:isDefault,resetW:function(){self.setState({w:null});},
-rows:P.map(function(p,i){var gp=p[3];return {rank:i+1,name:p[0],ini:p[0].split(' ').map(function(x){return x[0];}).join(''),tm:p[1],up:p[2],gp:gp,min:v(p[4],gp),
+rows:P.map(function(p,i){return [p,i];}).filter(function(x){return scope!=='watch'||wl[x[0][0]];}).map(function(x){var p=x[0],i=x[1];var gp=p[3];var on=!!wl[p[0]];return {rank:i+1,
+watched:on?'true':'false',watchLabel:(on?'Unwatch ':'Watch ')+p[0],watchTitle:on?'On your watchlist':'Add to watchlist',
+flipWatch:function(){var n=Object.assign({},wl);if(on)delete n[p[0]];else n[p[0]]=1;self.setState({wl:n});},name:p[0],ini:p[0].split(' ').map(function(x){return x[0];}).join(''),tm:p[1],up:p[2],gp:gp,min:v(p[4],gp),
 fg:pct(p[5],p[6]),fgma:tot?Math.round(p[5]*gp)+'/'+Math.round(p[6]*gp):f1(p[5])+'/'+f1(p[6]),
 ft:pct(p[7],p[8]),ftma:tot?Math.round(p[7]*gp)+'/'+Math.round(p[8]*gp):f1(p[7])+'/'+f1(p[8]),
 s0:v(p[9],gp),s1:v(p[10],gp),s2:v(p[11],gp),s3:v(p[12],gp),s4:v(p[13],gp),s5:v(p[14],gp),s6:v(p[15],gp),value:p[16].toFixed(2),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CategoryWeights, PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter, WeightsResponse,
@@ -23,7 +23,10 @@ const WEIGHTS_DEBOUNCE_MS = 300;
 const SCOPES: SegmentedOption<PlayerScope>[] = [
   { value: "fa", label: "Free agents" },
   { value: "all", label: "All players" },
+  { value: "watch", label: "Watchlist" },
 ];
+
+const SCOPE_NOUNS: Record<PlayerScope, string> = { fa: "free agents", all: "players", watch: "watched players" };
 
 const POSITIONS: SegmentedOption<PositionFilter>[] = [
   { value: "all", label: "All positions" },
@@ -88,7 +91,7 @@ function readUrlState(params: URLSearchParams): UrlState {
   const nba = params.get("nba")?.toUpperCase() ?? "";
   return {
     q: params.get("q") ?? "",
-    scope: params.get("scope") === "all" ? "all" : "fa",
+    scope: SCOPES.find((o) => o.value === params.get("scope"))?.value ?? "fa",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
     range: STAT_RANGES.find((r) => r === params.get("range")) ?? "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
@@ -134,7 +137,7 @@ function filterSummary(s: UrlState, teams: PlayersResponse["teamOptions"] | null
     s.nba,
   ].filter((x): x is string => x !== null);
   return [
-    { text: s.scope === "all" ? "All players" : "Free agents", changed: s.scope !== "fa" },
+    { text: SCOPES.find((o) => o.value === s.scope)!.label, changed: s.scope !== "fa" },
     { text: teamLabels.length > 0 ? teamLabels.join(" · ") : "Any team", changed: teamLabels.length > 0 },
     { text: s.pos === "all" ? "All positions" : POSITION_NAMES[s.pos], changed: s.pos !== "all" },
     { text: `Plays ${playLabels.length > 0 ? playLabels.join(" or ") : "any day"}`, changed: playLabels.length > 0 },
@@ -317,7 +320,19 @@ export default function PlayersBrowser() {
     }
   }, [navigate, router]);
 
-  const data = load.data;
+  // Stars toggled on this page, over what the table last loaded (the modal's too); the next load agrees.
+  const [watchedIds, setWatchedIds] = useState<Map<number, boolean>>(new Map());
+  const onWatch = useCallback((id: number, watched: boolean) => {
+    setWatchedIds((prev) => new Map(prev).set(id, watched));
+  }, []);
+  const data = useMemo(() => {
+    const d = load.data;
+    if (!d || watchedIds.size === 0) return d;
+    return {
+      ...d,
+      players: d.players.map((p) => (p.watched !== null && watchedIds.has(p.id) ? { ...p, watched: watchedIds.get(p.id)! } : p)),
+    };
+  }, [load.data, watchedIds]);
   const teamOptions = data?.teamOptions ?? null;
   const total = data?.total ?? 0;
   const shown = data?.players.length ?? 0;
@@ -326,9 +341,9 @@ export default function PlayersBrowser() {
   const hasNext = page * PER_PAGE < total;
   let summary = " ";
   if (data) {
-    if (total === 0) summary = waivers !== "any" ? "No players on waivers" : scope === "fa" ? "No free agents" : "No players";
+    if (total === 0) summary = waivers !== "any" ? "No players on waivers" : `No ${SCOPE_NOUNS[scope]}`;
     else if (shown === 0) summary = `No players on this page · ${total.toLocaleString("en-US")} total`;
-    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${scope === "fa" ? "free agents" : "players"}`;
+    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${SCOPE_NOUNS[scope]}`;
   }
 
   return (
@@ -395,10 +410,10 @@ export default function PlayersBrowser() {
           <div id="player-filters" className={styles.filtersPanel} hidden={!filtersOpen}>
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Players</span>
-              {/* Free agents have no fantasy team, so that pick clears the team filter. */}
+              {/* Free agents have no fantasy team, so that pick clears the team filter. The watchlist needs a sign-in. */}
               <SegmentedToggle
                 label="Players"
-                options={SCOPES}
+                options={signedIn || scope === "watch" ? SCOPES : SCOPES.filter((o) => o.value !== "watch")}
                 value={scope}
                 onChange={(v) => navigate({ scope: v, ...(v === "fa" && { team: null }), page: 1 })}
               />
@@ -406,14 +421,14 @@ export default function PlayersBrowser() {
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Team</span>
               <span className={styles.selects}>
-                {/* A fantasy team's players are rostered, so picking one shows all players. */}
+                {/* A fantasy team's players are rostered, so picking one shows all players (or watched ones). */}
                 <select
                   className={styles.select}
                   aria-label="Fantasy team"
                   value={team ?? ""}
                   onChange={(e) => {
                     const id = e.target.value ? Number(e.target.value) : null;
-                    navigate({ team: id, ...(id !== null && { scope: "all" }), page: 1 });
+                    navigate({ team: id, ...(id !== null && scope === "fa" && { scope: "all" }), page: 1 });
                   }}
                 >
                   <option value="">All fantasy teams</option>
@@ -464,6 +479,7 @@ export default function PlayersBrowser() {
           onOpenPlayer={openPlayer}
           onAddPlayer={setAdding}
           myTeamId={myTeamId}
+          onWatch={onWatch}
         />
 
         <div className={styles.footer}>
@@ -479,7 +495,9 @@ export default function PlayersBrowser() {
         </div>
       </div>
 
-      <PlayerModal playerId={player} onClose={closePlayer} onAdd={setAdding} myTeamId={myTeamId} refreshKey={movesKey} />
+      <PlayerModal
+        playerId={player} onClose={closePlayer} onAdd={setAdding} myTeamId={myTeamId} refreshKey={movesKey} onWatch={onWatch}
+      />
       <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>
   );

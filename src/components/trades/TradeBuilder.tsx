@@ -3,14 +3,21 @@
 // Trade builder (/team/[id]/trade): your roster and theirs side by side. Tick
 // the players you'd send and the ones you want, add a note, and propose. The
 // other manager accepts or rejects it from their My team page; then the league
-// reviews it (see TradesPanel). Rosters come from GET /api/trades/builder.
+// reviews it (see TradesPanel). Rosters come from GET /api/trades/builder; the
+// analyzer below them (TradeAnalysis) re-prices every pick from
+// GET /api/trades/analysis. Going over the active limit means picking drops,
+// which go through with the trade.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import TradeAnalysis, { AnalysisControls } from "@/components/trades/TradeAnalysis";
 import SiteHeader from "@/components/SiteHeader";
-import { fetchJson, fmtAvg, fmtValue, fullName } from "@/components/players/format";
-import type { Trade, TradeBuilderResponse, TradeProposal, TradeRosterPlayer } from "@/lib/types";
+import { fetchJson, fmtAvg, fmtGameDate, fmtValue, fullName } from "@/components/players/format";
+import { playerValue, type WeightSet } from "@/lib/trades/analysis";
+import type {
+  Trade, TradeAnalysisPlayer, TradeAnalysisResponse, TradeBuilderResponse, TradeProposal, TradeRosterPlayer, TradeWindow,
+} from "@/lib/types";
 import styles from "./Trades.module.css";
 
 const MAX_SIDE = 6;
@@ -27,6 +34,11 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [send, setSend] = useState<Set<number>>(new Set());
   const [receive, setReceive] = useState<Set<number>>(new Set());
+  const [drops, setDrops] = useState<number[]>([]);
+  const [analysis, setAnalysis] = useState<TradeAnalysisResponse | null>(null);
+  const [statWindow, setStatWindow] = useState<TradeWindow>("season");
+  const [weights, setWeights] = useState<WeightSet>("mine");
+  const [tab, setTab] = useState<"players" | "analysis">("players");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +52,17 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
       });
     return () => ctrl.abort();
   }, [partnerId]);
+
+  const myTeamId = data?.myTeam.id;
+  useEffect(() => {
+    if (myTeamId === undefined) return;
+    const ctrl = new AbortController();
+    // The analyzer is extra: without it the builder still works.
+    fetchJson<TradeAnalysisResponse>(`/api/trades/analysis?teams=${myTeamId},${partnerId}`, ctrl.signal)
+      .then(setAnalysis)
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [myTeamId, partnerId]);
 
   if (!data) {
     return (
@@ -67,12 +90,25 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
   const theirAfter = activeAfter(partner.players, receive, send.size);
   const myNow = myTeam.players.filter(isActive).length;
   const theirNow = partner.players.filter(isActive).length;
-  const tooBig = [
-    myAfter > settings.activeLimit && myAfter > myNow ? `You'd have ${myAfter} active players (limit ${settings.activeLimit}); drop ${myAfter - settings.activeLimit} first or send more.` : null,
-    theirAfter > settings.activeLimit && theirAfter > theirNow ? `${partner.name} would have ${theirAfter} active players (limit ${settings.activeLimit}); ask for fewer.` : null,
+  // Over the limit: you pick drops (they go through with the trade); they pick theirs when accepting.
+  const mustDrop = myAfter > settings.activeLimit && myAfter > myNow ? myAfter - settings.activeLimit : 0;
+  const droppable = new Set(myTeam.players.filter((p) => isActive(p) && !send.has(p.id)).map((p) => p.id));
+  const myDrops = drops.filter((id) => droppable.has(id)).slice(0, mustDrop);
+  const theyDrop = theirAfter > settings.activeLimit && theirAfter > theirNow ? theirAfter - settings.activeLimit : 0;
+  const notes = [
+    mustDrop > myDrops.length
+      ? `You'd have ${myAfter} active players (limit ${settings.activeLimit}). Pick ${mustDrop - myDrops.length} to drop under Trade analysis, or send more.`
+      : null,
+    theyDrop > 0 ? `${partner.name} would have ${theirAfter} active players (limit ${settings.activeLimit}); they'd drop ${theyDrop} when accepting.` : null,
   ].filter(Boolean) as string[];
   const pastDeadline = settings.deadline !== null && data.today > settings.deadline;
-  const ready = sending.length > 0 && receiving.length > 0 && tooBig.length === 0 && !pastDeadline;
+  const ready = sending.length > 0 && receiving.length > 0 && myDrops.length === mustDrop && !pastDeadline;
+  const dropNames = myTeam.players.filter((p) => myDrops.includes(p.id));
+  // The rosters' stats and value follow the analyzer's switches once it has loaded.
+  const lineFor = (p: TradeRosterPlayer) => {
+    const a = analysis?.teams.flatMap((t) => t.players).find((x) => x.id === p.id);
+    return a ? analyzed(a, statWindow, weights) : null;
+  };
 
   async function propose() {
     setSaving(true);
@@ -82,6 +118,7 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
         partnerTeamId: partner.id,
         sendPlayerIds: [...send],
         receivePlayerIds: [...receive],
+        dropPlayerIds: myDrops.length > 0 ? myDrops : undefined,
         note: note.trim() || undefined,
       };
       const res = await fetch("/api/trades", {
@@ -112,18 +149,38 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
         <Link className={styles.btn} href={`/team/${partner.id}`}>Back to their team</Link>
       </div>
       <p className={styles.sub}>
-        Pick players from each roster. {partner.name} can accept or reject your offer. {review}
+        Pick players from each roster; the analysis below updates as you go. {partner.name} can accept or reject your
+        offer. {review}
       </p>
       {pastDeadline && (
         <div className={`${styles.note} ${styles.error}`} role="alert"><p>The trade deadline ({settings.deadline}) has passed.</p></div>
       )}
 
-      <div className={styles.cols}>
+      <div className={styles.phoneTabs} role="group" aria-label="Show">
+        {(["players", "analysis"] as const).map((t) => (
+          <button key={t} type="button" className={tab === t ? styles.on : undefined} aria-pressed={tab === t} onClick={() => setTab(t)}>
+            {t === "players" ? "Players" : "Analysis"}
+          </button>
+        ))}
+      </div>
+
+      {analysis && (
+        <div className={styles.toolbar}>
+          <AnalysisControls data={analysis} statWindow={statWindow} weights={weights} onWindow={setStatWindow} onWeights={setWeights} />
+          {statWindow === "last14" && analysis.last14 && (
+            <span className={styles.when}>{fmtGameDate(analysis.last14.from)} – {fmtGameDate(analysis.last14.to)}</span>
+          )}
+        </div>
+      )}
+
+      <div className={`${styles.cols} ${tab === "players" ? "" : styles.phoneOff}`}>
         <Roster
           title="You send"
           team={myTeam.name}
           players={myTeam.players}
           picked={send}
+          dropping={new Set(myDrops)}
+          lineFor={lineFor}
           onPick={(id) => toggle(send, setSend, id)}
         />
         <Roster
@@ -131,9 +188,27 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
           team={partner.name}
           players={partner.players}
           picked={receive}
+          dropping={new Set()}
+          lineFor={lineFor}
           onPick={(id) => toggle(receive, setReceive, id)}
         />
       </div>
+
+      {analysis && (
+        <div className={tab === "analysis" ? "" : styles.phoneOff}>
+          <TradeAnalysis
+            data={analysis}
+            sides={[
+              { teamId: myTeam.id, out: [...send], drops: myDrops, dropMode: "pick" },
+              { teamId: partner.id, out: [...receive], drops: [], dropMode: "assume" },
+            ]}
+            viewerTeamId={myTeam.id}
+            statWindow={statWindow}
+            weights={weights}
+            onDrops={(_, ids) => setDrops(ids)}
+          />
+        </div>
+      )}
 
       <section className={styles.summary} aria-label="Trade summary">
         <div className={styles.gets}>
@@ -144,11 +219,17 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
           <p className={styles.label}>You get</p>
           <Chips players={receiving} empty={`Pick players from ${partner.name}`} />
         </div>
+        {dropNames.length > 0 && (
+          <div className={`${styles.gets} ${styles.wide}`}>
+            <p className={styles.label}>You drop when it goes through</p>
+            <Chips players={dropNames} empty="" />
+          </div>
+        )}
         <label className={styles.noteField}>
           Note to {partner.name} (optional)
           <textarea value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="Pitch your offer…" />
         </label>
-        {tooBig.map((t) => (
+        {notes.map((t) => (
           <div key={t} className={`${styles.note} ${styles.warn} ${styles.wide}`}><p>{t}</p></div>
         ))}
         {error && (
@@ -167,11 +248,19 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
   );
 }
 
-function Roster({ title, team, players, picked, onPick }: {
+/** A player's GP, PTS/REB/AST and value in the analyzer's window and weights. */
+function analyzed(p: TradeAnalysisPlayer, window: TradeWindow, weights: WeightSet) {
+  const l = p[window];
+  return { gp: l?.gp ?? 0, pts: l?.perGame.pts ?? null, reb: l?.perGame.reb ?? null, ast: l?.perGame.ast ?? null, value: l ? playerValue(p, window, weights) : null };
+}
+
+function Roster({ title, team, players, picked, dropping, lineFor, onPick }: {
   title: string;
   team: string;
   players: TradeRosterPlayer[];
   picked: Set<number>;
+  dropping: Set<number>;
+  lineFor: (p: TradeRosterPlayer) => ReturnType<typeof analyzed> | null;
   onPick: (id: number) => void;
 }) {
   return (
@@ -187,12 +276,16 @@ function Roster({ title, team, players, picked, onPick }: {
         <span className={`${styles.n} ${styles.opt}`}>PTS</span>
         <span className={`${styles.n} ${styles.opt}`}>REB</span>
         <span className={`${styles.n} ${styles.opt}`}>AST</span>
-        <span className={styles.n} title="9CAT value this season">Value</span>
+        <span className={styles.n} title="9CAT value, with the analyzer's window and weights">Value</span>
       </div>
       {players.map((p) => {
         const on = picked.has(p.id);
+        const a = lineFor(p);
+        const line = a ?? {
+          gp: p.gp, pts: p.stats?.pts ?? null, reb: p.stats?.reb ?? null, ast: p.stats?.ast ?? null, value: p.value,
+        };
         return (
-          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""}`}>
+          <div key={p.id} className={`${styles.r} ${on ? styles.picked : ""} ${dropping.has(p.id) ? styles.dropping : ""}`}>
             <span>
               <button
                 type="button"
@@ -214,17 +307,18 @@ function Roster({ title, team, players, picked, onPick }: {
                     <span className={`${styles.tag} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
                   )}
                   {p.inOpenTrade && <span className={styles.tag} title="Also in another open trade">In a trade</span>}
+                  {dropping.has(p.id) && <span className={`${styles.tag} ${styles.out}`}>Drop</span>}
                 </span>
                 <span className={styles.meta}>
                   {[p.teamAbbr, p.position?.replace(/-/g, "/"), p.slot].filter(Boolean).join(" · ")}
                 </span>
               </span>
             </span>
-            <span className={`${styles.n} ${styles.opt}`}>{p.gp}</span>
-            <span className={`${styles.n} ${styles.opt}`}>{p.stats ? fmtAvg(p.stats.pts) : "–"}</span>
-            <span className={`${styles.n} ${styles.opt}`}>{p.stats ? fmtAvg(p.stats.reb) : "–"}</span>
-            <span className={`${styles.n} ${styles.opt}`}>{p.stats ? fmtAvg(p.stats.ast) : "–"}</span>
-            <span className={styles.n}>{p.value === null ? "–" : fmtValue(p.value)}</span>
+            <span className={`${styles.n} ${styles.opt}`}>{line.gp}</span>
+            <span className={`${styles.n} ${styles.opt}`}>{line.pts === null ? "–" : fmtAvg(line.pts)}</span>
+            <span className={`${styles.n} ${styles.opt}`}>{line.reb === null ? "–" : fmtAvg(line.reb)}</span>
+            <span className={`${styles.n} ${styles.opt}`}>{line.ast === null ? "–" : fmtAvg(line.ast)}</span>
+            <span className={styles.n}>{line.value === null ? "–" : fmtValue(line.value)}</span>
           </div>
         );
       })}

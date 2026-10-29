@@ -102,7 +102,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   const dir = params.get("dir")?.trim() || defaultSortDir(sort);
   if (dir !== "asc" && dir !== "desc") throw new BadRequest("dir must be asc or desc");
   const scope = params.get("scope")?.trim() || "all";
-  if (scope !== "fa" && scope !== "all") throw new BadRequest("scope must be fa or all");
+  if (scope !== "fa" && scope !== "all" && scope !== "watch") throw new BadRequest("scope must be fa, all or watch");
   const pos = params.get("pos")?.trim().toUpperCase() || "ALL";
   if (!["ALL", "G", "F", "C"].includes(pos)) throw new BadRequest("pos must be all, G, F or C");
   const plays = (params.get("plays") ?? "").split(",").map((d) => d.trim()).filter(Boolean);

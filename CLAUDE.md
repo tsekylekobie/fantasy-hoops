@@ -23,6 +23,11 @@ stored game logs), and neither is `/plays` (no play-by-play).
   claims by bid, breaks ties on priority and charges `fantasy_teams.faab_balance`; bids are checked by `faabBidProblem`
   in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
   one summary per run (`getRecentTransactions` in `queries/league.ts`).
+- Trades: `src/lib/queries/trades.ts` (propose, accept, review, process; built from another team's page,
+  `src/components/trades/`). A team over the active limit after a trade drops players with it
+  (`transaction_players.to_team_id` NULL): the proposer picks when proposing, the partner when accepting.
+  The trade analyzer (`TradeAnalysis.tsx`, in the builder and under open trades) prices trades on the client with
+  `src/lib/trades/analysis.ts` (pure, tested) over `GET /api/trades/analysis` (`queries/tradeAnalysis.ts`).
 - `src/lib/queries/settings.ts` + `/api/league/settings` + `/league/settings`: the commissioner's league settings
   (`leagues.commissioner_user_id` only). Waivers run on `leagues.waiver_days_of_week` (ISO weekdays, migration 0009).
 - `src/lib/playoffs/bracket.ts`: playoff and toilet bowl rules (seeding, pairings, who advances, ties go to the better
@@ -31,6 +36,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
   injury + news blurb. Rows show the status chip; the player modal adds injury, est. return and the full news blurb.
+- `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`) on
+  Players rows and in the player modal toggles it via `PUT`/`DELETE /api/players/[id]/watch`; `scope=watch` on
+  `/api/players` lists it. `watched` on rows and player detail is null when signed out (no star).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
@@ -59,7 +67,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).
 - `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (https://claude.ai/artifact/3ZpzKr2ULidGFpMvgVcvAm, private to the owner).
   `players-table` and `player-modal` are the Players page;
-  `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`,
+  `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`, `trade-analyzer`,
   `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
   and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.
 - `railway/`: Railway config-as-code for the `web` and `worker` services (README, "Deploying"). Anything a

@@ -204,6 +204,16 @@
   margin-left: 0;
 }
 
+/* The watchlist star leads the header's buttons: Star, Add, Close. */
+.watch {
+  margin-left: auto;
+}
+
+.watch + .add,
+.watch + .close {
+  margin-left: 0;
+}
+
 .close {
   margin-left: auto;
   flex: none;
@@ -568,6 +578,88 @@
 
 .newsMore:hover {
   text-decoration: underline;
+}
+
+/* Transactions */
+.txList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.txItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.txItem:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.txSign {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  font-weight: 700;
+}
+
+.txPlus {
+  color: #166534;
+}
+
+:root[data-theme="dark"] .txPlus {
+  color: var(--ok-ink);
+}
+
+.txMinus {
+  color: var(--danger-ink);
+}
+
+.txAcross {
+  color: var(--accent);
+}
+
+.txText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.txBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+}
+
+.txTeam {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.txWhen {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
 }
 
 .retry {

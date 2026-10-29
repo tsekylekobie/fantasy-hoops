@@ -4,9 +4,9 @@ A self-hosted fantasy basketball app for one 12-team, 9-category league (FG%, FT
 TO). It replaces Yahoo so the league can set its own waiver schedule (or FAAB), IL rules and game limits. There's
 no draft room: rosters are set up directly.
 
-Pages: Players (season stats, 9CAT value with punt weights, player modal with news and game log), Roster
+Pages: Players (season stats, 9CAT value with punt weights, a watchlist, player modal with news and game log), Roster
 (lineups, add/drop, waiver claims), Matchup, League (standings and recent transactions), Rankings (power rankings),
-Box scores, trades (built from another team's page, with a review period), and the commissioner's League
+Box scores, trades (built from another team's page, with a trade analyzer and a review period), and the commissioner's League
 settings. Playoffs and a toilet bowl run themselves once the regular season ends.
 
 Stats come from [BALLDONTLIE](https://www.balldontlie.io) into our Postgres database; the app only reads the

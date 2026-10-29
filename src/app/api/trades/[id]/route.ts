@@ -1,5 +1,6 @@
-// POST /api/trades/:id { action: TradeAction }: accept, reject, cancel, vote,
-// unvote or veto. Responds with the Trade as it now stands.
+// POST /api/trades/:id { action, dropPlayerIds? } (TradeActionRequest): accept,
+// reject, cancel, vote, unvote or veto; an accept may name the partner's drops.
+// Responds with the Trade as it now stands.
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { actOnTrade } from "@/lib/queries/trades";
@@ -14,12 +15,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const id = Number((await params).id);
     if (!Number.isInteger(id) || id <= 0) return errorResponse("No such trade.", 404);
-    const body = (await req.json().catch(() => null)) as { action?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as { action?: unknown; dropPlayerIds?: unknown } | null;
     const action = body?.action as TradeAction;
     if (!ACTIONS.includes(action)) return errorResponse(`action must be one of ${ACTIONS.join(", ")}`, 400);
     const ctx = await context(true);
     if (ctx instanceof NextResponse) return ctx;
-    return NextResponse.json(await actOnTrade(pool, ctx.league, ctx.userId!, id, action), { headers: NO_STORE });
+    return NextResponse.json(await actOnTrade(pool, ctx.league, ctx.userId!, id, action, body?.dropPlayerIds), { headers: NO_STORE });
   } catch (err) {
     return handleError("POST /api/trades/:id", err);
   }

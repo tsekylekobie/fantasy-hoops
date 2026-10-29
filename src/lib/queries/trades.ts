@@ -3,6 +3,10 @@
 // Storage (db/migrations/0004_league_play.sql): a trade is a transactions row
 // (type 'trade'; team_id = proposer, trade_team_id = partner) with one
 // transaction_players row per player moved, and trade_votes for league vetoes.
+// A team over the active limit after the trade drops players with it: rows
+// with to_team_id NULL, the proposer's written when proposing, the partner's
+// when accepting. They leave the roster when it processes, onto waivers per
+// transactions/policy.ts, like any drop.
 //
 // Lifecycle, all while status = 'pending':
 //   offered  accepted_at NULL. The partner accepts or rejects; the proposer can cancel.
@@ -42,6 +46,7 @@ import { getInjuries } from "./injuries";
 import { freezeLineups } from "./lineup";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
 import { categoryLine, getSeasonValues } from "./players";
+import { dropDestination } from "../transactions/policy";
 
 type Db = Pool | PoolClient;
 
@@ -62,6 +67,8 @@ export interface TradeLeague {
   season: number;
   commissionerUserId: number | null;
   settings: TradeSettings;
+  /** leagues.roster_slots: slot counts, IL included. */
+  rosterSlots: SlotCounts;
   lineupLock: "game_time" | "first_game";
   /** The league's today, yyyy-mm-dd. */
   today: string;
@@ -93,6 +100,7 @@ export async function getTradeLeague(db: Db, season: number): Promise<TradeLeagu
       deadline: r.trade_deadline,
       activeLimit,
     },
+    rosterSlots: r.roster_slots,
     lineupLock: r.lineup_lock,
     today: r.today,
   };
@@ -144,10 +152,10 @@ async function buildTrades(db: Db, league: TradeLeague, viewer: Viewer, rows: Tr
   if (rows.length === 0) return [];
   const teams = new Map((await leagueTeams(db, league.id)).map((t) => [t.id, summary(t)]));
   const { rows: players } = await db.query<{
-    transaction_id: number; from_team_id: number; id: number; first_name: string; last_name: string;
-    position: string | null; nba_person_id: number | null; team_abbr: string | null;
+    transaction_id: number; from_team_id: number; to_team_id: number | null; id: number; first_name: string;
+    last_name: string; position: string | null; nba_person_id: number | null; team_abbr: string | null;
   }>(
-    `SELECT tp.transaction_id::int, tp.from_team_id::int, p.id, p.first_name, p.last_name,
+    `SELECT tp.transaction_id::int, tp.from_team_id::int, tp.to_team_id::int, p.id, p.first_name, p.last_name,
             nullif(p.position, '') AS position, p.nba_person_id, tm.abbreviation AS team_abbr
        FROM transaction_players tp
        JOIN players p ON p.id = tp.player_id
@@ -172,8 +180,10 @@ async function buildTrades(db: Db, league: TradeLeague, viewer: Viewer, rows: Tr
       status,
       proposer: teams.get(r.team_id)!,
       partner: teams.get(r.trade_team_id)!,
-      sends: moved.filter((p) => p.from_team_id === r.team_id).map(toSummary),
-      receives: moved.filter((p) => p.from_team_id === r.trade_team_id).map(toSummary),
+      sends: moved.filter((p) => p.from_team_id === r.team_id && p.to_team_id !== null).map(toSummary),
+      receives: moved.filter((p) => p.from_team_id === r.trade_team_id && p.to_team_id !== null).map(toSummary),
+      proposerDrops: moved.filter((p) => p.from_team_id === r.team_id && p.to_team_id === null).map(toSummary),
+      partnerDrops: moved.filter((p) => p.from_team_id === r.trade_team_id && p.to_team_id === null).map(toSummary),
       note: r.note,
       createdAt: r.created_at,
       acceptedAt: r.accepted_at,
@@ -311,12 +321,17 @@ interface Side {
   teamName: string;
   /** Player ids this team gives up. */
   out: number[];
+  /** Its own players it drops when the trade goes through. */
+  drops: number[];
+  /** Skip its active limit: a partner picks its drops when accepting, so a proposal may leave it over. */
+  dropsLater?: boolean;
 }
 
 /**
- * Null if every player is still on the team giving him up and neither team
- * ends up with more active (non-IL) players than the league allows; else why not.
- * Players arrive on the bench, so they count as active.
+ * Null if every player (traded or dropped) is still on his team and neither
+ * team ends up with more active (non-IL) players than the league allows; else
+ * why not. Players arrive on the bench, so they count as active; drops off IL
+ * don't make room.
  */
 async function checkRosters(db: Db, league: TradeLeague, a: Side, b: Side): Promise<string | null> {
   const { rows } = await db.query<{ player_id: number; fantasy_team_id: number; slot: LineupSlot; name: string }>(
@@ -324,11 +339,11 @@ async function checkRosters(db: Db, league: TradeLeague, a: Side, b: Side): Prom
        FROM players p
        LEFT JOIN roster_players rp ON rp.player_id = p.id AND rp.league_id = $1
       WHERE p.id = ANY($2)`,
-    [league.id, [...a.out, ...b.out]],
+    [league.id, [...a.out, ...b.out, ...a.drops, ...b.drops]],
   );
   const byId = new Map(rows.map((r) => [r.player_id, r]));
   for (const side of [a, b]) {
-    for (const id of side.out) {
+    for (const id of [...side.out, ...side.drops]) {
       const r = byId.get(id);
       if (!r || r.fantasy_team_id !== side.teamId) return `${r?.name ?? `Player ${id}`} isn't on ${side.teamName}.`;
     }
@@ -339,12 +354,14 @@ async function checkRosters(db: Db, league: TradeLeague, a: Side, b: Side): Prom
     [league.id, [a.teamId, b.teamId]],
   );
   for (const [side, other] of [[a, b], [b, a]] as const) {
+    if (side.dropsLater) continue;
     const now = counts.find((c) => c.team_id === side.teamId)?.active ?? 0;
-    const leavingActive = side.out.filter((id) => !IL_SLOTS.includes(byId.get(id)!.slot)).length;
+    const leavingActive = [...side.out, ...side.drops].filter((id) => !IL_SLOTS.includes(byId.get(id)!.slot)).length;
     const after = now - leavingActive + other.out.length;
     if (after > league.settings.activeLimit && after > now) {
+      const n = after - league.settings.activeLimit;
       return `${side.teamName} would have ${after} active players; the limit is ${league.settings.activeLimit}. ` +
-        `They need to drop ${after - league.settings.activeLimit} first, or the trade needs to even out.`;
+        `Pick ${n} more to drop with the trade, or even it out.`;
     }
   }
   return null;
@@ -378,6 +395,14 @@ async function lockTeams(db: PoolClient, ids: number[]): Promise<void> {
   await db.query(`SELECT 1 FROM fantasy_teams WHERE id = ANY($1) ORDER BY id FOR UPDATE`, [ids]);
 }
 
+/** Drops: optional, the team's own players, none of them traded in this deal. */
+function parseDrops(value: unknown, out: number[]): number[] {
+  if (value === undefined || value === null) return [];
+  const ids = parseIds(value, "dropPlayerIds");
+  if (ids.some((id) => out.includes(id))) throw new TradeError("A player in the trade can't also be dropped.", 400);
+  return ids;
+}
+
 function parseIds(value: unknown, label: string): number[] {
   if (!Array.isArray(value) || !value.every((v) => Number.isInteger(v) && v > 0)) {
     throw new TradeError(`${label} must be a list of player ids.`, 400);
@@ -401,14 +426,15 @@ export async function proposeTrade(pool: Pool, league: TradeLeague, userId: numb
   if (send.length === 0 || receive.length === 0) {
     throw new TradeError("Pick at least one player from each team.", 400);
   }
+  const drops = parseDrops(body.dropPlayerIds, send);
   const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, MAX_NOTE) : null;
 
   const id = await inTransaction(pool, async (db) => {
     await lockTeams(db, [me.id, partner.id]);
     const problem = await checkRosters(
       db, league,
-      { teamId: me.id, teamName: me.name, out: send },
-      { teamId: partner.id, teamName: partner.name, out: receive },
+      { teamId: me.id, teamName: me.name, out: send, drops },
+      { teamId: partner.id, teamName: partner.name, out: receive, drops: [], dropsLater: true },
     );
     if (problem) throw new TradeError(problem, 409);
     const { rows: [t] } = await db.query<{ id: number }>(
@@ -422,9 +448,10 @@ export async function proposeTrade(pool: Pool, league: TradeLeague, userId: numb
          FROM unnest($2::int[], $3::bigint[], $4::bigint[]) AS u(player_id, from_id, to_id)`,
       [
         t.id,
-        [...send, ...receive],
-        [...send.map(() => me.id), ...receive.map(() => partner.id)],
-        [...send.map(() => partner.id), ...receive.map(() => me.id)],
+        [...send, ...receive, ...drops],
+        [...send.map(() => me.id), ...receive.map(() => partner.id), ...drops.map(() => me.id)],
+        // A drop goes nowhere (NULL).
+        [...send.map(() => partner.id), ...receive.map(() => me.id), ...drops.map(() => null)],
       ],
     );
     return t.id;
@@ -432,9 +459,12 @@ export async function proposeTrade(pool: Pool, league: TradeLeague, userId: numb
   return (await getTrade(pool, league, viewer, id))!;
 }
 
-/** One manager's action on a trade (see TradeAction). Returns the trade as it now stands. */
+/**
+ * One manager's action on a trade (see TradeAction). `dropPlayerIds`: accept
+ * only, the partner's players to drop when it goes through. Returns the trade as it now stands.
+ */
 export async function actOnTrade(
-  pool: Pool, league: TradeLeague, userId: number, tradeId: number, action: TradeAction,
+  pool: Pool, league: TradeLeague, userId: number, tradeId: number, action: TradeAction, dropPlayerIds?: unknown,
 ): Promise<Trade> {
   // A trade whose window just ended processes before anyone can still vote on it.
   await processDueTrades(pool, league.id);
@@ -461,12 +491,24 @@ export async function actOnTrade(
     switch (action) {
       case "accept": {
         assertBeforeDeadline(league);
+        const out = before.receives.map((p) => p.id);
+        const drops = parseDrops(dropPlayerIds, out).filter((id) => !before.proposerDrops.some((p) => p.id === id));
         const problem = await checkRosters(
           db, league,
-          { teamId: before.proposer.id, teamName: before.proposer.name, out: before.sends.map((p) => p.id) },
-          { teamId: before.partner.id, teamName: before.partner.name, out: before.receives.map((p) => p.id) },
+          {
+            teamId: before.proposer.id, teamName: before.proposer.name,
+            out: before.sends.map((p) => p.id), drops: before.proposerDrops.map((p) => p.id),
+          },
+          { teamId: before.partner.id, teamName: before.partner.name, out, drops },
         );
         if (problem) throw new TradeError(problem, 409);
+        if (drops.length > 0) {
+          await db.query(
+            `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id)
+             SELECT $1, u.player_id, $3, NULL FROM unnest($2::int[]) AS u(player_id)`,
+            [tradeId, drops, before.partner.id],
+          );
+        }
         const days = league.settings.review === "none" ? 0 : league.settings.reviewDays;
         await db.query(
           `UPDATE transactions SET accepted_at = now(), process_at = now() + make_interval(days => $2) WHERE id = $1`,
@@ -551,9 +593,9 @@ export async function processTrade(pool: Pool, tradeId: number): Promise<Process
   return inTransaction(pool, async (db) => {
     const { rows: [t] } = await db.query<{
       league_id: number; season: number; team_id: number; trade_team_id: number; due: boolean; pending: boolean;
-      lineup_lock: "game_time" | "first_game"; today: string;
+      lineup_lock: "game_time" | "first_game"; today: string; waiver_days: number;
     }>(
-      `SELECT t.league_id::int, l.season, t.team_id::int, t.trade_team_id::int, t.status = 'pending' AS pending,
+      `SELECT t.league_id::int, l.season, t.team_id::int, t.trade_team_id::int, t.status = 'pending' AS pending, l.waiver_days,
               t.accepted_at IS NOT NULL AND t.process_at <= now() AS due, l.lineup_lock,
               to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
          FROM transactions t JOIN leagues l ON l.id = t.league_id
@@ -570,7 +612,7 @@ export async function processTrade(pool: Pool, tradeId: number): Promise<Process
     );
     if (!cur.ok) return "skipped";
 
-    const { rows: moved } = await db.query<{ player_id: number; from_team_id: number; to_team_id: number }>(
+    const { rows: moved } = await db.query<{ player_id: number; from_team_id: number; to_team_id: number | null }>(
       `SELECT player_id, from_team_id::int, to_team_id::int FROM transaction_players WHERE transaction_id = $1`,
       [tradeId],
     );
@@ -594,7 +636,10 @@ export async function processTrade(pool: Pool, tradeId: number): Promise<Process
     const league = await getTradeLeague(db, t.season);
     const names = new Map((await leagueTeams(db, t.league_id)).map((x) => [x.id, x.name]));
     const side = (teamId: number): Side => ({
-      teamId, teamName: names.get(teamId) ?? "the team", out: moved.filter((m) => m.from_team_id === teamId).map((m) => m.player_id),
+      teamId,
+      teamName: names.get(teamId) ?? "the team",
+      out: moved.filter((m) => m.from_team_id === teamId && m.to_team_id !== null).map((m) => m.player_id),
+      drops: moved.filter((m) => m.from_team_id === teamId && m.to_team_id === null).map((m) => m.player_id),
     });
     const problem = league && (await checkRosters(db, league, side(t.team_id), side(t.trade_team_id)));
     if (problem) {
@@ -631,9 +676,27 @@ export async function processTrade(pool: Pool, tradeId: number): Promise<Process
     await db.query(
       `UPDATE roster_players rp SET fantasy_team_id = tp.to_team_id, slot = 'BN', acquired_at = now()
          FROM transaction_players tp
-        WHERE tp.transaction_id = $1 AND rp.league_id = $2 AND rp.player_id = tp.player_id`,
+        WHERE tp.transaction_id = $1 AND rp.league_id = $2 AND rp.player_id = tp.player_id AND tp.to_team_id IS NOT NULL`,
       [tradeId, t.league_id],
     );
+    // Drops leave the roster (their lineup rows from today on went above) and,
+    // per the league's policy (transactions/policy.ts), go on waivers like any drop.
+    const dropped = moved.filter((m) => m.to_team_id === null);
+    if (dropped.length > 0) {
+      await db.query(
+        `DELETE FROM roster_players WHERE league_id = $1 AND player_id = ANY($2)`,
+        [t.league_id, dropped.map((m) => m.player_id)],
+      );
+      if (dropDestination({ waiverDays: t.waiver_days, waiversAfterGameStart: false }) === "waivers") {
+        await db.query(
+          `INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
+           SELECT $1, u.player_id, next_waiver_run($1, now() + make_interval(days => $3)), u.team_id
+             FROM unnest($2::int[], $4::bigint[]) AS u(player_id, team_id)
+           ON CONFLICT (league_id, player_id) DO UPDATE SET clears_at = EXCLUDED.clears_at, dropped_by_team_id = EXCLUDED.dropped_by_team_id`,
+          [t.league_id, dropped.map((m) => m.player_id), t.waiver_days, dropped.map((m) => m.from_team_id)],
+        );
+      }
+    }
     await db.query(`UPDATE transactions SET status = 'completed', processed_at = now() WHERE id = $1`, [tradeId]);
     // Other open trades with these players can't happen any more.
     await db.query(
