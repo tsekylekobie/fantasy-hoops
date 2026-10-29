@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-.bg{width:1280px;height:1240px;box-sizing:border-box;padding:40px;background:repeating-linear-gradient(#76736D 0 55px,#6D6B66 55px 56px);font-family:Inter,system-ui,sans-serif;color:#16181D}
+.bg{width:1280px;height:1460px;box-sizing:border-box;padding:40px;background:repeating-linear-gradient(#76736D 0 55px,#6D6B66 55px 56px);font-family:Inter,system-ui,sans-serif;color:#16181D}
 .md{width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden}
 .hd{display:flex;align-items:center;gap:18px;padding:24px 28px}
 .av{width:60px;height:60px;border-radius:50%;background:#FFE7D6;color:#7C2D12;font:700 24px 'Barlow Condensed',sans-serif;display:flex;align-items:center;justify-content:center}
@@ -52,6 +52,14 @@ body{margin:0}
 .il{margin:0 !important;font-size:14px !important;font-weight:600;color:#16181D !important}
 .in{margin:2px 0 0 !important;font-size:13px !important;line-height:1.4;color:#4A4F57}
 .in.cl{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tx{display:flex;align-items:center;gap:10px;font-size:14px;border-bottom:1px solid #EEEAE0;height:44px}
+.tx:last-child{border-bottom:0}
+.tx>b{width:14px;text-align:center;font-weight:700}
+.tx>b.p{color:#166534}.tx>b.m{color:#991B1B}.tx>b.r{color:#C2410C}
+.tx>span{flex:1;color:#4A4F57}
+.tx strong{font-weight:600;color:#16181D}
+.tx i{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:6px;vertical-align:middle;border-radius:50%;background:#EFECE4;border:1px solid #E2DDD1;color:#16181D;font:normal 700 9px 'Barlow Condensed',sans-serif;letter-spacing:.02em}
+.tx time{font-size:12px;color:#6B7079;white-space:nowrap}
 .rm{border:0;background:transparent;padding:4px 0;font:600 13px Inter,sans-serif;color:#C2410C;cursor:pointer}
 </style>
 </helmet>
@@ -67,6 +75,12 @@ body{margin:0}
 <div class="g c dn"><span>Sat Oct 24</span><span>@ ATL</span><span>L 101–108</span><span class="n"><span class="gs f">Done</span></span></div>
 <div class="g c"><span>Sun Oct 25</span><span>vs MIA</span><span>6:00 PM</span><span class="n"><span class="gs s">Remaining</span></span></div>
 </div>
+<div class="sec"><h3>Transactions</h3>
+<div class="tx"><b class="r">→</b><span>Traded <i>GLC</i><strong>Glass Cleaners</strong> to <i>PPC</i><strong>Pick &amp; Pop Culture</strong></span><time>Sat, Oct 24</time></div>
+<div class="tx"><b class="p">+</b><span>Claimed for $14 by <i>GLC</i><strong>Glass Cleaners</strong></span><time>Thu, Oct 22</time></div>
+<div class="tx"><b class="m">−</b><span>Dropped by <i>FBF</i><strong>Fast Break Fund</strong></span><time>Tue, Oct 20</time></div>
+<div class="tx"><b class="p">+</b><span>Added by <i>FBF</i><strong>Fast Break Fund</strong></span><time>Sun, Oct 18</time></div>
+</div>
 <div class="sec"><h3>Game log · 2026–27</h3>
 <div class="g a h"><span>Date</span><span>Opp</span><span class="n">MIN</span><span class="n">FG</span><span class="n">FT</span><span class="n">3PM</span><span class="n">PTS</span><span class="n">REB</span><span class="n">AST</span><span class="n">STL</span><span class="n">BLK</span><span class="n">TO</span></div>
 <div class="g a"><span>Oct 21</span><span>@ CHI · W</span><span class="n">36</span><span class="n">11-22</span><span class="n">7-8</span><span class="n">3</span><span class="n k">32</span><span class="n">7</span><span class="n">5</span><span class="n">2</span><span class="n">1</span><span class="n">3</span></div>
@@ -81,7 +95,7 @@ body{margin:0}
 </div>
 </div></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1240}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1460}}'>
 class Component extends DCLogic {
 renderVals(){var self=this;var open=!!(this.state&&this.state.open);var w=!!(this.state&&this.state.watched);
 return {watched:w?'true':'false',watchLabel:(w?'Unwatch':'Watch')+' Marcus Delaney',watchTitle:w?'On your watchlist':'Add to watchlist',flipWatch:function(){self.setState({watched:!w});},
