@@ -47,6 +47,9 @@ test("roster problems: a healthy player on IL, and too many active players", () 
   assert.match(rosterProblems(roster, counts)[0], /Bo is on IL but no longer qualifies/);
   const crowded = [...roster.slice(0, 1), { id: 3, slot: "BN" as const, eligible: eligibleSlots("C", []), name: "Cy" }, { id: 4, slot: "BN" as const, eligible: eligibleSlots("C", []), name: "Di" }];
   assert.match(rosterProblems(crowded, counts)[0], /3 active players; the limit is 2/);
+  // Without the IL check (a claim in a tolerant league), only the active limit counts.
+  assert.deepEqual(rosterProblems(roster, counts, { ilStatus: false }), []);
+  assert.match(rosterProblems(crowded, counts, { ilStatus: false })[0], /3 active players/);
 });
 
 test("validate: moving a player off IL can't overfill the active roster", () => {

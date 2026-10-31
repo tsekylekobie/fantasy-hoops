@@ -22,6 +22,10 @@
 //   (so the manager hears about problems now) and again when the waiver run
 //   processes it (queries/waivers.ts calls completeClaim), since rosters change
 //   in between. Dropped players go on waivers (waiver_players) per the policy.
+//   With leagues.claims_ignore_il_status (commissioner setting), the run lets
+//   a claim through when the only problem is someone on IL who no longer
+//   qualifies: placing it needed a legal roster, so his status changed since.
+//   The roster stays illegal afterwards, which blocks the next add.
 // - In FAAB leagues a claim needs a bid (policy.ts faabBidProblem): whole
 //   dollars from the minimum bid to the team's balance. Immediate adds are free.
 import type { Pool, PoolClient } from "pg";
@@ -51,14 +55,16 @@ interface LeagueRules extends MovePolicyLeague {
   maxAddsPerSeason: number | null;
   teamCount: number;
   timeZone: string;
+  claimsIgnoreIlStatus: boolean;
 }
 
 async function loadRules(db: Db, leagueId: number): Promise<LeagueRules> {
   const { rows: [r] } = await db.query<{
     max_adds_per_week: number | null; max_adds_per_season: number | null; waiver_days: number;
-    waivers_after_game_start: boolean; team_count: number; time_zone: string;
+    waivers_after_game_start: boolean; team_count: number; time_zone: string; claims_ignore_il_status: boolean;
   }>(
     `SELECT l.max_adds_per_week, l.max_adds_per_season, l.waiver_days, l.waivers_after_game_start, l.time_zone,
+            l.claims_ignore_il_status,
             (SELECT count(*)::int FROM fantasy_teams ft WHERE ft.league_id = l.id) AS team_count
        FROM leagues l WHERE l.id = $1`,
     [leagueId],
@@ -66,6 +72,7 @@ async function loadRules(db: Db, leagueId: number): Promise<LeagueRules> {
   return {
     maxAddsPerWeek: r.max_adds_per_week, maxAddsPerSeason: r.max_adds_per_season, waiverDays: r.waiver_days,
     waiversAfterGameStart: r.waivers_after_game_start, teamCount: r.team_count, timeZone: r.time_zone,
+    claimsIgnoreIlStatus: r.claims_ignore_il_status,
   };
 }
 
@@ -87,11 +94,14 @@ const rosterLimit = (team: TeamContext) => activeRosterLimit(team.rosterSlots);
 
 const countsAgainstLimit = (day: DayState) => day.players.filter((p) => !isIlSlot(p.slot)).length;
 
-/** Today's roster problems if `dropId` were gone (null = as it is). */
-function problemsAfterDrop(team: TeamContext, day: DayState, dropId: number | null): string[] {
-  if (dropId === null) return day.problems;
+/**
+ * Today's roster problems if `dropId` were gone (null = as it is).
+ * `ilStatus: false` skips the IL check (rules.rosterProblems).
+ */
+function problemsAfterDrop(team: TeamContext, day: DayState, dropId: number | null, ilStatus = true): string[] {
+  if (dropId === null && ilStatus) return day.problems;
   const rest = day.players.filter((p) => p.id !== dropId).map((p) => ({ ...p, name: name(p) }));
-  return rosterProblems(rest, team.rosterSlots);
+  return rosterProblems(rest, team.rosterSlots, { ilStatus });
 }
 
 const illegalMessage = (problems: string[]) => `Your roster is illegal, so you can't add players until it's fixed. ${problems[0]}`;
@@ -300,7 +310,7 @@ async function checkMove(db: PoolClient, team: TeamContext, values: Values, move
     if (!target) throw new TransactionError("Player not found.", 404);
     const blocked = addBlocked(team, rules, adds, target, forClaim);
     if (blocked) throw new TransactionError(blocked, 409);
-    const problems = problemsAfterDrop(team, day, dropPlayerId);
+    const problems = problemsAfterDrop(team, day, dropPlayerId, !(forClaim && rules.claimsIgnoreIlStatus));
     if (problems.length > 0) throw new TransactionError(illegalMessage(problems), 409);
     const droppingCounted = dropped !== null && !isIlSlot(day.players.find((x) => x.id === dropPlayerId)!.slot);
     const after = countsAgainstLimit(day) + 1 - (droppingCounted ? 1 : 0);

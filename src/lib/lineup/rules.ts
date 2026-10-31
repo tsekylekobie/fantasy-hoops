@@ -68,14 +68,17 @@ export function activeRosterLimit(counts: SlotCounts): number {
  * legal. Illegal = someone on IL who no longer qualifies (he stays put, like
  * Yahoo), or more active players than the limit. While illegal, a team can't
  * add players or place waiver claims; drops and lineup moves still work.
+ * `ilStatus: false` leaves out the IL check (a waiver run completing a claim
+ * in a league with claims_ignore_il_status).
  */
 export function rosterProblems(
   players: { id: number; slot: LineupSlot; eligible: LineupSlot[]; name: string }[],
   counts: SlotCounts,
+  { ilStatus = true }: { ilStatus?: boolean } = {},
 ): string[] {
   const out: string[] = [];
   for (const p of players) {
-    if (isIlSlot(p.slot) && !p.eligible.includes(p.slot)) {
+    if (ilStatus && isIlSlot(p.slot) && !p.eligible.includes(p.slot)) {
       out.push(`${p.name} is on ${p.slot} but no longer qualifies. Move him to the bench (if the roster is full, drop someone first) or drop him.`);
     }
   }

@@ -253,7 +253,7 @@ async function run(db: PoolClient, snap: Snapshot) {
        il_plus_statuses = $10, trade_review = $11, trade_review_days = $12,
        trade_veto_votes = $13, trade_deadline = $14, max_adds_per_week = $15, max_adds_per_season = $16,
        playoff_teams = $17, playoff_start_week = $18, toilet_bowl = $19, toilet_bowl_teams = $20,
-       faab_budget = $21, faab_min_bid = $22, game_limits = $23, updated_at = now()
+       faab_budget = $21, faab_min_bid = $22, game_limits = $23, claims_ignore_il_status = $24, updated_at = now()
      WHERE id = $1`,
     [
       leagueId, s.waiverType, s.waiverTime, s.timeZone, s.waiverDaysOfWeek, s.waiverDays,
@@ -261,7 +261,7 @@ async function run(db: PoolClient, snap: Snapshot) {
       s.ilPlusStatuses, s.tradeReview, s.tradeReviewDays,
       s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
       s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
-      s.faabBudget, s.faabMinBid, s.gameLimits && JSON.stringify(s.gameLimits),
+      s.faabBudget, s.faabMinBid, s.gameLimits && JSON.stringify(s.gameLimits), s.claimsIgnoreIlStatus,
     ],
   );
   const { rows: [{ today }] } = await db.query<{ today: string }>(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS today`, [s.timeZone]);

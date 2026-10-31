@@ -174,6 +174,11 @@ function changeEffects(d: LeagueSettings, s: LeagueSettings, teamCount: number, 
         : `${name}: ${plural(d[slots], "slot")} for ${d[statuses].join(", ") || "no status"}, checked on every move from now on.`);
     }
   }
+  if (d.claimsIgnoreIlStatus !== s.claimsIgnoreIlStatus) {
+    out.push(d.claimsIgnoreIlStatus
+      ? "Waiver claims go through when someone on the team’s IL no longer qualifies, including claims pending now."
+      : "Waiver claims fail while someone on the team’s IL no longer qualifies, including claims pending now.");
+  }
   if (JSON.stringify(d.gameLimits) !== JSON.stringify(s.gameLimits)) {
     const g = d.gameLimits;
     const caps = g ? Object.keys(g.slots).length : 0;
@@ -476,6 +481,15 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
             <p className={styles.hint}>
               Fewer slots than a team is using is refused until that team moves someone out.
             </p>
+          </Row>
+          <Row
+            label="Claims and IL changes"
+            help="Placing a claim needs a legal roster. If an IL player stops qualifying before the run, the claim still goes through; the roster stays illegal until it’s fixed."
+          >
+            <label className={styles.switch}>
+              <input type="checkbox" checked={draft.claimsIgnoreIlStatus} onChange={(e) => set("claimsIgnoreIlStatus", e.target.checked)} />
+              Let claims go through if an IL player’s status changes before the run
+            </label>
           </Row>
         </Section>
 

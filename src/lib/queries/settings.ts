@@ -16,6 +16,9 @@
 // already spent stays spent and everyone keeps the same gap. A new minimum bid
 // applies to bids placed or changed from then on.
 //
+// IL + waiver claims: claims_ignore_il_status applies to claims the next run
+// processes, including ones already pending.
+//
 // Game limits are the exception to "from now on": a change applies from the
 // next matchup week. Saving copies them onto every week that hasn't started
 // (league_weeks.game_limits, what scoring reads), so the current week keeps its own.
@@ -67,6 +70,7 @@ interface LeagueRow {
   roster_slots: SlotCounts;
   il_statuses: string[];
   il_plus_statuses: string[];
+  claims_ignore_il_status: boolean;
   trade_review: TradeReview;
   trade_review_days: number;
   trade_veto_votes: number;
@@ -92,7 +96,7 @@ async function loadLeague(pool: Pool, season: number): Promise<LeagueRow | null>
             (SELECT count(*)::int FROM fantasy_teams ft WHERE ft.league_id = l.id) AS team_count,
             l.waiver_type, to_char(l.waiver_time, 'HH24:MI') AS waiver_time, l.time_zone, l.waiver_days_of_week,
             l.waiver_days, l.waivers_after_game_start, l.faab_budget, l.faab_min_bid, l.roster_slots, l.il_statuses,
-            l.il_plus_statuses, l.trade_review, l.trade_review_days, l.trade_veto_votes,
+            l.il_plus_statuses, l.claims_ignore_il_status, l.trade_review, l.trade_review_days, l.trade_veto_votes,
             to_char(l.trade_deadline, 'YYYY-MM-DD') AS trade_deadline, l.max_adds_per_week, l.max_adds_per_season,
             l.playoff_teams, l.playoff_start_week, l.toilet_bowl, l.toilet_bowl_teams, l.game_limits,
             (SELECT min(w.week)::int FROM league_weeks w
@@ -134,6 +138,7 @@ function toResponse(r: LeagueRow): LeagueSettingsResponse {
       ilStatuses: r.il_statuses,
       ilPlusSlots: r.roster_slots["IL+"] ?? 0,
       ilPlusStatuses: r.il_plus_statuses,
+      claimsIgnoreIlStatus: r.claims_ignore_il_status,
       tradeReview: r.trade_review,
       tradeReviewDays: r.trade_review_days,
       tradeVetoVotes: r.trade_veto_votes,
@@ -209,6 +214,7 @@ export function parseSettings(
     if (!isInt(slots, LIMITS.ilSlots)) return { error: `${label} slots must be ${LIMITS.ilSlots.join("–")}.` };
     if (slots > 0 && list.length === 0) return { error: `Pick at least one injury status that can use ${label}.` };
   }
+  if (typeof b.claimsIgnoreIlStatus !== "boolean") return { error: "claimsIgnoreIlStatus must be true or false." };
 
   if (!TRADE_REVIEWS.includes(b.tradeReview as TradeReview)) return { error: "Pick how trades are reviewed." };
   if (!isInt(b.tradeReviewDays, LIMITS.tradeReviewDays)) {
@@ -264,6 +270,7 @@ export function parseSettings(
       ilStatuses: il,
       ilPlusSlots: b.ilPlusSlots as number,
       ilPlusStatuses: ilPlus,
+      claimsIgnoreIlStatus: b.claimsIgnoreIlStatus,
       tradeReview: b.tradeReview as TradeReview,
       tradeReviewDays: b.tradeReviewDays,
       tradeVetoVotes: b.tradeVetoVotes,
@@ -350,7 +357,7 @@ export async function updateLeagueSettings(
          il_plus_statuses = $10, trade_review = $11, trade_review_days = $12,
          trade_veto_votes = $13, trade_deadline = $14, max_adds_per_week = $15, max_adds_per_season = $16,
          playoff_teams = $17, playoff_start_week = $18, toilet_bowl = $19, toilet_bowl_teams = $20,
-         faab_budget = $21, faab_min_bid = $22, game_limits = $23, updated_at = now()
+         faab_budget = $21, faab_min_bid = $22, game_limits = $23, claims_ignore_il_status = $24, updated_at = now()
        WHERE id = $1`,
       [
         current.id, s.waiverType, s.waiverTime, s.timeZone, s.waiverDaysOfWeek, s.waiverDays,
@@ -358,7 +365,7 @@ export async function updateLeagueSettings(
         s.ilPlusStatuses, s.tradeReview, s.tradeReviewDays,
         s.tradeVetoVotes, s.tradeDeadline, s.maxAddsPerWeek, s.maxAddsPerSeason,
         s.playoffTeams, s.playoffStartWeek, s.toiletBowl, s.toiletBowlTeams,
-        s.faabBudget, s.faabMinBid, s.gameLimits && JSON.stringify(s.gameLimits),
+        s.faabBudget, s.faabMinBid, s.gameLimits && JSON.stringify(s.gameLimits), s.claimsIgnoreIlStatus,
       ],
     );
 

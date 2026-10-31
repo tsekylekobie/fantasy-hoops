@@ -8,7 +8,7 @@ const valid: LeagueSettings = {
   waiverType: "continual_rolling", waiverTime: "03:00", timeZone: "America/New_York",
   waiverDaysOfWeek: [1, 2, 3, 4, 5, 6, 7], waiverDays: 2, waiversAfterGameStart: false,
   faabBudget: 100, faabMinBid: 0,
-  ilSlots: 2, ilStatuses: ["Out"], ilPlusSlots: 0, ilPlusStatuses: [],
+  ilSlots: 2, ilStatuses: ["Out"], ilPlusSlots: 0, ilPlusStatuses: [], claimsIgnoreIlStatus: true,
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
   maxAddsPerWeek: 4, maxAddsPerSeason: null,
   playoffTeams: 8, playoffStartWeek: 22, toiletBowl: true, toiletBowlTeams: 4,
@@ -53,6 +53,12 @@ test("an IL slot needs a status that can use it", () => {
   assert.equal(error({ ilSlots: 0, ilStatuses: [] }), null);
   assert.ok(error({ ilPlusSlots: 1 }));
   assert.ok(error({ ilStatuses: ["Healthy"] }));
+});
+
+test("claims and IL status changes is a yes/no", () => {
+  assert.equal(error({ claimsIgnoreIlStatus: false }), null);
+  assert.ok(error({ claimsIgnoreIlStatus: undefined }));
+  assert.ok(error({ claimsIgnoreIlStatus: "yes" }));
 });
 
 test("veto votes leave out the two teams in the trade", () => {

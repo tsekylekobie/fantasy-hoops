@@ -1131,6 +1131,12 @@ export interface LeagueSettings {
   ilStatuses: string[];
   ilPlusSlots: number;
   ilPlusStatuses: string[];
+  /**
+   * The waiver run lets a claim through when someone on the team's IL no longer
+   * qualifies (his status changed after the claim was placed). Placing a claim
+   * always needs a legal roster.
+   */
+  claimsIgnoreIlStatus: boolean;
   tradeReview: TradeReview;
   tradeReviewDays: number;
   tradeVetoVotes: number;

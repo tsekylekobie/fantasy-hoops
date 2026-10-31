@@ -42,7 +42,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
-  status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims).
+  status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims;
+  with `leagues.claims_ignore_il_status`, migration 0019, the waiver run skips its IL check so a status change doesn't fail a pending claim).
 - `src/lib/lineup/gameLimits.ts`: game limits (commissioner setting, off by default): caps on starters' games per matchup
   week, total and per starting slot, counted in tip-off order (`countStarts`, pure, tested). Each week carries its own
   limits (`league_weeks.game_limits`, migration 0015); saving settings copies them onto weeks not yet started, so a change
