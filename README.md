@@ -168,29 +168,31 @@ days, and playoff brackets (import before the playoffs).
 
 ## Deploying (Railway)
 
-One Railway project with three services, all deploying from `main`:
+One Railway project with three services, all deploying from `main`. `.railway/railway.ts` (Railway's Infrastructure
+as Code) defines them:
 
-| Service | Config file | Runs |
-|---|---|---|
-| `web` | `railway/web.json` | `npm run db:migrate` before each deploy, then `npm run build` / `npm run start` |
-| `worker` | `railway/worker.json` | `npm run worker` (no build step; exactly one replica) |
-| `Postgres` | Railway's PostgreSQL template | |
+| Service | Runs |
+|---|---|
+| `web` | `npm run db:migrate` before each deploy, then `npm run build` / `npm run start` |
+| `worker` | `npm run worker` (no build step; exactly one replica) |
+| `Postgres` | Railway's PostgreSQL |
 
-1. **New Project → Deploy from GitHub repo** → this repo. Rename the service `web`. Then
-   **+ Create → Database → PostgreSQL**, and **+ Create → GitHub Repo** → this repo again, named `worker`.
-2. In each app service's **Settings → Config-as-code**, set the path to `railway/web.json` or `railway/worker.json`.
-3. Variables (Shared Variables, or set on both `web` and `worker`):
+Railway doesn't read the file on deploy. Changes to it go out with `railway config apply`; pushes to `main` only
+redeploy the code.
+
+1. Install the Railway CLI (5.42.1 or newer: `brew install railway`), then `railway login`. Create an empty project
+   in the dashboard (or `railway init`) and `railway link` this checkout to it. Railway needs GitHub access to the repo.
+2. Preview, then apply:
+   ```sh
+   railway config plan
+   railway config apply
    ```
-   DATABASE_URL=${{Postgres.DATABASE_URL}}
-   BALLDONTLIE_API_KEY=...
-   BALLDONTLIE_BASE_URL=https://api.balldontlie.io/v1
-   BALLDONTLIE_RPM=60
-   WORKER_TIME_ZONE=America/New_York
-   ```
-   `web` also needs `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL=https://<domain>`. Leave `AUTH_MOCK`
-   unset (it's ignored in production builds anyway).
+   The plan should create `web`, `worker` and `Postgres` (or, for an existing project, change only what you expect).
+3. Secrets aren't in the file (they're `preserve()`): set them in the dashboard under each service's Variables:
+   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
-   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client.
+   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
+   domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.
 5. Load data from your machine against the Postgres service's `DATABASE_PUBLIC_URL` (its Variables tab):
    ```sh
    DATABASE_URL="<public url>" npm run sync:players
@@ -200,7 +202,7 @@ One Railway project with three services, all deploying from `main`:
    Don't run `db:seed:league` against production: it creates mock managers.
 
 After that, every push to `main` redeploys both services, and the worker keeps the data current.
-For debugging, `railway logs --service worker` (Railway CLI) or the Railway MCP server shows each service's logs.
+For debugging, `railway logs --service worker` or the Railway MCP server shows each service's logs.
 
 ## Checks
 

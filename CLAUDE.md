@@ -71,7 +71,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`, `trade-analyzer`,
   `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
   and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.
-- `railway/`: Railway config-as-code for the `web` and `worker` services (README, "Deploying"). Anything a
+- `.railway/railway.ts`: Railway Infrastructure as Code for `web`, `worker` and `Postgres` (README, "Deploying");
+  applied with `railway config apply`, not on deploy. Secrets are `preserve()`, set in the dashboard. Anything a
   script needs at runtime (`tsx`, `dotenv`) belongs in `dependencies`, not `devDependencies`.
 - `scripts/`: one-off and batch jobs (run with `tsx`); `scripts/map-headshots.py` is the only Python.
 

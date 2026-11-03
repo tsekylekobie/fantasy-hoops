@@ -22,9 +22,15 @@ export function mockAuthEnabled(): boolean {
   return process.env.AUTH_MOCK === "1" || !process.env.GOOGLE_CLIENT_ID;
 }
 
-/** Public origin of the app, for the OAuth redirect URI. */
+/**
+ * Public origin of the app, for the OAuth redirect URI: APP_URL, else the
+ * domain Railway sets on the service (RAILWAY_PUBLIC_DOMAIN), else the request's.
+ */
 export function appOrigin(req: Request): string {
-  return process.env.APP_URL?.replace(/\/+$/, "") || new URL(req.url).origin;
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN;
+  return (
+    process.env.APP_URL?.replace(/\/+$/, "") || (railway ? `https://${railway}` : "") || new URL(req.url).origin
+  );
 }
 
 export function secureCookies(): boolean {
