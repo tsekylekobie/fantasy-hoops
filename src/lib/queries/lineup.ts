@@ -149,14 +149,15 @@ interface DayPlayerRow {
 // tip-off (so stale data locks early, never late).
 const started = (g: string) => `coalesce(${g}.status_state <> 'scheduled' OR ${g}.datetime <= now(), false)`;
 
-// One row per player: team and his team's game on $2.
+// One row per player: his team on $2 (player_team_on, so a traded player's
+// past days show the team he was on) and that team's game.
 const DAY_PLAYERS_SQL = `
   SELECT p.id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
          t.abbreviation AS team_abbr,
          g.id AS game_id, to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff,
          g.status, g.status_state,
          ${started("g")} AS started,
-         g.home_team_id = p.team_id AS home, opp.abbreviation AS opp_abbr,
+         g.home_team_id = pt.team_id AS home, opp.abbreviation AS opp_abbr,
          g.home_team_score AS home_score, g.visitor_team_score AS visitor_score,
          CASE WHEN s.id IS NOT NULL THEN coalesce(s.min, 0)::float8 END AS s_min,
          coalesce(s.fgm, 0) AS fgm, coalesce(s.fga, 0) AS fga, coalesce(s.ftm, 0) AS ftm,
@@ -164,13 +165,14 @@ const DAY_PLAYERS_SQL = `
          coalesce(s.reb, 0) AS reb, coalesce(s.ast, 0) AS ast, coalesce(s.stl, 0) AS stl,
          coalesce(s.blk, 0) AS blk, coalesce(s.turnover, 0) AS tov
     FROM players p
-    LEFT JOIN teams t ON t.id = p.team_id
+    CROSS JOIN LATERAL (SELECT player_team_on(p.id, $2::date) AS team_id OFFSET 0) pt
+    LEFT JOIN teams t ON t.id = pt.team_id
     LEFT JOIN LATERAL (
       SELECT * FROM games g
-       WHERE g.date = $2 AND NOT g.postponed AND p.team_id IN (g.home_team_id, g.visitor_team_id)
+       WHERE g.date = $2 AND NOT g.postponed AND pt.team_id IN (g.home_team_id, g.visitor_team_id)
        ORDER BY g.datetime LIMIT 1
     ) g ON true
-    LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = p.team_id THEN g.visitor_team_id ELSE g.home_team_id END
+    LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = pt.team_id THEN g.visitor_team_id ELSE g.home_team_id END
     LEFT JOIN player_game_stats s ON s.player_id = p.id AND s.game_id = g.id
    WHERE p.id = ANY($1)`;
 
@@ -462,13 +464,17 @@ type WeekGames = LineupPlayer["weekGames"];
 /**
  * Each player's NBA team's games from `start` to `end` (inclusive): those not
  * yet tipped off, and in all. A game counts as played once it has started.
+ * Each day uses his team that day (player_team_on), so a week he was traded in
+ * counts his old team's games before the trade and his new team's after.
  */
 export async function getWeekGames(db: Db, ids: number[], start: string, end: string): Promise<Map<number, WeekGames>> {
   const { rows } = await db.query<{ id: number; total: number; remaining: number }>(
     `SELECT p.id, count(g.id)::int AS total, count(g.id) FILTER (WHERE NOT ${started("g")})::int AS remaining
        FROM players p
-       LEFT JOIN games g ON g.date BETWEEN $2 AND $3 AND NOT g.postponed
-                        AND p.team_id IN (g.home_team_id, g.visitor_team_id)
+       CROSS JOIN generate_series($2::date, $3::date, interval '1 day') d
+       CROSS JOIN LATERAL (SELECT player_team_on(p.id, d::date) AS team_id OFFSET 0) pt
+       LEFT JOIN games g ON g.date = d::date AND NOT g.postponed
+                        AND pt.team_id IN (g.home_team_id, g.visitor_team_id)
       WHERE p.id = ANY($1)
       GROUP BY p.id`,
     [ids, start, end],
@@ -498,12 +504,14 @@ export async function getPlayerWeek(db: Db, playerId: number, season: number): P
       `SELECT g.id AS game_id, to_char(g.date, 'YYYY-MM-DD') AS date,
               to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff,
               g.status, g.status_state, ${started("g")} AS started,
-              g.home_team_id = p.team_id AS home, opp.abbreviation AS opp_abbr,
+              g.home_team_id = pt.team_id AS home, opp.abbreviation AS opp_abbr,
               g.home_team_score AS home_score, g.visitor_team_score AS visitor_score
          FROM players p
-         JOIN games g ON g.date BETWEEN $2 AND $3 AND NOT g.postponed
-                     AND p.team_id IN (g.home_team_id, g.visitor_team_id)
-         LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = p.team_id THEN g.visitor_team_id ELSE g.home_team_id END
+         CROSS JOIN generate_series($2::date, $3::date, interval '1 day') d
+         CROSS JOIN LATERAL (SELECT player_team_on(p.id, d::date) AS team_id OFFSET 0) pt
+         JOIN games g ON g.date = d::date AND NOT g.postponed
+                     AND pt.team_id IN (g.home_team_id, g.visitor_team_id)
+         LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = pt.team_id THEN g.visitor_team_id ELSE g.home_team_id END
         WHERE p.id = $1
         ORDER BY g.datetime, g.id`,
       [playerId, w.starts_on, w.ends_on],

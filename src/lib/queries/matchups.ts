@@ -112,14 +112,15 @@ const UPCOMING_SQL = `
     AND ($5::bigint IS NULL OR st.team_id = $5)`;
 
 // $5 team ids, $6 a date in the week: each team's lineup that day, with each
-// player's NBA game and stat line (whether or not he started).
+// player's NBA game and stat line (whether or not he started). His game is his
+// team's on that date (player_team_on), so a traded player's old games show.
 const DAY_SQL = `
   WITH ${LINEUP_CTE}
   SELECT l.team_id::int AS team_id, l.player_id::int AS player_id, l.slot,
          g.id AS game_id, to_char(g.datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS tipoff,
          g.status, g.status_state,
          coalesce(g.status_state <> 'scheduled' OR g.datetime <= now(), false) AS started,
-         g.home_team_id = p.team_id AS home, opp.abbreviation AS opp_abbr,
+         g.home_team_id = pt.team_id AS home, opp.abbreviation AS opp_abbr,
          g.home_team_score AS home_score, g.visitor_team_score AS visitor_score,
          CASE WHEN s.min > 0 THEN 1 ELSE 0 END AS gp,
          CASE WHEN s.id IS NOT NULL THEN coalesce(s.min, 0)::float8 END AS min,
@@ -129,12 +130,13 @@ const DAY_SQL = `
          coalesce(s.blk, 0) AS blk, coalesce(s.turnover, 0) AS tov
   FROM lineup l
   JOIN players p ON p.id = l.player_id
+  CROSS JOIN LATERAL (SELECT player_team_on(p.id, l.date) AS team_id OFFSET 0) pt
   LEFT JOIN LATERAL (
     SELECT * FROM games g
-     WHERE g.date = l.date AND NOT g.postponed AND p.team_id IN (g.home_team_id, g.visitor_team_id)
+     WHERE g.date = l.date AND NOT g.postponed AND pt.team_id IN (g.home_team_id, g.visitor_team_id)
      ORDER BY g.datetime LIMIT 1
   ) g ON true
-  LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = p.team_id THEN g.visitor_team_id ELSE g.home_team_id END
+  LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = pt.team_id THEN g.visitor_team_id ELSE g.home_team_id END
   LEFT JOIN player_game_stats s ON s.player_id = p.id AND s.game_id = g.id
   WHERE l.team_id = ANY($5) AND l.date = $6::date`;
 

@@ -150,7 +150,7 @@ const CONTEXT_SQL = `
          (SELECT coalesce(json_agg(json_build_object('date', to_char(d, 'YYYY-MM-DD'),
                    'games', (SELECT count(*) FROM games g WHERE g.date = d::date)) ORDER BY d), '[]')
             FROM generate_series($3::date - 3, $3::date + 3, interval '1 day') d) AS days,
-         (SELECT coalesce(json_agg(json_build_object('name', p.first_name || ' ' || p.last_name, 'teamId', p.team_id)
+         (SELECT coalesce(json_agg(json_build_object('name', p.first_name || ' ' || p.last_name, 'teamId', player_team_on(p.id, $3::date))
                    ORDER BY p.last_name, p.first_name), '[]')
             FROM roster_players rp JOIN players p ON p.id = rp.player_id
            WHERE rp.fantasy_team_id = (SELECT id FROM my)) AS my_players`;

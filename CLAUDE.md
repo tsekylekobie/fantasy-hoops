@@ -58,6 +58,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   z-scores (`Valuation.tiers` in `value.ts`, `PlayerRow.tiers`), so green/red means better/worse than a rostered player.
   In Totals mode the stats are placed among the pool's season totals instead (`totalTiers`; FG%/FT% by total impact),
   so fewer games ranks lower; Value stays per game.
+- NBA trades: `players.team_id` is only the current team; each stat line keeps the team he played for. Anything that
+  finds a player's game on a past date uses `player_team_on(player, date)` (migration 0020), not `players.team_id`.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.
