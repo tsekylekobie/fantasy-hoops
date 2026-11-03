@@ -10,7 +10,7 @@ import type {
   PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerTransaction, PlayerWeek, SeasonRow,
 } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
-import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtWaiverTime, fullName } from "./format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
 import WatchStar from "./WatchStar";
 import styles from "./PlayerModal.module.css";
 
@@ -219,7 +219,7 @@ function DetailHead({
         <h2 id="player-modal-title" className={styles.name}>
           {fullName(player)}
           {injury && (
-            <span className={`${styles.chip} ${injury.status === "Out" ? styles.chipOut : styles.chipDtd}`}>{injury.status}</span>
+            <span className={`${styles.chip} ${injury.status === "Out" ? styles.chipOut : styles.chipDtd}`}>{fmtInjuryStatus(injury, todayIn(data.timeZone))}</span>
           )}
           {owner === null && waiver && <span className={`${styles.chip} ${styles.chipWaivers}`}>On waivers</span>}
         </h2>

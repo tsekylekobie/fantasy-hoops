@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
-import { fetchJson, fmtAvg, fmtPct, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtInjuryStatus, fmtPct, fmtWaiverTime, fullName, teamPos, todayIn } from "@/components/players/format";
 import { faabBidProblem } from "@/lib/transactions/policy";
 import type { CategoryLine, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
@@ -359,7 +359,7 @@ function Line({ data }: { data: CategoryLine | null }) {
 
 function DropOption({ p, checked, onPick }: { p: RosterMoveOption; checked: boolean; onPick: () => void }) {
   const pos = (p.position ?? "").replace("-", "/");
-  const status = p.slot === "IL" || p.slot === "IL+" ? p.slot : p.injury?.status === "Day-To-Day" ? "DTD" : p.injury?.status;
+  const status = p.slot === "IL" || p.slot === "IL+" ? p.slot : p.injury?.status === "Day-To-Day" ? "DTD" : p.injury && fmtInjuryStatus(p.injury, todayIn());
   const stats = p.pts === null ? "No games yet" : `${fmtAvg(p.pts)} pts, ${fmtAvg(p.reb ?? 0)} reb`;
   const meta = [pos, status, p.dropBlocked ? "Locked" : stats].filter(Boolean).join(" · ");
   const disabled = p.dropBlocked !== null;
