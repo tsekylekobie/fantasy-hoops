@@ -166,6 +166,24 @@ are kept. Export and import on the same day: the import refuses a snapshot from 
 Not imported: pending trades and waiver claims (managers resubmit them), lineups set for future
 days, and playoff brackets (import before the playoffs).
 
+### Without Yahoo's API: from CSVs
+
+Since mid-2026 Yahoo's Fantasy API answers 403 ("This application is not authorized") until Yahoo approves your
+app (apply at sports.yahoo.com/developer/access/). Until then, the same import reads a folder of CSVs copied from
+the league's Yahoo pages instead of an export. The folder has `league.json` instead of `meta.json`:
+
+| File | Contents |
+|---|---|
+| `league.json` | `{"name", "season": 2026, "today": "yyyy-mm-dd", "rosterSlots": {"PG": 1, ..., "BN": 3, "IL": 2}, "playoffStartWeek"}`; `today` is the day `rosters.csv` shows |
+| `teams.csv` | `team,name,abbreviation,email,commissioner,waiver_priority,faab_balance` (`team` is a short id the other files use) |
+| `schedule.csv` | `week,start,end,team_a,team_b`, one row per matchup |
+| `results.csv` | `week,team,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov` for every finished week |
+| `rosters.csv` | `team,player,nba_team,positions,slot`: today's rosters and lineup slots |
+| `lineups.csv` | optional, `date,team,player,nba_team,positions,slot`: this week's earlier days, so it's scored as Yahoo had it |
+
+`league-settings.json` and `player-overrides.csv` work as above. Run `npm run yahoo:import -- <folder>` the same way;
+it reports every problem in the files first. Transactions and waivers aren't carried over this way.
+
 ## Deploying (Railway)
 
 One Railway project with three services, all deploying from `main`. `.railway/railway.ts` (Railway's Infrastructure

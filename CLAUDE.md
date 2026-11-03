@@ -63,7 +63,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   every stat against all players who played that date, and the cells are shaded by that tier.
 - Yahoo import (README, "Importing a league from Yahoo"): `scripts/yahoo/export.ts` saves a Yahoo league's raw API JSON
   to a snapshot folder, `scripts/yahoo/import.ts` replaces the season's league with it (dry run unless `--apply`).
-  Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
+  Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Without API access (Yahoo now gates it), the import
+  reads a folder of CSVs instead (`src/lib/yahoo/csv.ts`, pure, tested; README has the formats). Imported finished weeks keep Yahoo's
   totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
 - Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is

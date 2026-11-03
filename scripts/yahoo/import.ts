@@ -5,6 +5,9 @@
 //   npm run yahoo:import -- yahoo-export/12345              # dry run
 //   npm run yahoo:import -- yahoo-export/12345 --apply      # first import
 //   npm run yahoo:import -- yahoo-export/12345 --apply --replace   # over an existing league
+// Or from a folder of hand-made CSVs (league.json instead of meta.json; formats in
+// src/lib/yahoo/csv.ts), when Yahoo's API isn't available. Those carry no
+// transactions or waivers, and emails come from teams.csv instead of members.csv.
 //
 // What carries over: teams, the schedule (Yahoo's matchup weeks and
 // pairings), every finished week's result exactly as Yahoo scored it
@@ -35,6 +38,7 @@ import { eligibleSlots, ilEligibility, isStarting, rosterProblems, type IlRules 
 import { getInjuries } from "../../src/lib/queries/injuries";
 import { getLeagueSettings, parseSettings } from "../../src/lib/queries/settings";
 import { CURRENT_SEASON, TEAM_ABBREVIATION, TEAM_NAME_LENGTH, type LineupSlot } from "../../src/lib/types";
+import { snapshotFromCsv } from "../../src/lib/yahoo/csv";
 import * as Y from "../../src/lib/yahoo/parse";
 
 const dir = process.argv.slice(2).find((a) => !a.startsWith("--"));
@@ -52,19 +56,22 @@ const errors: string[] = [];
 const warnings: string[] = [];
 const notes: string[] = [];
 
-interface Snapshot {
-  meta: { leagueKey: string; exportedAt: string; today: string };
-  league: Y.YahooLeague;
-  teams: Y.YahooTeam[];
-  weeks: Y.YahooWeek[];
-  matchups: Y.YahooMatchup[];
-  /** date -> team key -> that day's roster. */
-  rosters: Map<string, Map<string, Y.YahooRosterEntry[]>>;
-  transactions: Y.YahooTransaction[];
-  waivers: { player: Y.YahooPlayer; clearsOn: string | null }[];
-}
+type Snapshot = Y.ImportSnapshot;
+/** Manager emails per team (members.csv's columns); from teams.csv for a CSV snapshot. */
+let csvMembers: Record<string, string>[] | null = null;
 
 function loadSnapshot(): Snapshot {
+  if (has("league.json")) {
+    const text = (f: string) => (has(f) ? readFileSync(join(dir!, f), "utf8") : "");
+    for (const f of ["teams.csv", "schedule.csv", "results.csv", "rosters.csv"]) if (!has(f)) errors.push(`${f} is missing.`);
+    const csv = snapshotFromCsv({
+      league: read("league.json"), teams: text("teams.csv"), schedule: text("schedule.csv"),
+      results: text("results.csv"), rosters: text("rosters.csv"), lineups: text("lineups.csv"),
+    });
+    errors.push(...csv.errors);
+    csvMembers = csv.members;
+    return csv.snapshot;
+  }
   const meta = read("meta.json") as Snapshot["meta"];
   const league = Y.parseLeague(read("raw/league-settings.json"));
   const rosters = new Map<string, Map<string, Y.YahooRosterEntry[]>>();
@@ -185,8 +192,8 @@ async function run(db: PoolClient, snap: Snapshot) {
   }
 
   // --- Teams and members ---
-  const members = has("members.csv") ? Y.parseCsv(readFileSync(join(dir!, "members.csv"), "utf8")) : [];
-  if (!has("members.csv")) errors.push("members.csv is missing (yahoo:export writes one to fill in).");
+  const members = csvMembers ?? (has("members.csv") ? Y.parseCsv(readFileSync(join(dir!, "members.csv"), "utf8")) : []);
+  if (!csvMembers && !has("members.csv")) errors.push("members.csv is missing (yahoo:export writes one to fill in).");
   const teamIds = new Map<string, number>();
   const taken = new Set<string>();
   for (const t of snap.teams) {
@@ -449,7 +456,9 @@ async function run(db: PoolClient, snap: Snapshot) {
 
 async function main() {
   if (!dir) throw new Error("Usage: npm run yahoo:import -- <snapshot dir> [--apply] [--replace] [--stale-ok]");
-  if (!has("meta.json")) throw new Error(`${dir} isn't a snapshot (no meta.json); run npm run yahoo:export first.`);
+  if (!has("meta.json") && !has("league.json")) {
+    throw new Error(`${dir} isn't a snapshot (no meta.json from npm run yahoo:export, or league.json for CSVs; see src/lib/yahoo/csv.ts).`);
+  }
   const snap = loadSnapshot();
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = await pool.connect();

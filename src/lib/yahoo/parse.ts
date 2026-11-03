@@ -329,6 +329,19 @@ export function parseLeague(json: unknown): YahooLeague {
   };
 }
 
+/** Everything the import reads, from an API export (scripts/yahoo/import.ts) or from CSVs (csv.ts). */
+export interface ImportSnapshot {
+  meta: { leagueKey: string; exportedAt: string; today: string };
+  league: YahooLeague;
+  teams: YahooTeam[];
+  weeks: YahooWeek[];
+  matchups: YahooMatchup[];
+  /** date -> team key -> that day's roster. */
+  rosters: Map<string, Map<string, YahooRosterEntry[]>>;
+  transactions: YahooTransaction[];
+  waivers: { player: YahooPlayer; clearsOn: string | null }[];
+}
+
 // --- Matching Yahoo players to ours (BALLDONTLIE) ---
 
 /** "Nikola Jokić" / "Jaren Jackson Jr." -> "nikola jokic" / "jaren jackson". */
