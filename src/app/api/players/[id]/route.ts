@@ -1,5 +1,6 @@
 // GET /api/players/:id?season=2026
-// Ranks use the signed-in user's punt weights (the defaults when signed out).
+// Ranks use the signed-in user's punt weights (the defaults when signed out). League data is private:
+// signed out, there is no owner, waiver status, fantasy week or transaction history.
 // Contract: PlayerDetailResponse in src/lib/types.ts.
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
@@ -26,11 +27,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const userId = await sessionUserId();
     const weights = userId === null ? DEFAULT_WEIGHTS : await getWeights(pool, userId);
+    const signedIn = userId !== null;
     const [detail, thisWeek, transactions] = await Promise.all([
-      getPlayerDetail(pool, id, season, userId, weights), getPlayerWeek(pool, id, season), getPlayerTransactions(pool, id, season),
+      getPlayerDetail(pool, id, season, userId, weights),
+      signedIn ? getPlayerWeek(pool, id, season) : null,
+      signedIn ? getPlayerTransactions(pool, id, season) : [],
     ]);
     if (!detail) return NextResponse.json({ error: "Player not found" }, { status: 404 });
-    const body: PlayerDetailResponse = { ...detail, thisWeek, transactions };
+    const body: PlayerDetailResponse = signedIn
+      ? { ...detail, thisWeek, transactions }
+      : { ...detail, owner: null, waiver: null, thisWeek: null, transactions: [] };
     // No caching: owners change with every add and drop; private: the star is per user.
     return NextResponse.json(body, { headers: { "Cache-Control": "private, no-cache" } });
   } catch (err) {

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth/config";
-import { getSession } from "@/lib/auth/session";
+import { requireSignedInPage } from "@/lib/auth/viewer";
 import { pool } from "@/lib/db";
 import { getMatchupWeek } from "@/lib/queries/matchups";
 import { CURRENT_SEASON } from "@/lib/types";
@@ -18,16 +16,16 @@ const positiveInt = (raw: string | undefined) => {
 // Server-rendered from our DB. ?week=N picks a week (default this week),
 // ?team=ID another team's matchup (default yours), ?stats=yyyy-mm-dd|week the
 // rosters' stats (default today while the week is live, else week totals),
-// ?view=projected projected week totals instead.
+// ?view=projected projected week totals instead. Signed in only (league data is private).
 export default async function MatchupPage({ searchParams }: {
   searchParams: Promise<{ week?: string; team?: string; stats?: string; view?: string }>;
 }) {
   const { week, team, stats, view } = await searchParams;
-  const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
-  const data = await getMatchupWeek(pool, CURRENT_SEASON, positiveInt(week), session?.user.id ?? null, {
+  const session = await requireSignedInPage();
+  const data = await getMatchupWeek(pool, CURRENT_SEASON, positiveInt(week), session.user.id, {
     teamId: positiveInt(team),
     stats: stats ?? null,
     projected: view === "projected",
   });
-  return <MatchupView data={data} signedIn={session !== null} />;
+  return <MatchupView data={data} signedIn />;
 }

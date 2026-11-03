@@ -1,5 +1,7 @@
 // GET /api/players?season=2026&mode=avg&scope=fa&q=&pos=all&plays=tomorrow,in2&waivers=clears&page=1&perPage=50
 // Contract: PlayersResponse in src/lib/types.ts. scope=watch is the signed-in user's watchlist (401 signed out).
+// League data is private: signed out, the league filters (free agents, fantasy team, waivers) are ignored and
+// rows carry no owner or waiver status.
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { BadRequest, parsePlayersQuery } from "@/lib/queries/params";
@@ -21,7 +23,12 @@ export async function GET(req: Request) {
     if (query.scope === "watch" && userId === null) {
       return NextResponse.json({ error: "Sign in to see your watchlist." }, { status: 401 });
     }
+    if (userId === null) query = { ...query, scope: "all" as const, waivers: "any" as const, team: null };
     const body = await getPlayers(pool, query, userId);
+    if (userId === null) {
+      body.players = body.players.map((p) => ({ ...p, owner: null, waiver: null }));
+      body.teamOptions = { ...body.teamOptions, fantasy: [] };
+    }
     // No caching: owners change with every add and drop; private: the stars are per user.
     return NextResponse.json(body, { headers: { "Cache-Control": "private, no-cache" } });
   } catch (err) {

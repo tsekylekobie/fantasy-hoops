@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
+import { SignInButton } from "@/components/UserMenu";
 import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
@@ -42,6 +43,29 @@ export default function LeagueView({
       <div className={styles.inner}>
         <SiteHeader />
         {data ? <><Overview data={data} isCommissioner={isCommissioner} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+/** Signed out: the league is private, so the page is empty apart from a sign-in prompt. */
+export function SignedOutLeague() {
+  return (
+    <div className={styles.page}>
+      <div className={styles.inner}>
+        <SiteHeader />
+        <h1 className={styles.title}>League</h1>
+        <div className={styles.signedOut}>
+          <p className={styles.lead}>Nothing to see here yet.</p>
+          <p>
+            Standings, matchups, rosters and transactions are private to the league&rsquo;s managers. Sign in with Google
+            to see your league and manage your team.
+          </p>
+          <SignInButton />
+          <p className={styles.fine}>
+            Anyone can browse <Link href="/players">Players</Link> and <Link href="/box-scores">Box scores</Link>.
+          </p>
+        </div>
       </div>
     </div>
   );

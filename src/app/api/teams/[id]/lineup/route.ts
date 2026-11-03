@@ -1,17 +1,18 @@
 // GET /api/teams/:id/lineup?date=yyyy-mm-dd  (default: the league's today)
-// Any team's lineup, read-only. Contract: TeamLineupResponse in src/lib/types.ts.
+// Any team's lineup, read-only; signed in only (league data is private). Contract: TeamLineupResponse in src/lib/types.ts.
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getTeamLineup, loadValues } from "@/lib/queries/lineup";
 import { getTeamById } from "@/lib/queries/teams";
 import { processDueTrades } from "@/lib/queries/trades";
 import { CURRENT_SEASON } from "@/lib/types";
-import { NO_STORE, errorResponse, handleError, parseDate } from "../../../team/lineup/shared";
+import { NO_STORE, errorResponse, handleError, parseDate, sessionUserId } from "../../../team/lineup/shared";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if ((await sessionUserId()) === null) return errorResponse("Sign in to see this team.", 401);
     const id = Number((await params).id);
     if (!Number.isInteger(id) || id <= 0) return errorResponse("Not found.", 404);
     const team = await getTeamById(pool, id, CURRENT_SEASON);

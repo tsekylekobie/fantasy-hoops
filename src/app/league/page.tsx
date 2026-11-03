@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth/config";
-import { getSession } from "@/lib/auth/session";
+import { currentSession } from "@/lib/auth/viewer";
 import { pool } from "@/lib/db";
 import { getLeagueOverview, getRecentTransactions } from "@/lib/queries/league";
 import { getLeagueSettings } from "@/lib/queries/settings";
 import { getWaiverOrder } from "@/lib/queries/waivers";
 import { CURRENT_SEASON } from "@/lib/types";
-import LeagueView from "@/components/league/LeagueView";
+import LeagueView, { SignedOutLeague } from "@/components/league/LeagueView";
 import RecentTransactions from "@/components/league/RecentTransactions";
 import WaiverOrder from "@/components/waivers/WaiverOrder";
 import waiverStyles from "@/components/waivers/WaiverOrder.module.css";
@@ -17,9 +15,11 @@ export const dynamic = "force-dynamic";
 
 // Server-rendered from our DB: standings, this week's scoreboard, recent transactions and the waiver order.
 // The commissioner also gets links to /league/settings (header, and Edit on the waiver rules).
+// League data is private: signed out, the page only asks to sign in.
 export default async function LeaguePage() {
-  const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
-  const userId = session?.user.id ?? null;
+  const session = await currentSession();
+  if (!session) return <SignedOutLeague />;
+  const userId = session.user.id;
   const [data, transactions, waivers, settings] = await Promise.all([
     getLeagueOverview(pool, CURRENT_SEASON, userId),
     getRecentTransactions(pool, CURRENT_SEASON),

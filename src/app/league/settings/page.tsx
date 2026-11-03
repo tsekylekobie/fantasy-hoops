@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth/config";
-import { getSession } from "@/lib/auth/session";
+import { requireSignedInPage } from "@/lib/auth/viewer";
 import { pool } from "@/lib/db";
 import { getLeagueSettings } from "@/lib/queries/settings";
 import { CURRENT_SEASON } from "@/lib/types";
@@ -15,8 +13,8 @@ export const dynamic = "force-dynamic";
 
 // Commissioner only: the league's rules, saved through PUT /api/league/settings.
 export default async function LeagueSettingsPage() {
-  const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
-  const found = session ? await getLeagueSettings(pool, CURRENT_SEASON, session.user.id) : null;
+  const session = await requireSignedInPage();
+  const found = await getLeagueSettings(pool, CURRENT_SEASON, session.user.id);
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -31,9 +29,7 @@ export default async function LeagueSettingsPage() {
             processed stay as they were. Managers see the rules read-only on the League page.
           </p>
         )}
-        {!session ? (
-          <p className={styles.empty}>Sign in to see league settings.</p>
-        ) : !found ? (
+        {!found ? (
           <p className={styles.empty}>No league for this season yet.</p>
         ) : !found.isCommissioner ? (
           <p className={styles.empty}>Only the commissioner can change league settings.</p>

@@ -33,8 +33,11 @@ interface Props {
   errorMessage: string | null;
   onRetry: () => void;
   onOpenPlayer: (id: number) => void;
-  /** Free agents get an Add button (Claim for players on waivers) that calls this. */
-  onAddPlayer: (id: number) => void;
+  /**
+   * Free agents get an Add button (Claim for players on waivers) that calls this.
+   * Null when signed out: no league to add to, and no Owner column (league data is private).
+   */
+  onAddPlayer: ((id: number) => void) | null;
   /** The signed-in manager's team, whose players get a dark chip. */
   myTeamId: number | null;
   /** A star was toggled (rows with `watched` null, signed out, get no star). */
@@ -82,7 +85,7 @@ export default function PlayersTable({
             <col key={i} className={styles.cStat} />
           ))}
           <col className={styles.cValue} />
-          <col className={styles.cOwner} />
+          {onAddPlayer && <col className={styles.cOwner} />}
         </colgroup>
         <thead>
           <tr>
@@ -91,15 +94,17 @@ export default function PlayersTable({
             {COLUMNS.map((c) => (
               <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} />
             ))}
-            <th scope="col" className={styles.n}>
-              Owner
-            </th>
+            {onAddPlayer && (
+              <th scope="col" className={styles.n}>
+                Owner
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           {message ? (
             <tr className={styles.messageRow}>
-              <td colSpan={COLUMNS.length + 3}>
+              <td colSpan={COLUMNS.length + (onAddPlayer ? 3 : 2)}>
                 <div className={styles.message} role={status === "error" ? "alert" : "status"}>
                   {message}
                 </div>
@@ -133,7 +138,7 @@ function Row({
   num: (v: number) => string;
   mode: StatMode;
   onOpen: (id: number) => void;
-  onAdd: (id: number) => void;
+  onAdd: ((id: number) => void) | null;
   myTeamId: number | null;
   onWatch: (id: number, watched: boolean) => void;
   timeZone: string;
@@ -180,7 +185,7 @@ function Row({
       <td className={styles.n}>{num(s.blk)}</td>
       <td className={styles.n}>{num(s.tov)}</td>
       <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
-      <td className={`${styles.n} ${styles.own}`}>
+      {onAdd && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
           <button
             type="button"
@@ -200,7 +205,7 @@ function Row({
         ) : (
           p.owner.abbreviation
         )}
-      </td>
+      </td>}
     </tr>
   );
 }

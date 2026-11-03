@@ -62,6 +62,11 @@ stored game logs), and neither is `/plays` (no play-by-play).
   Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
   totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
+- Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is
+  signed-in only. Signed out, the header shows League (a sign-in prompt), Players and Box scores; Players hides the
+  league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/
+  `transactions`. League-only pages call `requireSignedInPage` (`src/lib/auth/viewer.ts`, redirects to /league). The root
+  layout reads the session once (`currentSession`) into `SessionProvider` (`useSignedIn` on the client).
 - `src/components/`: UI. `Avatar` must fall back to initials.
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose

@@ -69,6 +69,36 @@
   margin: 0 0 20px;
 }
 
+.signedOut {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 560px;
+  margin: 20px 0 48px;
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.signedOut p {
+  margin: 0;
+}
+
+.signedOut .lead {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.signedOut .fine {
+  font-size: 13px;
+}
+
+.signedOut .fine a {
+  color: var(--accent);
+}
+
 .cols {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);

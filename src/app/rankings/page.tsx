@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth/config";
-import { getSession } from "@/lib/auth/session";
+import { requireSignedInPage } from "@/lib/auth/viewer";
 import { pool } from "@/lib/db";
 import { getRankings } from "@/lib/queries/rankings";
 import { CURRENT_SEASON } from "@/lib/types";
@@ -17,14 +15,14 @@ const positiveInt = (raw: string | undefined) => {
 
 // Server-rendered from our DB. ?view=season adds up the regular season (default
 // one week), ?week=N picks the week (default this week), ?team=ID the team in
-// Versus the league (default yours).
+// Versus the league (default yours). Signed in only (league data is private).
 export default async function RankingsPage({ searchParams }: {
   searchParams: Promise<{ view?: string; week?: string; team?: string }>;
 }) {
   const { view, week, team } = await searchParams;
-  const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
+  const session = await requireSignedInPage();
   const teamId = positiveInt(team);
-  const data = await getRankings(pool, CURRENT_SEASON, session?.user.id ?? null, {
+  const data = await getRankings(pool, CURRENT_SEASON, session.user.id, {
     period: view === "season" ? "season" : "week",
     week: positiveInt(week),
     teamId,

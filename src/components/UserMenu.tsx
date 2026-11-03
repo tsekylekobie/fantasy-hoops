@@ -4,29 +4,33 @@
 // avatar with a small menu (email, Edit team, sign out) when signed in.
 import { useEffect, useRef, useState } from "react";
 import type { SessionResponse, SessionUser } from "@/lib/types";
+import { useSession } from "./SessionProvider";
 import styles from "./UserMenu.module.css";
 
 export default function UserMenu() {
-  // undefined while loading, so the header doesn't flash "Sign in".
-  const [session, setSession] = useState<SessionResponse | undefined>(undefined);
+  // Known from the server on first render (SessionProvider). The fetch slides the
+  // session's expiry forward (and clears an expired cookie); its answer wins.
+  const initial = useSession();
+  const [session, setSession] = useState<SessionResponse>(initial);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/session")
       .then((r) => (r.ok ? (r.json() as Promise<SessionResponse>) : null))
-      .then((s) => !cancelled && setSession(s ?? { user: null, mock: false }))
-      .catch(() => !cancelled && setSession({ user: null, mock: false }));
+      .then((s) => !cancelled && s && setSession(s))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
-  if (session === undefined) return <span className={styles.placeholder} aria-hidden="true" />;
-  if (!session.user) return <SignInButton mock={session.mock} />;
+  if (!session.user) return <SignInButton />;
   return <SignedIn user={session.user} />;
 }
 
-function SignInButton({ mock }: { mock: boolean }) {
+/** "Sign in with Google" (or the mock sign-in in development), returning to this page. */
+export function SignInButton() {
+  const { mock } = useSession();
   // Built at click time so it returns to the page as it is now (query string included).
   function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();

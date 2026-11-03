@@ -4,11 +4,13 @@
 // canvas. A date's scoreboard, then each game's box score. Every stat cell is
 // shaded by where it ranks among all players who played that date (queries/boxScores.ts).
 // Keyed by date and ?game (page.tsx), so the picked game resets when either changes.
+// Signed out there's no Owner column and no Add/Claim (league data is private).
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { BoxRank, BoxRankKey, BoxScoreGame, BoxScorePlayer, BoxScoresResponse, BoxScoreTeam, RankTier } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
+import { useSignedIn } from "@/components/SessionProvider";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import LiveRefresh from "@/components/live/LiveRefresh";
@@ -57,6 +59,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
   const router = useRouter();
   const [game, setGame] = useState<number | "all">(initialGame ?? "all");
   const [adding, setAdding] = useState<number | null>(null);
+  const onAdd = useSignedIn() ? setAdding : null;
   const shown = game === "all" ? data.games : data.games.filter((g) => g.id === game);
   const prev = addDays(data.date, -1);
   const next = addDays(data.date, 1);
@@ -130,7 +133,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
               </div>
 
               {shown.map((g) => (
-                <Box key={g.id} g={g} data={data} onAdd={setAdding} />
+                <Box key={g.id} g={g} data={data} onAdd={onAdd} />
               ))}
             </>
           )}
@@ -143,7 +146,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
             far. Hover a cell for its rank.
           </p>
         </PlayerModalHost>
-        <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => router.refresh()} />
+        {onAdd && <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => router.refresh()} />}
       </div>
     </div>
   );
@@ -188,7 +191,7 @@ function GameCard({ g, on, timeZone, onPick }: { g: BoxScoreGame; on: boolean; t
   );
 }
 
-function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onAdd: (id: number) => void }) {
+function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onAdd: ((id: number) => void) | null }) {
   const started = g.away.score !== null && g.home.score !== null;
   const title = started
     ? `${g.away.abbreviation} ${g.away.score} @ ${g.home.abbreviation} ${g.home.score}`
@@ -223,7 +226,7 @@ function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onA
 }
 
 function TeamTable({ t, other, g, data, onAdd }: {
-  t: BoxScoreTeam; other: BoxScoreTeam; g: BoxScoreGame; data: BoxScoresResponse; onAdd: (id: number) => void;
+  t: BoxScoreTeam; other: BoxScoreTeam; g: BoxScoreGame; data: BoxScoresResponse; onAdd: ((id: number) => void) | null;
 }) {
   const result = g.state === "final" && t.score !== null && other.score !== null && t.score !== other.score
     ? (t.score > other.score ? "Won" : "Lost") : null;
@@ -240,7 +243,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
             <tr>
               <th scope="col" className={styles.rk} title="Rank by Value among every player who played on this date">Rank</th>
               <th scope="col" className={styles.pl}>Player</th>
-              <th scope="col" className={styles.own}>Owner</th>
+              {onAdd && <th scope="col" className={styles.own}>Owner</th>}
               <th scope="col" className={styles.n}>MIN</th>
               {COUNTING.map((k) => (
                 <th key={k} scope="col" className={styles.n}>{LABELS[k]}</th>
@@ -261,7 +264,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
             <tr>
               <td className={styles.rk} />
               <th scope="row" className={styles.pl}>Team totals</th>
-              <td />
+              {onAdd && <td />}
               <td className={styles.n}>{t.totals.min}</td>
               {COUNTING.map((k) => (
                 <td key={k} className={styles.n}>{t.totals[k]}</td>
@@ -300,7 +303,7 @@ function Cell({ k, r, of, children }: { k: BoxRankKey; r: BoxRank | undefined; o
   );
 }
 
-function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresResponse; onAdd: (id: number) => void }) {
+function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresResponse; onAdd: ((id: number) => void) | null }) {
   const mine = p.owner !== null && p.owner.teamId === data.myTeamId;
   const l = p.line;
   const of = data.playerCount;
@@ -317,7 +320,7 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
           </span>
         </PlayerButton>
       </th>
-      <td className={styles.own}>
+      {onAdd && <td className={styles.own}>
         {p.owner === null && p.waiver ? (
           <button
             type="button"
@@ -337,7 +340,7 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
         ) : (
           p.owner.abbreviation
         )}
-      </td>
+      </td>}
       {l ? (
         <>
           <td className={styles.n}>{l.min}</td>

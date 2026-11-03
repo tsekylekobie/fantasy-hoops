@@ -2,15 +2,17 @@
 
 // Top navigation shared by every page: logo, section tabs, theme and account.
 // Tabs follow docs/design/matchup.mockup.html. Other teams' pages (/team/N) sit under League.
+// Signed out, only the public tabs show (League, Players, Box scores): league data is private.
 // On phones the tabs become a bottom tab bar with icons (docs/design/my-team-phone.mockup.html).
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSignedIn } from "./SessionProvider";
 import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
 import styles from "./SiteHeader.module.css";
 
 // Icon paths from the phone mockup's tab bar (24×24, stroked).
-const TABS = [
+const TABS: { href: string; label: string; also?: string; private?: boolean; icon: React.ReactNode }[] = [
   {
     href: "/league",
     label: "League",
@@ -22,10 +24,11 @@ const TABS = [
       </>
     ),
   },
-  { href: "/my-team", label: "Roster", icon: <path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2 3-4 3S8.5 4.7 8 3z" /> },
+  { href: "/my-team", label: "Roster", private: true, icon: <path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2 3-4 3S8.5 4.7 8 3z" /> },
   {
     href: "/matchup",
     label: "Matchup",
+    private: true,
     icon: (
       <>
         <circle cx="12" cy="12" r="9" />
@@ -43,7 +46,7 @@ const TABS = [
       </>
     ),
   },
-  { href: "/rankings", label: "Rankings", icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
+  { href: "/rankings", label: "Rankings", private: true, icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/box-scores",
     label: "Box scores",
@@ -58,13 +61,15 @@ const TABS = [
 
 export default function SiteHeader() {
   const pathname = usePathname();
+  const signedIn = useSignedIn();
+  const tabs = signedIn ? TABS : TABS.filter((t) => !t.private);
   return (
     <header className={styles.nav}>
       <Link href="/" className={styles.logo}>
         Fantasy <b>Hoops</b>
       </Link>
       <nav className={styles.tabs} aria-label="Main">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const on = pathname.startsWith(t.href) || (t.also !== undefined && pathname.startsWith(t.also));
           return (
             <Link key={t.href} href={t.href} className={on ? styles.on : undefined} aria-current={on ? "page" : undefined}>

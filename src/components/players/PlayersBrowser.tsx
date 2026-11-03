@@ -9,6 +9,7 @@ import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, STAT_RANGES, def
 import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
+import { useSignedIn } from "@/components/SessionProvider";
 import PlayersTable from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
@@ -78,7 +79,11 @@ interface UrlState {
   player: number | null;
 }
 
-function readUrlState(params: URLSearchParams): UrlState {
+/**
+ * Signed out there is no league to show (league data is private), so the league filters
+ * (free agents, fantasy team, waivers) don't apply: every player, any waiver status, any team.
+ */
+function readUrlState(params: URLSearchParams, signedIn: boolean): UrlState {
   const pos = params.get("pos");
   const rawSort = params.get("sort") as SortKey | null;
   const sort: SortKey = rawSort && SORT_KEYS.includes(rawSort) ? rawSort : "value";
@@ -89,15 +94,16 @@ function readUrlState(params: URLSearchParams): UrlState {
   const waivers = params.get("waivers");
   const team = Number(params.get("team"));
   const nba = params.get("nba")?.toUpperCase() ?? "";
+  const scope = SCOPES.find((o) => o.value === params.get("scope"))?.value ?? "fa";
   return {
     q: params.get("q") ?? "",
-    scope: SCOPES.find((o) => o.value === params.get("scope"))?.value ?? "fa",
+    scope: signedIn ? scope : "all",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
     range: STAT_RANGES.find((r) => r === params.get("range")) ?? "season",
     mode: params.get("mode") === "total" ? "total" : "avg",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
-    waivers: waivers === "on" || waivers === "clears" ? waivers : "any",
-    team: Number.isInteger(team) && team > 0 ? team : null,
+    waivers: signedIn && (waivers === "on" || waivers === "clears") ? waivers : "any",
+    team: signedIn && Number.isInteger(team) && team > 0 ? team : null,
     nba: /^[A-Z]{2,4}$/.test(nba) ? nba : null,
     sort,
     dir: dir === "asc" || dir === "desc" ? dir : defaultSortDir(sort),
@@ -107,10 +113,10 @@ function readUrlState(params: URLSearchParams): UrlState {
 }
 
 /** Defaults are left out so the plain URL stays clean. */
-function toQueryString(s: UrlState): string {
+function toQueryString(s: UrlState, signedIn: boolean): string {
   const p = new URLSearchParams();
   if (s.q) p.set("q", s.q);
-  if (s.scope !== "fa") p.set("scope", s.scope);
+  if (signedIn && s.scope !== "fa") p.set("scope", s.scope);
   if (s.pos !== "all") p.set("pos", s.pos);
   if (s.range !== "season") p.set("range", s.range);
   if (s.mode !== "avg") p.set("mode", s.mode);
@@ -130,13 +136,15 @@ function toQueryString(s: UrlState): string {
 const POSITION_NAMES: Record<Exclude<PositionFilter, "all">, string> = { G: "Guards", F: "Forwards", C: "Centers" };
 
 /** One phrase per folded filter, for the closed Filters button. `changed` marks a non-default pick. */
-function filterSummary(s: UrlState, teams: PlayersResponse["teamOptions"] | null): { text: string; changed: boolean }[] {
+function filterSummary(
+  s: UrlState, teams: PlayersResponse["teamOptions"] | null, signedIn: boolean,
+): { text: string; changed: boolean }[] {
   const playLabels = PLAYS.filter((o) => s.plays.includes(o.value)).map((o) => o.label.toLowerCase());
   const teamLabels = [
     s.team !== null ? teams?.fantasy.find((t) => t.id === s.team)?.name ?? "One team" : null,
     s.nba,
   ].filter((x): x is string => x !== null);
-  return [
+  const parts = [
     { text: SCOPES.find((o) => o.value === s.scope)!.label, changed: s.scope !== "fa" },
     { text: teamLabels.length > 0 ? teamLabels.join(" · ") : "Any team", changed: teamLabels.length > 0 },
     { text: s.pos === "all" ? "All positions" : POSITION_NAMES[s.pos], changed: s.pos !== "all" },
@@ -146,6 +154,8 @@ function filterSummary(s: UrlState, teams: PlayersResponse["teamOptions"] | null
       changed: s.waivers !== "any",
     },
   ];
+  // Signed out: only the NBA team, position and plays filters exist.
+  return signedIn ? parts : parts.slice(1, 4);
 }
 
 type Load =
@@ -157,18 +167,19 @@ export default function PlayersBrowser() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const state = readUrlState(new URLSearchParams(searchParams.toString()));
+  const signedIn = useSignedIn();
+  const state = readUrlState(new URLSearchParams(searchParams.toString()), signedIn);
   const { q, scope, pos, range, mode, plays, waivers, team, nba, sort, dir, page, player } = state;
   const playsKey = plays.join(",");
 
   const navigate = useCallback(
     (patch: Partial<UrlState>, how: "push" | "replace" = "push") => {
-      const next = { ...readUrlState(new URLSearchParams(window.location.search)), ...patch };
-      const url = `${pathname}${toQueryString(next)}`;
+      const next = { ...readUrlState(new URLSearchParams(window.location.search), signedIn), ...patch };
+      const url = `${pathname}${toQueryString(next, signedIn)}`;
       if (how === "push") router.push(url, { scroll: false });
       else router.replace(url, { scroll: false });
     },
-    [pathname, router],
+    [pathname, router, signedIn],
   );
 
   // Search box: local state, written to the URL after a pause in typing.
@@ -198,12 +209,13 @@ export default function PlayersBrowser() {
   const [myTeamId, setMyTeamId] = useState<number | null>(null);
   const [movesKey, setMovesKey] = useState(0);
   useEffect(() => {
+    if (!signedIn) return;
     const ctrl = new AbortController();
     fetchMyTeamId(ctrl.signal).then((id) => {
       if (!ctrl.signal.aborted) setMyTeamId(id);
     });
     return () => ctrl.abort();
-  }, []);
+  }, [signedIn]);
 
   // Punt weights: per user, not in the URL. `weights` follows the sliders;
   // `applied` (what the table is fetched with, cached and saved) trails it by
@@ -213,7 +225,6 @@ export default function PlayersBrowser() {
   // the table waits for the account's weights before its first fetch.
   const [weights, setWeights] = useState<CategoryWeights>(DEFAULT_WEIGHTS);
   const [applied, setApplied] = useState<CategoryWeights | null>(null);
-  const [signedIn, setSignedIn] = useState(false);
   const [showWeights, setShowWeights] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const touchedWeights = useRef(false);
@@ -226,7 +237,6 @@ export default function PlayersBrowser() {
     const ctrl = new AbortController();
     fetchJson<WeightsResponse>("/api/me/weights", ctrl.signal)
       .then((res) => {
-        setSignedIn(res.signedIn);
         if (touchedWeights.current || (!res.signedIn && cached)) return;
         setWeights(res.weights);
         setApplied(res.weights);
@@ -397,7 +407,7 @@ export default function PlayersBrowser() {
             {!filtersOpen && (
               <span className={styles.filtersSummary}>
                 <span className={styles.summaryParts}>
-                  {filterSummary(state, teamOptions).map((part) => (
+                  {filterSummary(state, teamOptions, signedIn).map((part) => (
                     <span key={part.text} className={part.changed ? styles.changed : undefined}>
                       {part.text}
                     </span>
@@ -408,20 +418,23 @@ export default function PlayersBrowser() {
           </button>
 
           <div id="player-filters" className={styles.filtersPanel} hidden={!filtersOpen}>
+            {signedIn && (
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Players</span>
-              {/* Free agents have no fantasy team, so that pick clears the team filter. The watchlist needs a sign-in. */}
+              {/* Free agents have no fantasy team, so that pick clears the team filter. Signed in only, like the watchlist. */}
               <SegmentedToggle
                 label="Players"
-                options={signedIn || scope === "watch" ? SCOPES : SCOPES.filter((o) => o.value !== "watch")}
+                options={SCOPES}
                 value={scope}
                 onChange={(v) => navigate({ scope: v, ...(v === "fa" && { team: null }), page: 1 })}
               />
             </span>
+            )}
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Team</span>
               <span className={styles.selects}>
                 {/* A fantasy team's players are rostered, so picking one shows all players (or watched ones). */}
+                {signedIn && (
                 <select
                   className={styles.select}
                   aria-label="Fantasy team"
@@ -434,6 +447,7 @@ export default function PlayersBrowser() {
                   <option value="">All fantasy teams</option>
                   {teamOptions?.fantasy.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+                )}
                 <select
                   className={styles.select}
                   aria-label="NBA team"
@@ -454,10 +468,12 @@ export default function PlayersBrowser() {
               <span className={styles.filterLabel} aria-hidden="true">Plays</span>
               <MultiToggle label="Plays" anyLabel="Any day" options={PLAYS} value={plays} onChange={(v) => navigate({ plays: v, page: 1 })} />
             </span>
+            {signedIn && (
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Waivers</span>
               <SegmentedToggle label="Waivers" options={WAIVERS} value={waivers} onChange={(v) => navigate({ waivers: v, page: 1 })} />
             </span>
+            )}
           </div>
         </div>
 
@@ -477,7 +493,7 @@ export default function PlayersBrowser() {
           errorMessage={load.status === "error" ? load.message : null}
           onRetry={() => setRetryKey((k) => k + 1)}
           onOpenPlayer={openPlayer}
-          onAddPlayer={setAdding}
+          onAddPlayer={signedIn ? setAdding : null}
           myTeamId={myTeamId}
           onWatch={onWatch}
         />
@@ -496,7 +512,7 @@ export default function PlayersBrowser() {
       </div>
 
       <PlayerModal
-        playerId={player} onClose={closePlayer} onAdd={setAdding} myTeamId={myTeamId} refreshKey={movesKey} onWatch={onWatch}
+        playerId={player} onClose={closePlayer} onAdd={signedIn ? setAdding : undefined} myTeamId={myTeamId} refreshKey={movesKey} onWatch={onWatch}
       />
       <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>

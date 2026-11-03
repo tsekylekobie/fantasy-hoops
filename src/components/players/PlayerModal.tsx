@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import TeamBadge from "@/components/TeamBadge";
+import { useSignedIn } from "@/components/SessionProvider";
 import type {
   PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerTransaction, PlayerWeek, SeasonRow,
 } from "@/lib/types";
@@ -307,6 +308,7 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
   const [tab, setTab] = useState<Tab>("overview");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const router = useRouter();
+  const signedIn = useSignedIn();
 
   // Leaving the page unmounts the modal; a link to the box score already on screen just closes it.
   const openBoxScore = (e: React.MouseEvent, url: string) => {
@@ -374,7 +376,8 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
 
         <News playerId={data.player.id} />
 
-        <Transactions transactions={data.transactions} timeZone={data.timeZone} />
+        {/* League data is private: signed out, no transaction history. */}
+        {signedIn && <Transactions transactions={data.transactions} timeZone={data.timeZone} />}
       </div>
 
       <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>

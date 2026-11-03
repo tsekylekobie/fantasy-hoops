@@ -1,4 +1,4 @@
-// GET  /api/trades  open trades and recent ones (TradesResponse); processes due trades first.
+// GET  /api/trades  open trades and recent ones (TradesResponse); processes due trades first. Signed in only.
 // POST /api/trades  propose (TradeProposal), responds with the Trade.
 // Contract: src/lib/types.ts. Rules: src/lib/queries/trades.ts.
 import { NextResponse } from "next/server";
@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const ctx = await context(false);
+    // League data is private: signed in only.
+    const ctx = await context(true);
     if (ctx instanceof NextResponse) return ctx;
     return NextResponse.json(await listTrades(pool, ctx.league, ctx.userId), { headers: NO_STORE });
   } catch (err) {
