@@ -1,0 +1,34 @@
+/* StickyHeadTable: the page-sticky header copy over a sideways-scrolling table. */
+
+.root {
+  position: relative;
+}
+
+/* In flow at the header's height (set from the real header), so at the bottom of
+   the table it is pushed up like a native sticky header. Hidden until measured. */
+.pin {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 0;
+  visibility: hidden;
+}
+
+.root[data-ready] .pin {
+  visibility: visible;
+}
+
+.pinScroll {
+  overflow: hidden;
+}
+
+/* Sized by its colgroup (the real columns' widths), not by the table's own CSS. */
+.copy {
+  table-layout: fixed !important;
+  transition-property: opacity !important;
+}
+
+.scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

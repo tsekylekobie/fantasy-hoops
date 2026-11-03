@@ -316,7 +316,9 @@ a.arw:hover,
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   margin-bottom: 14px;
-  overflow: hidden;
+  /* Rounds the corners without becoming a scroller, which would unpin the table's
+     header (StickyHeadTable scrolls the table inside). */
+  overflow: clip;
 }
 
 .card h3 {
@@ -339,10 +341,6 @@ a.arw:hover,
   text-transform: none;
   letter-spacing: 0;
   color: var(--ink-muted);
-}
-
-.scroll {
-  overflow-x: auto;
 }
 
 .table {
@@ -594,10 +592,40 @@ tr.out {
     background: var(--surface);
   }
 
+  /* As wide as its columns, not the desktop minimum, so the sticky Player column
+     stays at its own width (names ellipsize instead of widening it). */
+  .table {
+    width: max-content;
+    min-width: 100%;
+  }
+
   .table .pl {
     left: 60px;
+    width: 150px;
     min-width: 150px;
     max-width: 150px;
+    transition: width 220ms ease, min-width 220ms ease, max-width 220ms ease;
+  }
+
+  /* The name sizes to the column, not the column to the name. */
+  .table .pl button {
+    width: 100%;
+  }
+
+  .name {
+    flex: 1;
+  }
+
+  .name [data-player-name] {
+    contain: inline-size;
+  }
+
+  /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
+     sticky Player column narrows with them, leaving more room for stats. */
+  [data-scrolled] > div > .table .pl {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
   }
 
   .table thead .rk,

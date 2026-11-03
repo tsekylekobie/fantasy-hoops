@@ -5,8 +5,9 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Rounds the corners without becoming a scroller, which would unpin the header
+     (StickyHeadTable scrolls the table inside). */
+  overflow: clip;
 }
 
 .table {
@@ -15,7 +16,7 @@
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
-  transition: opacity 120ms ease;
+  transition: opacity 120ms ease, min-width 220ms ease;
 }
 
 .stale {
@@ -313,6 +314,12 @@
 @media (max-width: 640px) {
   .table {
     min-width: 1174px;
+  }
+
+  /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
+     sticky Player column narrows with them, leaving more room for stats. */
+  .card[data-scrolled] .table {
+    min-width: 1150px;
   }
 
   .cRank {

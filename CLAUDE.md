@@ -62,7 +62,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
   totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
-- `src/components/`: UI. `Avatar` must fall back to initials.
+- `src/components/`: UI. `Avatar` must fall back to initials. Wide tables (Players, Box scores) use
+  `table/StickyHeadTable` (sideways scroll, header pinned to the page via a measured copy, `data-scrolled` once
+  scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).

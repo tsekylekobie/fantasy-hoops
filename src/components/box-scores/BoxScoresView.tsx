@@ -12,6 +12,8 @@ import SiteHeader from "@/components/SiteHeader";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import LiveRefresh from "@/components/live/LiveRefresh";
+import StickyHeadTable from "@/components/table/StickyHeadTable";
+import ScrollName from "@/components/players/ScrollName";
 import { fmtGameDate, fmtPct, fmtValue, fmtWaiverTime, fullName } from "@/components/players/format";
 import styles from "./BoxScoresView.module.css";
 
@@ -234,8 +236,9 @@ function TeamTable({ t, other, g, data, onAdd }: {
         {t.score !== null && ` · ${t.score}`}
         {result && <span>{result}</span>}
       </h3>
-      <div className={styles.scroll}>
-        <table className={styles.table}>
+      <StickyHeadTable
+        tableClassName={styles.table}
+        head={() => (
           <thead>
             <tr>
               <th scope="col" className={styles.rk} title="Rank by Value among every player who played on this date">Rank</th>
@@ -252,35 +255,36 @@ function TeamTable({ t, other, g, data, onAdd }: {
               <th scope="col" className={`${styles.n} ${styles.srt}`} aria-sort="descending">Value</th>
             </tr>
           </thead>
-          <tbody>
-            {t.players.map((p) => (
-              <PlayerRow key={p.id} p={p} data={data} onAdd={onAdd} />
+        )}
+      >
+        <tbody>
+          {t.players.map((p) => (
+            <PlayerRow key={p.id} p={p} data={data} onAdd={onAdd} />
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td className={styles.rk} />
+            <th scope="row" className={styles.pl}>Team totals</th>
+            <td />
+            <td className={styles.n}>{t.totals.min}</td>
+            {COUNTING.map((k) => (
+              <td key={k} className={styles.n}>{t.totals[k]}</td>
             ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className={styles.rk} />
-              <th scope="row" className={styles.pl}>Team totals</th>
-              <td />
-              <td className={styles.n}>{t.totals.min}</td>
-              {COUNTING.map((k) => (
-                <td key={k} className={styles.n}>{t.totals[k]}</td>
-              ))}
-              <td className={styles.n}>
-                {fmtPct(t.totals.fgPct)}
-                <small>{t.totals.fgm}/{t.totals.fga}</small>
-              </td>
-              <td className={styles.n}>
-                {fmtPct(t.totals.ftPct)}
-                <small>{t.totals.ftm}/{t.totals.fta}</small>
-              </td>
-              <td className={styles.n}>{t.totals.tov}</td>
-              <td className={styles.n}>{t.totals.pf}</td>
-              <td />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+            <td className={styles.n}>
+              {fmtPct(t.totals.fgPct)}
+              <small>{t.totals.fgm}/{t.totals.fga}</small>
+            </td>
+            <td className={styles.n}>
+              {fmtPct(t.totals.ftPct)}
+              <small>{t.totals.ftm}/{t.totals.fta}</small>
+            </td>
+            <td className={styles.n}>{t.totals.tov}</td>
+            <td className={styles.n}>{t.totals.pf}</td>
+            <td />
+          </tr>
+        </tfoot>
+      </StickyHeadTable>
     </div>
   );
 }
@@ -312,7 +316,7 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
       <th scope="row" className={styles.pl}>
         <PlayerButton playerId={p.id}>
           <span className={styles.name}>
-            <span data-player-name>{fullName(p)}</span>
+            <span data-player-name><ScrollName firstName={p.firstName} lastName={p.lastName} /></span>
             {p.position && <small>{p.position}</small>}
           </span>
         </PlayerButton>

@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
 import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
+import StickyHeadTable from "@/components/table/StickyHeadTable";
+import ScrollName from "./ScrollName";
 import WatchStar from "./WatchStar";
 import styles from "./PlayersTable.module.css";
 
@@ -69,8 +71,11 @@ export default function PlayersTable({
   }
 
   return (
-    <div className={styles.card} aria-busy={status === "loading"}>
-      <table className={`${styles.table} ${status === "loading" && data ? styles.stale : ""}`}>
+    <StickyHeadTable
+      className={styles.card}
+      tableClassName={`${styles.table} ${status === "loading" && data ? styles.stale : ""}`}
+      busy={status === "loading"}
+      cols={(
         <colgroup>
           <col className={styles.cRank} />
           <col />
@@ -84,38 +89,41 @@ export default function PlayersTable({
           <col className={styles.cValue} />
           <col className={styles.cOwner} />
         </colgroup>
+      )}
+      head={(copy) => (
         <thead>
           <tr>
             <th scope="col" title="9CAT rank">#</th>
-            <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} />
+            <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} copy={copy} />
             {COLUMNS.map((c) => (
-              <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} />
+              <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} copy={copy} />
             ))}
             <th scope="col" className={styles.n}>
               Owner
             </th>
           </tr>
         </thead>
-        <tbody>
-          {message ? (
-            <tr className={styles.messageRow}>
-              <td colSpan={COLUMNS.length + 3}>
-                <div className={styles.message} role={status === "error" ? "alert" : "status"}>
-                  {message}
-                </div>
-              </td>
-            </tr>
-          ) : (
-            rows.map((p) => (
-              <Row
-                key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId}
-                onWatch={onWatch} timeZone={data?.timeZone ?? "America/New_York"}
-              />
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+      )}
+    >
+      <tbody>
+        {message ? (
+          <tr className={styles.messageRow}>
+            <td colSpan={COLUMNS.length + 3}>
+              <div className={styles.message} role={status === "error" ? "alert" : "status"}>
+                {message}
+              </div>
+            </td>
+          </tr>
+        ) : (
+          rows.map((p) => (
+            <Row
+              key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId}
+              onWatch={onWatch} timeZone={data?.timeZone ?? "America/New_York"}
+            />
+          ))
+        )}
+      </tbody>
+    </StickyHeadTable>
   );
 }
 
@@ -148,7 +156,7 @@ function Row({
           <Avatar player={p} size={40} />
           <span className={styles.who}>
             <button type="button" className={styles.name} data-player-id={p.id} onClick={() => onOpen(p.id)}>
-              {fullName(p)}
+              <ScrollName firstName={p.firstName} lastName={p.lastName} />
             </button>
             <span className={styles.team}>
               {teamPos(p.teamAbbr, p.position)}
@@ -213,6 +221,7 @@ function SortHeader({
   sort,
   dir,
   onSort,
+  copy = false,
 }: {
   label: string;
   title?: string;
@@ -221,6 +230,8 @@ function SortHeader({
   sort: SortKey;
   dir: SortDir;
   onSort: (key: SortKey) => void;
+  /** In StickyHeadTable's pinned copy: clickable, but out of the tab order. */
+  copy?: boolean;
 }) {
   const active = sort === sortKey;
   return (
@@ -233,6 +244,7 @@ function SortHeader({
         type="button"
         className={`${styles.sort} ${active ? styles.sortActive : ""}`}
         title={title}
+        tabIndex={copy ? -1 : undefined}
         onClick={() => onSort(sortKey)}
       >
         {label}
