@@ -37,6 +37,25 @@ export function fmtInjuryLine(i: PlayerInjury): string {
   return [i.injury, i.returnDate && `Est. return ${fmtGameDate(i.returnDate)}`].filter(Boolean).join(" · ");
 }
 
+/** Today's date ("2026-11-03") in `timeZone` (the league's; Eastern when the page doesn't have it). */
+export function todayIn(timeZone = "America/New_York", now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone });
+}
+
+/**
+ * The status chip text: "Out 5D", "Out 3W", "Out 2M" (time until the estimated return, under
+ * 14 days in days, under 60 in weeks, then months); just the status when there's no return
+ * date, it isn't Out, or the return is today or past.
+ */
+export function fmtInjuryStatus(i: PlayerInjury, today: string): string {
+  if (i.status !== "Out" || !i.returnDate) return i.status;
+  const days = Math.round((Date.parse(i.returnDate.slice(0, 10)) - Date.parse(today)) / 86_400_000);
+  if (!(days > 0)) return i.status;
+  if (days < 14) return `Out ${days}D`;
+  if (days < 60) return `Out ${Math.round(days / 7)}W`;
+  return `Out ${Math.round(days / 30.44)}M`;
+}
+
 /** "@ CHI · W" / "vs ORL · L" */
 export function fmtOpponent(opponentAbbr: string, home: boolean, result: "W" | "L" | null): string {
   const base = `${home ? "vs" : "@"} ${opponentAbbr}`;

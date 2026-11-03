@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import TradeAnalysis, { AnalysisControls } from "@/components/trades/TradeAnalysis";
 import SiteHeader from "@/components/SiteHeader";
-import { fetchJson, fmtAvg, fmtGameDate, fmtValue, fullName } from "@/components/players/format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtInjuryStatus, fmtValue, fullName, todayIn } from "@/components/players/format";
 import { playerValue, type WeightSet } from "@/lib/trades/analysis";
 import type {
   Trade, TradeAnalysisPlayer, TradeAnalysisResponse, TradeBuilderResponse, TradeProposal, TradeRosterPlayer, TradeWindow,
@@ -304,7 +304,7 @@ function Roster({ title, team, players, picked, dropping, lineFor, onPick }: {
                 <span className={styles.name}>
                   {fullName(p)}
                   {p.injury && (
-                    <span className={`${styles.tag} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
+                    <span className={`${styles.tag} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{fmtInjuryStatus(p.injury, todayIn())}</span>
                   )}
                   {p.inOpenTrade && <span className={styles.tag} title="Also in another open trade">In a trade</span>}
                   {dropping.has(p.id) && <span className={`${styles.tag} ${styles.out}`}>Drop</span>}

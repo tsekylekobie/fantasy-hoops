@@ -35,7 +35,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `playoffs`; by hand `npm run playoffs -- --today <yyyy-mm-dd>` or `POST /api/dev/playoffs?today=...`, dev only).
   Standings count regular-season weeks only (`src/lib/queries/standings.ts`).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
-  injury + news blurb. Rows show the status chip; the player modal adds injury, est. return and the full news blurb.
+  injury + news blurb. Rows show the status chip ("Out 3W": time to the est. return, `fmtInjuryStatus` in `components/players/format.ts`); the player modal adds injury, est. return and the full news blurb.
 - `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`) on
   Players rows and in the player modal toggles it via `PUT`/`DELETE /api/players/[id]/watch`; `scope=watch` on
   `/api/players` lists it. `watched` on rows and player detail is null when signed out (no star).

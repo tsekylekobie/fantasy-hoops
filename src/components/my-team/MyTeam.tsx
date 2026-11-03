@@ -29,7 +29,7 @@ import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
 import Flash from "@/components/live/Flash";
 import { useLivePoll } from "@/components/live/useLivePoll";
-import { fetchJson, fmtPct, fullName } from "@/components/players/format";
+import { fetchJson, fmtInjuryStatus, fmtPct, fullName, todayIn } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
 import type {
   AutoLineupRequest,
@@ -401,7 +401,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
                 <span className={styles.name} data-player-name>
                   {fullName(p)}
                   {p.injury && (
-                    <span className={`${styles.status} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
+                    <span className={`${styles.status} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{fmtInjuryStatus(p.injury, todayIn())}</span>
                   )}
                   {current && ilIneligible(p) && (
                     <span className={`${styles.status} ${styles.ilBad}`} title={`No longer meets the league's ${p.slot} rule`}>

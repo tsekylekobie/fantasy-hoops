@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos } from "./format";
+import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos, todayIn } from "./format";
 import WatchStar from "./WatchStar";
 import styles from "./PlayersTable.module.css";
 
@@ -153,7 +153,7 @@ function Row({
             <span className={styles.team}>
               {teamPos(p.teamAbbr, p.position)}
               {p.injury && (
-                <span className={`${styles.injury} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{p.injury.status}</span>
+                <span className={`${styles.injury} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{fmtInjuryStatus(p.injury, todayIn(timeZone))}</span>
               )}
             </span>
             {p.games.length > 0 && (
