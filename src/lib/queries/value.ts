@@ -58,6 +58,12 @@ export interface Valuation {
   z: Record<Category, number>;
   /** Total FG/FT impact over all games: makes - poolPct * attempts. */
   impact: { fgPct: number; ftPct: number };
+  /**
+   * The same, for Totals mode: each category's season total (FG%/FT%: total impact, makes - the pool's
+   * percentage * attempts; fewer TO is better) placed among the pool's totals, so fewer games pulls a player
+   * down. `value` is the per-game tier, matching the Value number (which is per game in both modes).
+   */
+  totalTiers: Partial<Record<Category | "value", RankTier>>;
 }
 
 /** Tier from a place between 0 (best) and 1 (worst). */
@@ -181,22 +187,33 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
   const zs = new Map(played.map((p) => [p.playerId, z(p)]));
   const scored = byValue(played.map((p) => ({ p, value: weightedValue(zs.get(p.playerId)!, weights) })));
 
+  // Season totals by category, higher is better (TO negated). FG%/FT% are total impact against the pool's percentage.
+  const totals = (p: SeasonTotals): Record<Cat, number> => ({
+    fgImpact: p.fgm - z.fgPct * p.fga, ftImpact: p.ftm - z.ftPct * p.fta,
+    fg3m: p.fg3m, pts: p.pts, reb: p.reb, ast: p.ast, stl: p.stl, blk: p.blk, tov: -p.tov,
+  });
+
   // Each category's (and the value's) pool distribution, best first.
   const desc = (xs: number[]) => xs.sort((a, b) => b - a);
   const poolZ = Object.fromEntries(CATS.map((c) => [c, desc(pool.map((p) => zs.get(p.playerId)![c]))])) as Record<Cat, number[]>;
+  const poolTotals = Object.fromEntries(CATS.map((c) => [c, desc(pool.map((p) => totals(p)[c]))])) as Record<Cat, number[]>;
   const poolValues = desc(pool.map((p) => weightedValue(zs.get(p.playerId)!, weights)));
 
   const out = new Map<number, Valuation>();
   scored.forEach((s, i) => {
     const pz = zs.get(s.p.playerId)!;
-    const tiers: Valuation["tiers"] = { value: tierOf(placeIn(poolValues, s.value)) };
+    const pt = totals(s.p);
+    const value = tierOf(placeIn(poolValues, s.value));
+    const tiers: Valuation["tiers"] = { value };
+    const totalTiers: Valuation["totalTiers"] = { value };
     for (const c of CATS) {
       if ((c === "fgImpact" && s.p.fga === 0) || (c === "ftImpact" && s.p.fta === 0)) continue;
       tiers[CATEGORY[c]] = tierOf(placeIn(poolZ[c], pz[c]));
+      totalTiers[CATEGORY[c]] = tierOf(placeIn(poolTotals[c], pt[c]));
     }
     out.set(s.p.playerId, {
-      value: s.value, rank: i + 1, tiers, z: byCategory(pz),
-      impact: { fgPct: s.p.fgm - z.fgPct * s.p.fga, ftPct: s.p.ftm - z.ftPct * s.p.fta },
+      value: s.value, rank: i + 1, tiers, totalTiers, z: byCategory(pz),
+      impact: { fgPct: pt.fgImpact, ftPct: pt.ftImpact },
     });
   });
   return out;
