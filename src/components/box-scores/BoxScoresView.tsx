@@ -240,7 +240,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
         {result && <span>{result}</span>}
       </h3>
       <StickyHeadTable
-        tableClassName={styles.table}
+        tableClassName={`${styles.table} ${onAdd ? "" : styles.noOwner}`}
         head={() => (
           <thead>
             <tr>

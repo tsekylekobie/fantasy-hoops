@@ -76,7 +76,7 @@ export default function PlayersTable({
   return (
     <StickyHeadTable
       className={styles.card}
-      tableClassName={`${styles.table} ${status === "loading" && data ? styles.stale : ""}`}
+      tableClassName={`${styles.table} ${onAddPlayer ? "" : styles.noOwner} ${status === "loading" && data ? styles.stale : ""}`}
       busy={status === "loading"}
       cols={(
         <colgroup>

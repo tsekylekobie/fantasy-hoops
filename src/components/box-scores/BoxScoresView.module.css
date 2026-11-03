@@ -351,6 +351,11 @@ a.arw:hover,
   font-size: 14px;
 }
 
+/* Signed out there's no Owner column: take its width off, or Player (sticky on phones) soaks it up and covers the stats. */
+.table.noOwner {
+  min-width: calc(1012px - 72px);
+}
+
 .table th,
 .table td {
   padding: 0 2px;
@@ -594,7 +599,8 @@ tr.out {
 
   /* As wide as its columns, not the desktop minimum, so the sticky Player column
      stays at its own width (names ellipsize instead of widening it). */
-  .table {
+  .table,
+  .table.noOwner {
     width: max-content;
     min-width: 100%;
   }
