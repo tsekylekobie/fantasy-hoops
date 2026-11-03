@@ -109,6 +109,11 @@ export interface PlayerRow extends PlayerSummary {
   stats: CategoryLine;
   /** 9CAT value (average of category z-scores weighted by the request's weights; 0 = average rosterable player, higher is better). */
   value: number;
+  /**
+   * Shading for each stat cell and Value: where his per-game category z-score (value) falls among the
+   * valuation pool, the ~156 players worth rostering (same scale as Box scores). No FG%/FT% tier without attempts.
+   */
+  tiers: Partial<Record<Category | "value", RankTier>>;
   /** The fantasy team he's on in the season's league; null = free agent. */
   owner: PlayerOwner | null;
   /** Set when he's a free agent on waivers: adding him is a claim. */

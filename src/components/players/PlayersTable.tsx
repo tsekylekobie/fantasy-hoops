@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
-import type { PlayerRow, PlayersResponse, SortDir, SortKey, StatMode } from "@/lib/types";
+import type { Category, PlayerRow, PlayersResponse, RankTier, SortDir, SortKey, StatMode } from "@/lib/types";
 import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos, todayIn } from "./format";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "./ScrollName";
@@ -24,6 +24,44 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
   { label: "Value", sort: "value", title: "9CAT value: average of the nine category z-scores, weighted by your punt weights. 0 is an average rostered player" },
 ];
+
+const TIER_CLASS: Record<RankTier, string | undefined> = {
+  top10: styles.top10, top25: styles.top25, top40: styles.top40, mid: undefined, bottom25: styles.bottom25, bottom10: styles.bottom10,
+};
+
+const TIER_LABEL: Record<RankTier, string> = {
+  top10: "top 10%", top25: "top 25%", top40: "top 40%", mid: "middle", bottom25: "bottom 25%", bottom10: "bottom 10%",
+};
+
+const CELL_LABEL: Record<Category | "value", string> = {
+  fgPct: "FG%", ftPct: "FT%", fg3m: "3PM", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", tov: "TO", value: "Value",
+};
+
+/** A stat cell shaded by its tier among rostered-calibre players (as on Box scores). */
+function Shaded({ k, tier, className, children }: { k: Category | "value"; tier: RankTier | undefined; className?: string; children: ReactNode }) {
+  return (
+    <td className={`${styles.n} ${className ?? ""}`}>
+      <span
+        className={`${styles.c} ${tier ? TIER_CLASS[tier] ?? "" : ""}`}
+        title={tier ? `${CELL_LABEL[k]}: ${TIER_LABEL[tier]} of rostered players, per game` : undefined}
+      >
+        {children}
+      </span>
+    </td>
+  );
+}
+
+/** The shading key, shown above the table. */
+export function TierKey() {
+  return (
+    <div className={styles.key9} aria-label="Shading key">
+      <span>Shaded against the ~156 players worth rostering, per game:</span>
+      {(["top10", "top25", "top40", "mid", "bottom25", "bottom10"] as RankTier[]).map((t) => (
+        <i key={t} className={TIER_CLASS[t]}>{TIER_LABEL[t][0].toUpperCase() + TIER_LABEL[t].slice(1)}</i>
+      ))}
+    </div>
+  );
+}
 
 interface Props {
   data: PlayersResponse | null;
@@ -152,6 +190,7 @@ function Row({
   timeZone: string;
 }) {
   const s = p.stats;
+  const t = p.tiers;
   return (
     <tr>
       <td>{p.rank}</td>
@@ -179,20 +218,20 @@ function Row({
       </td>
       <td className={styles.n}>{fmtInt(p.gp)}</td>
       <td className={styles.n}>{mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
-      <td className={styles.n}>
+      <Shaded k="fgPct" tier={t.fgPct}>
         <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} />
-      </td>
-      <td className={styles.n}>
+      </Shaded>
+      <Shaded k="ftPct" tier={t.ftPct}>
         <PctCell pct={s.ftPct} made={s.ftm} att={s.fta} num={num} />
-      </td>
-      <td className={styles.n}>{num(s.fg3m)}</td>
-      <td className={`${styles.n} ${styles.key}`}>{num(s.pts)}</td>
-      <td className={styles.n}>{num(s.reb)}</td>
-      <td className={styles.n}>{num(s.ast)}</td>
-      <td className={styles.n}>{num(s.stl)}</td>
-      <td className={styles.n}>{num(s.blk)}</td>
-      <td className={styles.n}>{num(s.tov)}</td>
-      <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
+      </Shaded>
+      <Shaded k="fg3m" tier={t.fg3m}>{num(s.fg3m)}</Shaded>
+      <Shaded k="pts" tier={t.pts} className={styles.key}>{num(s.pts)}</Shaded>
+      <Shaded k="reb" tier={t.reb}>{num(s.reb)}</Shaded>
+      <Shaded k="ast" tier={t.ast}>{num(s.ast)}</Shaded>
+      <Shaded k="stl" tier={t.stl}>{num(s.stl)}</Shaded>
+      <Shaded k="blk" tier={t.blk}>{num(s.blk)}</Shaded>
+      <Shaded k="tov" tier={t.tov}>{num(s.tov)}</Shaded>
+      <Shaded k="value" tier={t.value} className={styles.value}>{fmtValue(p.value)}</Shaded>
       {onAdd && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
           <button

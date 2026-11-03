@@ -54,6 +54,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   (5+ games, else season); players listed Out add nothing until their return. `getMatchupWeek` applies it.
 - Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`); the player modal shows
   his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
+  Stat cells and Value are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game
+  z-scores (`Valuation.tiers` in `value.ts`, `PlayerRow.tiers`), so green/red means better/worse than a rostered player.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.

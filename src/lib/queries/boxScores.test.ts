@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Category, CategoryLine } from "../types";
-import { rankDay, tierOf, type RankInput } from "./boxScores";
+import { rankDay, type RankInput } from "./boxScores";
+import { tierOf } from "./value";
 
 const Z0 = { fgPct: 0, ftPct: 0, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0 } as Record<Category, number>;
 

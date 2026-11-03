@@ -134,3 +134,21 @@ test("parsePlayersQuery: defaults and validation", () => {
   }
   assert.equal(parsePlayersQuery(new URLSearchParams("range=last30")).range, "last30");
 });
+
+test("tiers place each category against the pool: best is top 10%, worst bottom 10%, TO fewer is better", () => {
+  const players = Array.from({ length: 20 }, (_, i) => player(i + 1, { pts: 100 + i * 10, tov: 10 + i }));
+  const v = valuePlayers(players);
+  assert.equal(v.get(20)!.tiers.pts, "top10");
+  assert.equal(v.get(1)!.tiers.pts, "bottom10");
+  assert.equal(v.get(1)!.tiers.tov, "top10");
+  assert.equal(v.get(20)!.tiers.tov, "bottom10");
+  // Everyone has the same rebounds: the middle of the tie.
+  assert.equal(v.get(5)!.tiers.reb, "mid");
+});
+
+test("no FG%/FT% tier without attempts", () => {
+  const v = valuePlayers([player(1), player(2), player(3, { fga: 0, fgm: 0, fta: 0, ftm: 0 })]);
+  assert.equal(v.get(3)!.tiers.fgPct, undefined);
+  assert.equal(v.get(3)!.tiers.ftPct, undefined);
+  assert.ok(v.get(1)!.tiers.fgPct);
+});

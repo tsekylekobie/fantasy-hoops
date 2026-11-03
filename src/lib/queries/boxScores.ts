@@ -18,10 +18,9 @@ import type {
   BoxScoreTeam,
   CategoryLine,
   CategoryWeights,
-  RankTier,
 } from "../types";
 import { getOwners, getSeasonTotals } from "./players";
-import { gameScorer, type GameScore } from "./value";
+import { gameScorer, tierOf, type GameScore } from "./value";
 import { ISO, getWaiverStatus } from "./waiverStatus";
 import { gamesInProgress } from "./live";
 
@@ -47,16 +46,6 @@ function rankScore(r: RankInput, k: BoxRankKey): number | null {
     default:
       return r.line[k];
   }
-}
-
-/** Tier from a place between 0 (best) and 1 (worst). */
-export function tierOf(place: number): RankTier {
-  if (place <= 0.1) return "top10";
-  if (place <= 0.25) return "top25";
-  if (place <= 0.4) return "top40";
-  if (place >= 0.9) return "bottom10";
-  if (place >= 0.75) return "bottom25";
-  return "mid";
 }
 
 /**

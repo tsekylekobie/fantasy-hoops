@@ -305,6 +305,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       min,
       stats,
       value: Math.round(v.value * 100) / 100,
+      tiers: v.tiers,
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],

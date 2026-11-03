@@ -10,7 +10,7 @@ import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
 import { useSignedIn } from "@/components/SessionProvider";
-import PlayersTable from "./PlayersTable";
+import PlayersTable, { TierKey } from "./PlayersTable";
 import { fetchJson, fmtGameDate } from "./format";
 import PlayerModal from "./PlayerModal";
 import PuntWeights, { isDefaultWeights, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
@@ -476,6 +476,8 @@ export default function PlayersBrowser() {
             )}
           </div>
         </div>
+
+        <TierKey />
 
         <PlayersTable
           data={data}

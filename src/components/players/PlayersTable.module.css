@@ -249,6 +249,72 @@
   text-align: center;
 }
 
+/* Shading by tier among rostered-calibre players, as on Box scores: green is
+   good, red is bad, and each step also changes lightness. */
+.c {
+  display: inline-block;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border-radius: 6px;
+}
+
+.top10 {
+  background: var(--tier-top10-bg);
+  color: var(--tier-top10-ink);
+}
+
+.top10 .volume {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.top25 {
+  background: var(--tier-top25-bg);
+}
+
+.top40 {
+  background: var(--tier-top40-bg);
+}
+
+.bottom25 {
+  background: var(--tier-bottom25-bg);
+}
+
+.bottom10 {
+  background: var(--tier-bottom10-bg);
+}
+
+.key9 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin: 0 0 12px;
+}
+
+.key9 i {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.key9 i.top10 {
+  color: var(--tier-top10-ink);
+}
+
+.key9 i[class] {
+  border-color: transparent;
+}
+
 .pct {
   display: inline-flex;
   flex-direction: column;

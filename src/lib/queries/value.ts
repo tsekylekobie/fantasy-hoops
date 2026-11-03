@@ -20,7 +20,7 @@
 //    doesn't change the scale. 0 is the pool's average player. Players outside
 //    the pool are scored with the pool's means and stdevs. A category with zero
 //    spread has z = 0.
-import type { Category, CategoryWeights } from "../types";
+import type { Category, CategoryWeights, RankTier } from "../types";
 
 export const POOL_SIZE = 156;
 export const MIN_GP_FRACTION = 0.25;
@@ -48,6 +48,36 @@ export interface Valuation {
   value: number;
   /** 1-based rank by value among all players passed in. */
   rank: number;
+  /**
+   * Where each category z (and the weighted value) falls among the pool's
+   * (step 2), so the shading says how he compares with a rostered player.
+   * No FG%/FT% tier without attempts.
+   */
+  tiers: Partial<Record<Category | "value", RankTier>>;
+}
+
+/** Tier from a place between 0 (best) and 1 (worst). */
+export function tierOf(place: number): RankTier {
+  if (place <= 0.1) return "top10";
+  if (place <= 0.25) return "top25";
+  if (place <= 0.4) return "top40";
+  if (place >= 0.9) return "bottom10";
+  if (place >= 0.75) return "bottom25";
+  return "mid";
+}
+
+/** `x`'s place in `sortedDesc` (0 best, 1 worst); a tie sits in the middle of it. */
+export function placeIn(sortedDesc: number[], x: number): number {
+  const n = sortedDesc.length;
+  if (n === 0) return 0.5;
+  let above = 0;
+  let equal = 0;
+  for (const v of sortedDesc) {
+    if (v > x) above++;
+    else if (v === x) equal++;
+    else break;
+  }
+  return (above + equal / 2) / n;
 }
 
 const COUNTING = ["fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
@@ -134,10 +164,26 @@ export function selectPool(players: SeasonTotals[]): SeasonTotals[] {
 /** Returns a value and rank for every player with gp > 0. The pool and its stats don't depend on the weights. */
 export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS): Map<number, Valuation> {
   const played = players.filter((p) => p.gp > 0);
-  const z = poolScorer(selectPool(played));
-  const scored = byValue(played.map((p) => ({ p, value: weightedValue(z(p), weights) })));
+  const pool = selectPool(played);
+  const z = poolScorer(pool);
+  const zs = new Map(played.map((p) => [p.playerId, z(p)]));
+  const scored = byValue(played.map((p) => ({ p, value: weightedValue(zs.get(p.playerId)!, weights) })));
+
+  // Each category's (and the value's) pool distribution, best first.
+  const desc = (xs: number[]) => xs.sort((a, b) => b - a);
+  const poolZ = Object.fromEntries(CATS.map((c) => [c, desc(pool.map((p) => zs.get(p.playerId)![c]))])) as Record<Cat, number[]>;
+  const poolValues = desc(pool.map((p) => weightedValue(zs.get(p.playerId)!, weights)));
+
   const out = new Map<number, Valuation>();
-  scored.forEach((s, i) => out.set(s.p.playerId, { value: s.value, rank: i + 1 }));
+  scored.forEach((s, i) => {
+    const pz = zs.get(s.p.playerId)!;
+    const tiers: Valuation["tiers"] = { value: tierOf(placeIn(poolValues, s.value)) };
+    for (const c of CATS) {
+      if ((c === "fgImpact" && s.p.fga === 0) || (c === "ftImpact" && s.p.fta === 0)) continue;
+      tiers[CATEGORY[c]] = tierOf(placeIn(poolZ[c], pz[c]));
+    }
+    out.set(s.p.playerId, { value: s.value, rank: i + 1, tiers });
+  });
   return out;
 }
 
