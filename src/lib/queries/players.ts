@@ -192,22 +192,26 @@ async function getUpcomingGames(
 
 /**
  * Sort key for a column (not "value"), from unrounded numbers in the requested mode. FG% and FT% sort by impact
- * (the valuation's z-score: makes over the pool's percentage per game), not the raw percentage, so a 60% shooter on
- * 2 attempts ranks below a 52% shooter on 20; players with no attempts have no key.
+ * (makes over the pool's percentage), not the raw percentage, so a 60% shooter on 2 attempts ranks below a 52% shooter
+ * on 20: per game, the valuation's impact z-score; in totals, the season's total impact. No attempts = no key.
  */
 export function sortKeyFn(
   sort: SortKey, mode: StatMode, values: Map<number, Valuation>,
 ): (r: SeasonPlayerRow) => number | string | null {
   const per = (x: number, gp: number) => (mode === "avg" && gp > 0 ? x / gp : x);
+  const impact = (id: number, c: "fgPct" | "ftPct") => {
+    const v = values.get(id);
+    return v ? (mode === "avg" ? v.z[c] : v.impact[c]) : null;
+  };
   switch (sort) {
     case "name":
       return (r) => `${r.last_name} ${r.first_name}`;
     case "gp":
       return (r) => r.gp;
     case "fgPct":
-      return (r) => (r.fga > 0 ? values.get(r.player_id)?.z.fgPct ?? null : null);
+      return (r) => (r.fga > 0 ? impact(r.player_id, "fgPct") : null);
     case "ftPct":
-      return (r) => (r.fta > 0 ? values.get(r.player_id)?.z.ftPct ?? null : null);
+      return (r) => (r.fta > 0 ? impact(r.player_id, "ftPct") : null);
     case "value":
       throw new Error("value is sorted by the valuation, not a row column");
     default:

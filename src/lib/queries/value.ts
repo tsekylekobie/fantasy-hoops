@@ -50,6 +50,8 @@ export interface Valuation {
   rank: number;
   /** Each category's z-score against the pool (unweighted; FG%/FT% are the impact z-scores, TO is negated). */
   z: Record<Category, number>;
+  /** Total FG/FT impact over all games: makes - poolPct * attempts. */
+  impact: { fgPct: number; ftPct: number };
 }
 
 const COUNTING = ["fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
@@ -89,7 +91,7 @@ function poolScorer(pool: SeasonTotals[]) {
   };
   const lines = pool.map(perGame);
   const stats = Object.fromEntries(CATS.map((c) => [c, meanSd(lines.map((l) => l[c]))])) as Record<Cat, { mean: number; sd: number }>;
-  return (p: SeasonTotals): Record<Cat, number> => {
+  const score = (p: SeasonTotals): Record<Cat, number> => {
     const line = perGame(p);
     const z = {} as Record<Cat, number>;
     for (const c of CATS) {
@@ -98,6 +100,7 @@ function poolScorer(pool: SeasonTotals[]) {
     }
     return z;
   };
+  return Object.assign(score, { fgPct, ftPct });
 }
 
 /** sum(weight * z) / sum(weight); 0 when every weight is 0. */
@@ -149,7 +152,10 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
     return { p, zs, value: weightedValue(zs, weights) };
   }));
   const out = new Map<number, Valuation>();
-  scored.forEach((s, i) => out.set(s.p.playerId, { value: s.value, rank: i + 1, z: byCategory(s.zs) }));
+  scored.forEach((s, i) => out.set(s.p.playerId, {
+    value: s.value, rank: i + 1, z: byCategory(s.zs),
+    impact: { fgPct: s.p.fgm - z.fgPct * s.p.fga, ftPct: s.p.ftm - z.ftPct * s.p.fta },
+  }));
   return out;
 }
 

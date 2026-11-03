@@ -25,6 +25,19 @@ test("better counting stats raise value; more turnovers lower it", () => {
   assert.ok(v.get(3)!.value < 0);
 });
 
+test("FG%/FT% impact: z-scores per game, season totals = makes - pool % * attempts", () => {
+  const base = Array.from({ length: 10 }, (_, i) => player(10 + i, { fgm: 45, fga: 100 }));
+  const volume = player(1, { fgm: 100, fga: 200 });
+  const lowVolume = player(2, { fgm: 6, fga: 10 });
+  const longer = player(3, { gp: 20, min: 600, fgm: 200, fga: 400 }); // volume's per-game line over twice the games
+  const v = valuePlayers([...base, volume, lowVolume, longer]);
+  const pct = (450 + 100 + 6 + 200) / (1000 + 200 + 10 + 400);
+  assert.ok(Math.abs(v.get(1)!.impact.fgPct - (100 - pct * 200)) < 1e-9);
+  assert.ok(v.get(1)!.z.fgPct > v.get(2)!.z.fgPct);
+  assert.ok(Math.abs(v.get(3)!.z.fgPct - v.get(1)!.z.fgPct) < 1e-9);
+  assert.ok(v.get(3)!.impact.fgPct > v.get(1)!.impact.fgPct);
+});
+
 test("FG% impact weights volume: 50% on 200 FGA beats 60% on 10 FGA when league is 45%", () => {
   const base = Array.from({ length: 10 }, (_, i) => player(10 + i, { fgm: 45, fga: 100 }));
   const volume = player(1, { fgm: 100, fga: 200 });
