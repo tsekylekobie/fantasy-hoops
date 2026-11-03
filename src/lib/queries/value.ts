@@ -48,6 +48,8 @@ export interface Valuation {
   value: number;
   /** 1-based rank by value among all players passed in. */
   rank: number;
+  /** Each category's z-score against the pool (unweighted; FG%/FT% are the impact z-scores, TO is negated). */
+  z: Record<Category, number>;
 }
 
 const COUNTING = ["fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
@@ -110,8 +112,15 @@ function weightedValue(z: Record<Cat, number>, weights: CategoryWeights): number
   return den > 0 ? num / den : 0;
 }
 
+/** z-scores keyed by the public category names. */
+function byCategory(zs: Record<Cat, number>): Record<Category, number> {
+  const out = {} as Record<Category, number>;
+  for (const c of CATS) out[CATEGORY[c]] = zs[c];
+  return out;
+}
+
 /** Best first by value, then minutes per game, then id. */
-function byValue(scored: { p: SeasonTotals; value: number }[]) {
+function byValue<T extends { p: SeasonTotals; value: number }>(scored: T[]): T[] {
   return scored.sort((a, b) => b.value - a.value || mpg(b.p) - mpg(a.p) || a.p.playerId - b.p.playerId);
 }
 
@@ -135,9 +144,12 @@ export function selectPool(players: SeasonTotals[]): SeasonTotals[] {
 export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS): Map<number, Valuation> {
   const played = players.filter((p) => p.gp > 0);
   const z = poolScorer(selectPool(played));
-  const scored = byValue(played.map((p) => ({ p, value: weightedValue(z(p), weights) })));
+  const scored = byValue(played.map((p) => {
+    const zs = z(p);
+    return { p, zs, value: weightedValue(zs, weights) };
+  }));
   const out = new Map<number, Valuation>();
-  scored.forEach((s, i) => out.set(s.p.playerId, { value: s.value, rank: i + 1 }));
+  scored.forEach((s, i) => out.set(s.p.playerId, { value: s.value, rank: i + 1, z: byCategory(s.zs) }));
   return out;
 }
 
@@ -157,8 +169,6 @@ export function gameScorer(season: SeasonTotals[], weights: CategoryWeights = EQ
   const z = poolScorer(selectPool(season.filter((p) => p.gp > 0)));
   return (line) => {
     const zs = z({ ...line, gp: 1 });
-    const byCategory = {} as Record<Category, number>;
-    for (const c of CATS) byCategory[CATEGORY[c]] = zs[c];
-    return { z: byCategory, value: weightedValue(zs, weights) };
+    return { z: byCategory(zs), value: weightedValue(zs, weights) };
   };
 }
