@@ -193,13 +193,16 @@ redeploy the code.
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
    `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
    domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.
-5. Load data from your machine against the Postgres service's `DATABASE_PUBLIC_URL` (its Variables tab):
+5. Load data by running the scripts inside the `worker` service, which already has the API key and the private
+   `DATABASE_URL` (Postgres has no public address):
    ```sh
-   DATABASE_URL="<public url>" npm run sync:players
-   DATABASE_URL="<public url>" npm run backfill -- --seasons 2026,2025
-   .venv/bin/python scripts/map-headshots.py --database-url "<public url>"
+   railway ssh --service worker -- npm run sync:players
+   railway ssh --service worker -- npm run backfill -- --seasons 2026,2025
    ```
-   Don't run `db:seed:league` against production: it creates mock managers.
+   The backfill is resumable, so re-run it if the connection drops. Headshots need Python, which the service doesn't
+   have: turn on Postgres → **Settings → Networking → TCP Proxy** (port 5432), run
+   `.venv/bin/python scripts/map-headshots.py --database-url "<DATABASE_PUBLIC_URL>"` from your machine, then remove the
+   proxy. Don't run `db:seed:league` against production: it creates mock managers.
 
 After that, every push to `main` redeploys both services, and the worker keeps the data current.
 For debugging, `railway logs --service worker` or the Railway MCP server shows each service's logs.
