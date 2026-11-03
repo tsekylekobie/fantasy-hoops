@@ -67,7 +67,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/
   `transactions`. League-only pages call `requireSignedInPage` (`src/lib/auth/viewer.ts`, redirects to /league). The root
   layout reads the session once (`currentSession`) into `SessionProvider` (`useSignedIn` on the client).
-- `src/components/`: UI. `Avatar` must fall back to initials.
+- `src/components/`: UI. `Avatar` must fall back to initials. Wide tables (Players, Box scores) use
+  `table/StickyHeadTable` (sideways scroll, header pinned to the page via a measured copy, `data-scrolled` once
+  scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).

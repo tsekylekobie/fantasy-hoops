@@ -1,0 +1,47 @@
+/* ScrollName: the rest of the first name folds away and a "." folds in
+   when the table is scrolled sideways ([data-scrolled], StickyHeadTable). */
+
+.fold {
+  display: inline-grid;
+  grid-template-columns: 1fr;
+  transition: grid-template-columns 220ms ease, opacity 220ms ease;
+}
+
+.fold > span {
+  min-width: 0;
+  overflow: clip;
+  white-space: nowrap;
+}
+
+.dot {
+  grid-template-columns: 0fr;
+  opacity: 0;
+}
+
+:global([data-scrolled]) .rest {
+  grid-template-columns: 0fr;
+  opacity: 0;
+}
+
+:global([data-scrolled]) .dot {
+  grid-template-columns: 1fr;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold {
+    transition: none;
+  }
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
