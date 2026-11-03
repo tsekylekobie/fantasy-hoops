@@ -110,8 +110,9 @@ export interface PlayerRow extends PlayerSummary {
   /** 9CAT value (average of category z-scores weighted by the request's weights; 0 = average rosterable player, higher is better). */
   value: number;
   /**
-   * Shading for each stat cell and Value: where his per-game category z-score (value) falls among the
-   * valuation pool, the ~156 players worth rostering (same scale as Box scores). No FG%/FT% tier without attempts.
+   * Shading for each stat cell and Value: where he falls among the valuation pool, the ~156 players worth rostering
+   * (same scale as Box scores). Per game (category z-scores) in avg mode; season totals in total mode (FG%/FT%: total
+   * impact), so fewer games ranks lower. Value is always per game, like its number. No FG%/FT% tier without attempts.
    */
   tiers: Partial<Record<Category | "value", RankTier>>;
   /** The fantasy team he's on in the season's league; null = free agent. */

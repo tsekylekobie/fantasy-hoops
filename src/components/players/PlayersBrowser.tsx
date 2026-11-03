@@ -477,7 +477,7 @@ export default function PlayersBrowser() {
           </div>
         </div>
 
-        <TierKey />
+        <TierKey mode={data?.mode ?? mode} />
 
         <PlayersTable
           data={data}

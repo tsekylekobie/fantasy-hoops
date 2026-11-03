@@ -56,6 +56,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
   Stat cells and Value are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game
   z-scores (`Valuation.tiers` in `value.ts`, `PlayerRow.tiers`), so green/red means better/worse than a rostered player.
+  In Totals mode the stats are placed among the pool's season totals instead (`totalTiers`; FG%/FT% by total impact),
+  so fewer games ranks lower; Value stays per game.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.

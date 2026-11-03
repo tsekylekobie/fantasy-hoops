@@ -152,3 +152,15 @@ test("no FG%/FT% tier without attempts", () => {
   assert.equal(v.get(3)!.tiers.ftPct, undefined);
   assert.ok(v.get(1)!.tiers.fgPct);
 });
+
+test("total tiers: the same per-game line over fewer games ranks lower; Value stays per game", () => {
+  const base = Array.from({ length: 19 }, (_, i) => player(i + 10, { pts: 100 + i * 5 }));
+  const star = player(1, { pts: 300 }); // 30 a game over 10 games: best per game and in totals
+  const short = player(2, { gp: 2, min: 60, fgm: 10, fga: 20, ftm: 4, fta: 5, fg3m: 3, pts: 60, reb: 10, ast: 6, stl: 2, blk: 1, tov: 4 });
+  const v = valuePlayers([...base, star, short]);
+  assert.equal(v.get(1)!.totalTiers.pts, "top10");
+  assert.equal(v.get(2)!.tiers.pts, "top10"); // 30 a game
+  assert.equal(v.get(2)!.totalTiers.pts, "bottom10"); // 60 in total
+  assert.equal(v.get(2)!.totalTiers.tov, "top10"); // fewest turnovers in total
+  assert.equal(v.get(2)!.totalTiers.value, v.get(2)!.tiers.value);
+});
