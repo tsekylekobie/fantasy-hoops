@@ -54,6 +54,10 @@ export interface Valuation {
    * No FG%/FT% tier without attempts.
    */
   tiers: Partial<Record<Category | "value", RankTier>>;
+  /** Each category's z-score against the pool (unweighted; FG%/FT% are the impact z-scores, TO is negated). */
+  z: Record<Category, number>;
+  /** Total FG/FT impact over all games: makes - poolPct * attempts. */
+  impact: { fgPct: number; ftPct: number };
 }
 
 /** Tier from a place between 0 (best) and 1 (worst). */
@@ -117,7 +121,7 @@ function poolScorer(pool: SeasonTotals[]) {
   };
   const lines = pool.map(perGame);
   const stats = Object.fromEntries(CATS.map((c) => [c, meanSd(lines.map((l) => l[c]))])) as Record<Cat, { mean: number; sd: number }>;
-  return (p: SeasonTotals): Record<Cat, number> => {
+  const score = (p: SeasonTotals): Record<Cat, number> => {
     const line = perGame(p);
     const z = {} as Record<Cat, number>;
     for (const c of CATS) {
@@ -126,6 +130,7 @@ function poolScorer(pool: SeasonTotals[]) {
     }
     return z;
   };
+  return Object.assign(score, { fgPct, ftPct });
 }
 
 /** sum(weight * z) / sum(weight); 0 when every weight is 0. */
@@ -138,6 +143,13 @@ function weightedValue(z: Record<Cat, number>, weights: CategoryWeights): number
     den += w;
   }
   return den > 0 ? num / den : 0;
+}
+
+/** z-scores keyed by the public category names. */
+function byCategory(zs: Record<Cat, number>): Record<Category, number> {
+  const out = {} as Record<Category, number>;
+  for (const c of CATS) out[CATEGORY[c]] = zs[c];
+  return out;
 }
 
 /** Best first by value, then minutes per game, then id. */
@@ -182,7 +194,10 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
       if ((c === "fgImpact" && s.p.fga === 0) || (c === "ftImpact" && s.p.fta === 0)) continue;
       tiers[CATEGORY[c]] = tierOf(placeIn(poolZ[c], pz[c]));
     }
-    out.set(s.p.playerId, { value: s.value, rank: i + 1, tiers });
+    out.set(s.p.playerId, {
+      value: s.value, rank: i + 1, tiers, z: byCategory(pz),
+      impact: { fgPct: s.p.fgm - z.fgPct * s.p.fga, ftPct: s.p.ftm - z.ftPct * s.p.fta },
+    });
   });
   return out;
 }
@@ -203,8 +218,6 @@ export function gameScorer(season: SeasonTotals[], weights: CategoryWeights = EQ
   const z = poolScorer(selectPool(season.filter((p) => p.gp > 0)));
   return (line) => {
     const zs = z({ ...line, gp: 1 });
-    const byCategory = {} as Record<Category, number>;
-    for (const c of CATS) byCategory[CATEGORY[c]] = zs[c];
-    return { z: byCategory, value: weightedValue(zs, weights) };
+    return { z: byCategory(zs), value: weightedValue(zs, weights) };
   };
 }

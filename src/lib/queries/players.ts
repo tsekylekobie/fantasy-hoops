@@ -27,7 +27,7 @@ import type {
   StatRange,
 } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
-import { valuePlayers, type SeasonTotals } from "./value";
+import { valuePlayers, type SeasonTotals, type Valuation } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
 import { ISO, getWaiverStatus } from "./waiverStatus";
 import { getInjuries } from "./injuries";
@@ -190,18 +190,28 @@ async function getUpcomingGames(
   return byTeam;
 }
 
-/** Sort key for a column (not "value"), from unrounded numbers in the requested mode. */
-export function sortKeyFn(sort: SortKey, mode: StatMode): (r: SeasonPlayerRow) => number | string | null {
+/**
+ * Sort key for a column (not "value"), from unrounded numbers in the requested mode. FG% and FT% sort by impact
+ * (makes over the pool's percentage), not the raw percentage, so a 60% shooter on 2 attempts ranks below a 52% shooter
+ * on 20: per game, the valuation's impact z-score; in totals, the season's total impact. No attempts = no key.
+ */
+export function sortKeyFn(
+  sort: SortKey, mode: StatMode, values: Map<number, Valuation>,
+): (r: SeasonPlayerRow) => number | string | null {
   const per = (x: number, gp: number) => (mode === "avg" && gp > 0 ? x / gp : x);
+  const impact = (id: number, c: "fgPct" | "ftPct") => {
+    const v = values.get(id);
+    return v ? (mode === "avg" ? v.z[c] : v.impact[c]) : null;
+  };
   switch (sort) {
     case "name":
       return (r) => `${r.last_name} ${r.first_name}`;
     case "gp":
       return (r) => r.gp;
     case "fgPct":
-      return (r) => (r.fga > 0 ? r.fgm / r.fga : null);
+      return (r) => (r.fga > 0 ? impact(r.player_id, "fgPct") : null);
     case "ftPct":
-      return (r) => (r.fta > 0 ? r.ftm / r.fta : null);
+      return (r) => (r.fta > 0 ? impact(r.player_id, "ftPct") : null);
     case "value":
       throw new Error("value is sorted by the valuation, not a row column");
     default:
@@ -267,7 +277,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   const upcoming = await getUpcomingGames(db, q.plays, dates);
   const onWaivers = (id: number) => !owners.has(id) && waivers.players.has(id);
 
-  const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode);
+  const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode, values);
   const sign = q.dir === "asc" ? 1 : -1;
   const matching = rows
     .filter((r) => q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
