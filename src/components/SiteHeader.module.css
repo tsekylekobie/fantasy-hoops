@@ -16,6 +16,13 @@
   text-transform: uppercase;
   color: var(--ink);
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mark {
+  flex: none;
 }
 
 .logo b {
@@ -75,6 +82,11 @@
 
   .logo {
     font-size: 22px;
+  }
+
+  .mark {
+    width: 24px;
+    height: 24px;
   }
 
   .tabs {

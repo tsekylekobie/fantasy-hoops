@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useSignedIn } from "./SessionProvider";
 import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
+import LeagueLogo from "./LeagueLogo";
 import styles from "./SiteHeader.module.css";
 
 // Icon paths from the phone mockup's tab bar (24×24, stroked).
@@ -66,7 +67,10 @@ export default function SiteHeader() {
   return (
     <header className={styles.nav}>
       <Link href="/" className={styles.logo}>
-        Fantasy <b>Hoops</b>
+        <LeagueLogo className={styles.mark} />
+        <span>
+          Fantasy <b>Hoops</b>
+        </span>
       </Link>
       <nav className={styles.tabs} aria-label="Main">
         {tabs.map((t) => {
