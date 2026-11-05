@@ -1,4 +1,4 @@
-// League standings and this week's scoreboard behind the /league page.
+// League standings and one week's scoreboard behind the /league page.
 //
 // Standings are each team's category record (W–L–T) over every regular-season
 // week played: the finished weeks plus the current one's live score (playoff
@@ -24,8 +24,13 @@ import { MATCHUP_ROWS_SQL, bracketTag, buildPlayoffsView, configOf, type Bracket
 import { WEEKS_SQL, isRegularWeek, playoffStart, recordsFrom, scoreIn, startedWeekLines, type WeekRow } from "./standings";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
 
-/** The season's league for `userId` (null = signed out); null when there is no league. */
-export async function getLeagueOverview(db: Pool, season: number, userId: number | null): Promise<LeagueOverview | null> {
+/**
+ * The season's league for `userId` (null = signed out); null when there is no league.
+ * `week` picks the scoreboard's week; null or a week not on the schedule shows the current one.
+ */
+export async function getLeagueOverview(
+  db: Pool, season: number, userId: number | null, week: number | null = null,
+): Promise<LeagueOverview | null> {
   const { rows: [league] } = await db.query<{
     id: number; name: string; playoff_teams: number; playoff_start_week: number | null;
     toilet_bowl: boolean; toilet_bowl_teams: number; today: string;
@@ -86,8 +91,9 @@ export async function getLeagueOverview(db: Pool, season: number, userId: number
     });
   });
 
-  const w = weeks.find((x) => today <= x.ends_on) ?? weeks[weeks.length - 1];
-  const status = !w || today < w.starts_on ? "upcoming" : today > w.ends_on ? "final" : "live";
+  const statusOf = (x: WeekRow) => (today < x.starts_on ? "upcoming" : today > x.ends_on ? "final" : "live");
+  const current = weeks.find((x) => today <= x.ends_on) ?? weeks[weeks.length - 1];
+  const w = weeks.find((x) => x.week === week) ?? current;
   const matchups: OtherMatchup[] = !w ? [] : pairs
     .filter((p) => p.week === w.week)
     .map((p) => {
@@ -117,8 +123,10 @@ export async function getLeagueOverview(db: Pool, season: number, userId: number
     playoffTeams: league.playoff_teams,
     standings,
     weeksCounted: played.length,
-    includesLiveWeek: status === "live" && played.some((x) => x.week === w.week),
-    week: w ? { week: w.week, startsOn: w.starts_on, endsOn: w.ends_on, isPlayoffs: w.is_playoffs, status } : null,
+    includesLiveWeek: !!current && statusOf(current) === "live" && played.some((x) => x.week === current.week),
+    week: w ? { week: w.week, startsOn: w.starts_on, endsOn: w.ends_on, isPlayoffs: w.is_playoffs, status: statusOf(w) } : null,
+    currentWeek: current?.week ?? null,
+    weekCount: weeks.length,
     matchups,
     myTeam: mine ? summary(mine.id) : null,
     toiletBowlTeams: cfg.toiletBowlTeams,

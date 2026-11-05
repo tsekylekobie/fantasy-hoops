@@ -462,9 +462,12 @@ export interface LeagueOverview {
   /** Weeks in the standings: finished ones, plus this week's live score while it's being played. */
   weeksCounted: number;
   includesLiveWeek: boolean;
-  /** The week containing today (clamped to the season); null with no schedule. */
+  /** The scoreboard's week: the one asked for (?week=N), else `currentWeek`; null with no schedule. */
   week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean; status: MatchupWeek["status"] } | null;
-  /** That week's pairings, the manager's first. */
+  /** The week containing today (clamped to the season); null with no schedule. */
+  currentWeek: number | null;
+  weekCount: number;
+  /** That week's pairings, the manager's first. Empty for a playoff week not paired yet. */
   matchups: OtherMatchup[];
   myTeam: FantasyTeamSummary | null;
   /** Bottom teams in the toilet bowl; 0 when it's off. */
