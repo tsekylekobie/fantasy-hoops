@@ -23,6 +23,7 @@ import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/pla
 import TeamBadge from "@/components/TeamBadge";
 import Flash from "@/components/live/Flash";
 import LiveRefresh from "@/components/live/LiveRefresh";
+import { matchupMargin } from "./margin";
 import styles from "./MatchupView.module.css";
 
 const LABELS: Record<CategoryKey, string> = {
@@ -243,7 +244,29 @@ function Scoreboard({ m, projected }: { m: Matchup; projected: boolean }) {
         <div className={styles.t}><TeamBadge team={m.opponent} /><h2>{m.opponent.name}</h2></div>
         <p>{sub(m.opponent)}</p>
       </div>
+      <MarginBar score={score} className={styles.boardMargin} />
     </section>
+  );
+}
+
+/**
+ * How lopsided the score is: a bar grows from the label toward the side that's
+ * ahead, a third of the way for a 3-category lead, all the way for 9–0.
+ */
+function MarginBar({ score, className = "" }: { score: MatchupScore; className?: string }) {
+  const margin = matchupMargin(score);
+  if (!margin) return null;
+  const fill = `${(margin.margin / CATEGORY_KEYS.length) * 100}%`;
+  return (
+    <div className={`${styles.margin} ${styles[margin.tier]} ${className}`}>
+      <div className={styles.marginTrack} aria-hidden="true">
+        {margin.leader === "team" && <div style={{ width: fill }} />}
+      </div>
+      <div className={styles.marginLabel}>{margin.label}</div>
+      <div className={styles.marginTrack} aria-hidden="true">
+        {margin.leader === "opponent" && <div style={{ width: fill }} />}
+      </div>
+    </div>
   );
 }
 
@@ -308,12 +331,14 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
       <h3>Around the league{data.projected && <span className={styles.h3Tag}>Projected</span>}</h3>
       {data.others.map((o) => {
         const score = data.projected ? o.projectedScore ?? o.score : o.score;
+        const margin = matchupMargin(score);
         const body = (
           <>
             {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
             <span>{o.teamA.name}</span>
             <Flash as="b" value={o.teamB ? fmtScore(score) : null}>{o.teamB ? fmtScore(score) : "Bye"}</Flash>
             <span>{o.teamB?.name ?? ""}</span>
+            {o.teamB && <MarginBar score={score} />}
           </>
         );
         if (!o.teamB) return <div className={styles.other} key={o.teamA.id}>{body}</div>;
@@ -323,7 +348,7 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
             key={o.teamA.id}
             href={viewHref({ ...view, team: o.isMine ? null : o.teamA.id })}
             scroll={false}
-            aria-label={`${o.teamA.name} ${fmtScore(score)} ${o.teamB.name}${data.projected ? " (projected)" : ""}${o.isMine ? " (your matchup)" : ""}`}
+            aria-label={`${o.teamA.name} ${fmtScore(score)} ${o.teamB.name}${margin ? `, ${margin.label.replace(" · ", " ")}` : ""}${data.projected ? " (projected)" : ""}${o.isMine ? " (your matchup)" : ""}`}
           >
             {body}
           </Link>

@@ -235,6 +235,89 @@ a.pageBtn:hover {
   text-align: center;
 }
 
+/* Margin: the bars grow out from the label toward the side that's ahead, and
+   get louder with the lead. Sized in columns that line up with the score. */
+
+.margin {
+  --margin-fill: var(--ink-subtle);
+  --margin-ink: var(--ink-muted);
+  --margin-track: var(--row-divider);
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.clear {
+  --margin-fill: #fdba74; /* --rank-1-bg, but light in both themes */
+  --margin-ink: var(--accent-ink);
+}
+
+.blowout {
+  --margin-fill: var(--accent);
+  --margin-ink: var(--accent);
+}
+
+.marginLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--margin-ink);
+}
+
+.blowout .marginLabel {
+  font-weight: 700;
+}
+
+.marginTrack {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--margin-track);
+  overflow: hidden;
+}
+
+/* Left track: fills from the label, so outward. */
+.marginTrack:first-child {
+  justify-content: flex-end;
+}
+
+.marginTrack > div {
+  border-radius: 3px;
+  background: var(--margin-fill);
+}
+
+.boardMargin {
+  --margin-track: rgba(255, 255, 255, 0.14);
+  --margin-fill: var(--board-muted);
+  --margin-ink: var(--board-muted);
+  margin-top: -6px;
+  padding-bottom: 0;
+}
+
+.boardMargin .marginTrack {
+  height: 10px;
+  border-radius: 5px;
+}
+
+.boardMargin .marginLabel {
+  font-size: 13px;
+}
+
+.boardMargin.clear {
+  --margin-fill: var(--board-link);
+  --margin-ink: var(--board-link);
+}
+
+.boardMargin.blowout {
+  --margin-fill: #f97316;
+  --margin-ink: #fb923c;
+}
+
 /* Categories + around the league */
 
 .top {
@@ -372,8 +455,8 @@ a.pageBtn:hover {
 .other {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
-  gap: 8px;
-  padding: 0 20px;
+  gap: 4px 8px;
+  padding: 6px 20px 0;
   min-height: 44px;
   align-items: center;
   border-top: 1px solid var(--row-divider);
@@ -725,7 +808,7 @@ a.pageBtn:hover {
   }
 
   .other {
-    padding: 0 16px;
+    padding: 6px 16px 0;
   }
 
   .cs {
