@@ -298,14 +298,45 @@ export async function weekLines(
 ): Promise<Map<number, CategoryLine>> {
   const imported = await importedLines(db, leagueId, week.startsOn);
   if (imported) return imported;
+  const totals = await playedTotals(db, leagueId, week, today);
+  return new Map([...totals].map(([id, t]) => [id, weekLine(t)]));
+}
+
+/**
+ * weekLines plus each team's starters' games that counted (game limits
+ * applied). Games come from the lineups even for an imported week, whose lines
+ * are Yahoo's. Teams with no games are left out of both.
+ */
+export async function weekLinesWithGames(
+  db: Pool,
+  leagueId: number,
+  week: { startsOn: string; endsOn: string },
+  today: string,
+): Promise<{ lines: Map<number, CategoryLine>; games: Map<number, number> }> {
+  const [imported, totals] = await Promise.all([
+    importedLines(db, leagueId, week.startsOn),
+    playedTotals(db, leagueId, week, today),
+  ]);
+  return {
+    lines: imported ?? new Map([...totals].map(([id, t]) => [id, weekLine(t)])),
+    games: new Map([...totals].map(([id, t]) => [id, t.gp])),
+  };
+}
+
+/** Each team's counted starters' totals for one week (game limits applied), keyed by team id. */
+async function playedTotals(
+  db: Pool,
+  leagueId: number,
+  week: { startsOn: string; endsOn: string },
+  today: string,
+): Promise<Map<number, Totals>> {
   const [{ rows: starts }, limits] = await Promise.all([
     db.query<PlayedStartRow>(PLAYED_SQL, [leagueId, week.startsOn, week.endsOn, today, null]),
     weekLimits(db, leagueId, week.startsOn),
   ]);
-  const rows = countedRows(starts, limits);
   const totals = new Map<number, Totals>();
-  for (const r of rows) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
-  return new Map([...totals].map(([id, t]) => [id, weekLine(t)]));
+  for (const r of countedRows(starts, limits)) totals.set(r.team_id, addTotals(totals.get(r.team_id) ?? ZERO, r));
+  return totals;
 }
 
 /** A team's week line, or all zeros when it has no games yet. */

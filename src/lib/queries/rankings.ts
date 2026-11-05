@@ -21,8 +21,8 @@ import type {
 } from "../types";
 import { CATEGORY_KEYS } from "../types";
 import { standingsOrder, winPct } from "../playoffs/bracket";
-import { compareLines, emptyLine, weekLines } from "./matchups";
-import { WEEKS_SQL, isRegularWeek, playoffStart, startedWeekLines, type WeekRow } from "./standings";
+import { compareLines, emptyLine, weekLinesWithGames } from "./matchups";
+import { WEEKS_SQL, isRegularWeek, playoffStart, type WeekRow } from "./standings";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -122,6 +122,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
 
   // Period totals, all-play record, and each pair's score (and, for the season, weeks won).
   let totals = new Map<number, CategoryLine>();
+  let games = new Map<number, number>();
   const record = new Map(ids.map((id) => [id, zero()]));
   const pairScore = new Map<string, MatchupScore>();
   const pairWeeks = new Map<string, MatchupScore>();
@@ -136,7 +137,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
     const w = (opts.week !== null && weeks.find((x) => x.week === opts.week)) || weeks.find((x) => today <= x.ends_on) || weeks[weeks.length - 1];
     shownWeek = { week: w.week, startsOn: w.starts_on, endsOn: w.ends_on, isPlayoffs: w.is_playoffs, status: status(w) };
     if (w.starts_on <= today) {
-      totals = await weekLines(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today);
+      ({ lines: totals, games } = await weekLinesWithGames(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today));
       results = allPlay(ids, totals);
       const { rows: pairs } = await db.query<{ team_a_id: number; team_b_id: number | null }>(
         `SELECT team_a_id::int, team_b_id::int FROM matchups WHERE league_id = $1 AND week = $2`,
@@ -151,8 +152,11 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
   } else {
     const start = playoffStart(weeks, league.playoff_start_week);
     counted = weeks.filter((w) => isRegularWeek(w, start) && w.starts_on <= today);
-    const byWeek = await startedWeekLines(db, league.id, counted, today);
-    for (const lines of byWeek.values()) {
+    const byWeek = await Promise.all(
+      counted.map((w) => weekLinesWithGames(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today)),
+    );
+    for (const { lines, games: gp } of byWeek) {
+      for (const [id, n] of gp) games.set(id, (games.get(id) ?? 0) + n);
       for (const [id, l] of lines) totals.set(id, addLines(totals.get(id) ?? emptyLine(), l));
       for (const [id, ap] of allPlay(ids, lines)) {
         add(record.get(id)!, ap.record);
@@ -185,6 +189,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
         rank: tied ? rows[i - 1].rank : i + 1,
         stats: totals.get(t.id) ?? emptyLine(),
         catRanks: catRanks.get(t.id)!,
+        gamesPlayed: games.get(t.id) ?? 0,
         allPlay: t.record,
         isMine: t.id === mine?.id,
       });

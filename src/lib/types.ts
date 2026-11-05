@@ -495,6 +495,8 @@ export interface RankingsRow extends FantasyTeamSummary {
   stats: CategoryLine;
   /** Place among the league's teams in each category, 1 = best (fewest TO); ties share a place. */
   catRanks: Record<CategoryKey, number>;
+  /** Starters' games that counted (game limits applied): the week's, or the season's added up. */
+  gamesPlayed: number;
   /** Categories won, lost and tied against every other team, each week (the ranking). */
   allPlay: MatchupScore;
   isMine: boolean;

@@ -308,18 +308,24 @@ thead .pos {
   color: var(--ink-subtle);
 }
 
+/* Green like Box scores' tiers: darkest is the top quarter. */
 .t1 {
-  background: var(--rank-1-bg);
-  color: var(--rank-1-ink);
+  background: var(--tier-top25-bg);
+  color: var(--ink);
   font-weight: 700;
 }
 
 .t1 small {
-  color: var(--rank-1-ink);
+  color: var(--ink);
 }
 
 .t2 {
-  background: var(--rank-2-bg);
+  background: var(--tier-top40-bg);
+}
+
+.gp {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .t4 {

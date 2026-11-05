@@ -97,6 +97,7 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                 <tr>
                   <th scope="col" className={styles.pos}>#</th>
                   <th scope="col" className={styles.team}>Team</th>
+                  <th scope="col" className={`${styles.num} ${styles.gp}`} title="Games played">GP</th>
                   {CATEGORY_KEYS.map((k) => <th key={k} scope="col" className={styles.num}>{CATEGORY_LABELS[k]}</th>)}
                 </tr>
               </thead>
@@ -113,6 +114,7 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                         <span>{r.name}</span>
                       </Link>
                     </th>
+                    <td className={`${styles.num} ${styles.gp}`}>{fmtInt(r.gamesPlayed)}</td>
                     {CATEGORY_KEYS.map((k) => (
                       <td key={k} className={styles.num}>
                         <span className={`${styles.cv} ${styles[`t${tierOf(r.catRanks[k], teams)}`] ?? ""}`}>
@@ -129,8 +131,8 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
         )}
         <p className={styles.foot}>
           {isWeek
-            ? `Ranked by categories won against all ${others} other teams this week (ties count half). Cells are shaded by this week’s category rank: darkest is the top quarter of the league, grey the bottom.`
-            : "Ranked by categories won against every other team, all weeks added up. Categories are season totals (FG% and FT% from total makes ÷ attempts), shaded by season rank."}
+            ? `Ranked by categories won against all ${others} other teams this week (ties count half). GP is starters’ games played this week. Cells are shaded by this week’s category rank: darkest green is the top quarter of the league, grey the bottom.`
+            : "Ranked by categories won against every other team, all weeks added up. GP and categories are season totals (FG% and FT% from total makes ÷ attempts), shaded by season rank."}
         </p>
       </section>
 
