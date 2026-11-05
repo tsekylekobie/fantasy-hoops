@@ -13,6 +13,7 @@ import type {
 } from "@/lib/types";
 import { fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import LocalTime from "./LocalTime";
 import styles from "./RecentTransactions.module.css";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,14 +26,6 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const typeLabel = (type: string) => TYPE_LABELS[type] ?? type.replace(/_/g, " ");
-
-/** "Oct 25 · 2:48 PM" in the league's time zone. */
-function fmtWhen(iso: string, timeZone: string): string {
-  const d = new Date(iso);
-  const day = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone });
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone });
-  return `${day} · ${time}`;
-}
 
 const teamHref = (t: FantasyTeamSummary, myTeamId: number | null) => (t.id === myTeamId ? "/my-team" : `/team/${t.id}`);
 
@@ -109,9 +102,7 @@ function Transaction({ tx, timeZone, myTeamId }: { tx: LeagueTransaction; timeZo
           );
         })}
       </ul>
-      <time className={styles.when} dateTime={tx.at}>
-        {fmtWhen(tx.at, timeZone)}
-      </time>
+      <LocalTime className={styles.when} iso={tx.at} leagueTimeZone={timeZone} />
     </li>
   );
 }
@@ -167,9 +158,7 @@ function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone:
               <span>Hide claims</span>
             </li>
           </ul>
-          <time className={styles.when} dateTime={run.at}>
-            {fmtWhen(run.at, timeZone)}
-          </time>
+          <LocalTime className={styles.when} iso={run.at} leagueTimeZone={timeZone} />
         </summary>
         <div className={styles.auction}>
           {run.players.map(({ player, claims }) => (
