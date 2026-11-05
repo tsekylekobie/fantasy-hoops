@@ -52,6 +52,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/queries/projections.ts`: the Matchup page's Projected view (`?view=projected`): the week so far plus each
   start still to tip off that will count (lineups as set, game limits applied) at the player's last-30-day average
   (5+ games, else season); players listed Out add nothing until their return. `getMatchupWeek` applies it.
+- Players page filters: Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
+  `injured=hide` defaults to showing them).
 - Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`); the player modal shows
   his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
   Stat cells and Value are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game

@@ -61,6 +61,12 @@ const WAIVERS: SegmentedOption<WaiverFilter>[] = [
   { value: "clears", label: "Clears by tomorrow" },
 ];
 
+// Players listed Out; hidden by default, so the URL only says so when they're shown.
+const INJURED: SegmentedOption<"hide" | "show">[] = [
+  { value: "hide", label: "Hide" },
+  { value: "show", label: "Show" },
+];
+
 interface UrlState {
   q: string;
   scope: PlayerScope;
@@ -69,6 +75,8 @@ interface UrlState {
   mode: StatMode;
   plays: PlayDay[];
   waivers: WaiverFilter;
+  /** Hide players listed Out (the default; "?injured=show" turns it off). */
+  hideInjured: boolean;
   /** Fantasy team id, or null for any. */
   team: number | null;
   /** NBA team abbreviation, or null for any. */
@@ -103,6 +111,7 @@ function readUrlState(params: URLSearchParams, signedIn: boolean): UrlState {
     mode: params.get("mode") === "total" ? "total" : "avg",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers: signedIn && (waivers === "on" || waivers === "clears") ? waivers : "any",
+    hideInjured: params.get("injured") !== "show",
     team: signedIn && Number.isInteger(team) && team > 0 ? team : null,
     nba: /^[A-Z]{2,4}$/.test(nba) ? nba : null,
     sort,
@@ -122,6 +131,7 @@ function toQueryString(s: UrlState, signedIn: boolean): string {
   if (s.mode !== "avg") p.set("mode", s.mode);
   if (s.plays.length > 0) p.set("plays", s.plays.join(","));
   if (s.waivers !== "any") p.set("waivers", s.waivers);
+  if (!s.hideInjured) p.set("injured", "show");
   if (s.team !== null) p.set("team", String(s.team));
   if (s.nba !== null) p.set("nba", s.nba);
   if (s.sort !== "value") p.set("sort", s.sort);
@@ -149,13 +159,14 @@ function filterSummary(
     { text: teamLabels.length > 0 ? teamLabels.join(" · ") : "Any team", changed: teamLabels.length > 0 },
     { text: s.pos === "all" ? "All positions" : POSITION_NAMES[s.pos], changed: s.pos !== "all" },
     { text: `Plays ${playLabels.length > 0 ? playLabels.join(" or ") : "any day"}`, changed: playLabels.length > 0 },
+    { text: s.hideInjured ? "Injured hidden" : "Injured shown", changed: !s.hideInjured },
     {
       text: s.waivers === "any" ? "Any waiver status" : WAIVERS.find((o) => o.value === s.waivers)!.label,
       changed: s.waivers !== "any",
     },
   ];
-  // Signed out: only the NBA team, position and plays filters exist.
-  return signedIn ? parts : parts.slice(1, 4);
+  // Signed out: only the NBA team, position, plays and injured filters exist.
+  return signedIn ? parts : parts.slice(1, 5);
 }
 
 type Load =
@@ -169,7 +180,7 @@ export default function PlayersBrowser() {
   const searchParams = useSearchParams();
   const signedIn = useSignedIn();
   const state = readUrlState(new URLSearchParams(searchParams.toString()), signedIn);
-  const { q, scope, pos, range, mode, plays, waivers, team, nba, sort, dir, page, player } = state;
+  const { q, scope, pos, range, mode, plays, waivers, hideInjured, team, nba, sort, dir, page, player } = state;
   const playsKey = plays.join(",");
 
   const navigate = useCallback(
@@ -292,6 +303,7 @@ export default function PlayersBrowser() {
       pos,
       plays: playsKey,
       waivers,
+      injured: hideInjured ? "hide" : "show",
       ...(team !== null && { team: String(team) }),
       ...(nba !== null && { nba }),
       weights: appliedKey,
@@ -309,7 +321,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, playsKey, waivers, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
+  }, [q, scope, pos, range, mode, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -467,6 +479,15 @@ export default function PlayersBrowser() {
             <span className={styles.filter}>
               <span className={styles.filterLabel} aria-hidden="true">Plays</span>
               <MultiToggle label="Plays" anyLabel="Any day" options={PLAYS} value={plays} onChange={(v) => navigate({ plays: v, page: 1 })} />
+            </span>
+            <span className={styles.filter}>
+              <span className={styles.filterLabel} aria-hidden="true">Injured</span>
+              <SegmentedToggle
+                label="Injured (Out)"
+                options={INJURED}
+                value={hideInjured ? "hide" : "show"}
+                onChange={(v) => navigate({ hideInjured: v === "hide", page: 1 })}
+              />
             </span>
             {signedIn && (
             <span className={styles.filter}>

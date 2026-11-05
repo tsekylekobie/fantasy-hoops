@@ -34,6 +34,8 @@ export interface PlayersQuery {
   /** Empty = any day. Deduplicated, in PLAY_DAYS order. */
   plays: PlayDay[];
   waivers: WaiverFilter;
+  /** Hide players listed Out on the injury report. Omitted = shown. */
+  hideInjured: boolean;
   /** Players on this fantasy team (fantasy_teams.id); null = any. */
   team: number | null;
   /** Players on this NBA team (teams.abbreviation, uppercase); null = any. */
@@ -111,6 +113,8 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   }
   const waivers = params.get("waivers")?.trim() || "any";
   if (waivers !== "any" && waivers !== "on" && waivers !== "clears") throw new BadRequest("waivers must be any, on or clears");
+  const injured = params.get("injured")?.trim() || "show";
+  if (injured !== "show" && injured !== "hide") throw new BadRequest("injured must be show or hide");
   const nba = params.get("nba")?.trim().toUpperCase() || null;
   if (nba !== null && !/^[A-Z]{2,4}$/.test(nba)) throw new BadRequest("nba must be a team abbreviation, e.g. BOS");
   return {
@@ -124,6 +128,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     pos: (pos === "ALL" ? "all" : pos) as PositionFilter,
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers,
+    hideInjured: injured === "hide",
     team: params.get("team")?.trim() ? intParam(params, "team", 0, 1, 2147483647) : null,
     nba,
     weights: parseWeights(params),

@@ -284,6 +284,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
     .filter((r) => q.nba === null || r.team_abbr === q.nba)
     .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
+    .filter((r) => !q.hideInjured || injuries.get(r.player_id)?.status !== "Out")
     .filter((r) => q.plays.length === 0 || (r.team_id !== null && upcoming.has(r.team_id)))
     .filter((r) =>
       q.waivers === "any" ? true
@@ -336,6 +337,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     plays: q.plays,
     playDates: dates,
     waivers: q.waivers,
+    hideInjured: q.hideInjured,
     team: q.team,
     nba: q.nba,
     teamOptions,

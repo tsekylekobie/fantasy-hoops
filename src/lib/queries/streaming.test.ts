@@ -55,6 +55,13 @@ test("waivers= accepts any, on and clears", () => {
   assert.throws(() => parsePlayersQuery(new URLSearchParams("waivers=soon")), BadRequest);
 });
 
+test("injured= accepts show and hide; omitted shows them", () => {
+  assert.equal(parsePlayersQuery(new URLSearchParams()).hideInjured, false);
+  assert.equal(parsePlayersQuery(new URLSearchParams("injured=hide")).hideInjured, true);
+  assert.equal(parsePlayersQuery(new URLSearchParams("injured=show")).hideInjured, false);
+  assert.throws(() => parsePlayersQuery(new URLSearchParams("injured=yes")), BadRequest);
+});
+
 test("clears by tomorrow uses the league-time date the Claim button shows", () => {
   const now = new Date("2026-10-25T16:00:00Z"); // Sun Oct 25, noon ET
   // Runs at 3:00 AM ET Mon and Tue.

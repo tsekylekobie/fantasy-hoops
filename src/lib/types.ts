@@ -166,6 +166,8 @@ export interface PlayersResponse {
   plays: PlayDay[];
   playDates: Record<PlayDay, string>;
   waivers: WaiverFilter;
+  /** Players listed Out are left out (`injured=hide`). */
+  hideInjured: boolean;
   /** Fantasy team filtered on (fantasy_teams.id), or null. */
   team: number | null;
   /** NBA team filtered on (abbreviation), or null. */

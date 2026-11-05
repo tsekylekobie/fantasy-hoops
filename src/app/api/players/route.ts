@@ -1,4 +1,4 @@
-// GET /api/players?season=2026&mode=avg&scope=fa&q=&pos=all&plays=tomorrow,in2&waivers=clears&page=1&perPage=50
+// GET /api/players?season=2026&mode=avg&scope=fa&q=&pos=all&plays=tomorrow,in2&waivers=clears&injured=hide&page=1&perPage=50
 // Contract: PlayersResponse in src/lib/types.ts. scope=watch is the signed-in user's watchlist (401 signed out).
 // League data is private: signed out, the league filters (free agents, fantasy team, waivers) are ignored and
 // rows carry no owner or waiver status.
