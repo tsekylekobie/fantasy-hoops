@@ -15,6 +15,12 @@
   overscroll-behavior: contain;
 }
 
+/* Room for the drop table's stats. */
+.dialog:has(.table) {
+  width: min(1000px, calc(100% - 32px));
+  max-width: 1000px;
+}
+
 .dialog::backdrop {
   background: var(--backdrop);
 }
@@ -171,57 +177,161 @@
   font-weight: 600;
 }
 
-.list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.opt {
+/* Drop table: My team's table (MyTeam.module.css) with per-game averages. */
+.rangeBar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 0 12px;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.table {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
+  border-radius: var(--radius-card);
+  overflow-x: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 22px 48px minmax(180px, 1fr) 30px 40px repeat(2, 54px) repeat(7, 42px);
+  column-gap: 6px;
+  align-items: center;
+  padding: 0 12px;
+  min-width: 720px;
+}
+
+.header {
+  height: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.group {
+  padding: 10px 12px 6px;
+  min-width: 720px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropRow {
+  height: 52px;
+  border-bottom: 1px solid var(--row-divider);
   font-size: 14px;
-  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.opt.on {
-  border-color: var(--accent);
+.dropRow:hover {
+  background: var(--surface-muted);
+}
+
+.dropRow.on {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.opt.off {
+.dropRow.off {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.opt input {
+.dropRow.off:hover {
+  background: none;
+}
+
+.radio {
+  display: flex;
+}
+
+.radio input {
   width: 18px;
   height: 18px;
   margin: 0;
-  flex: none;
   accent-color: var(--accent);
 }
 
-.opt b {
+.slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.opt small {
-  margin-left: auto;
+.meta {
+  margin-top: 2px;
   font-size: 12px;
   color: var(--ink-subtle);
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dtd {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.out {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.num {
   text-align: right;
+}
+
+.shots {
+  display: block;
+  font-size: 10px;
+  color: var(--ink-subtle);
+}
+
+.noGames {
+  grid-column: 4 / -1;
+  font-size: 13px;
+  color: var(--ink-subtle);
 }
 
 .sum {
@@ -309,11 +419,15 @@
 }
 
 .ft {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 10px;
   padding: 18px 24px 22px;
+  background: var(--surface);
 }
 
 .btn {
@@ -356,7 +470,7 @@
 
 .btn:focus-visible,
 .x:focus-visible,
-.opt:has(input:focus-visible) {
+.dropRow:has(input:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -423,8 +537,55 @@
   .body {
     padding: 16px 16px 4px;
   }
-  .list {
-    grid-template-columns: minmax(0, 1fr);
+  .table {
+    margin: 0 -16px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .grid {
+    grid-template-columns: 22px 44px 124px 28px 38px repeat(2, 52px) repeat(7, 40px);
+    column-gap: 4px;
+    padding: 0 12px 0 0;
+    min-width: 650px;
+  }
+  .group {
+    min-width: 650px;
+  }
+  .group span {
+    position: sticky;
+    left: 12px;
+  }
+  .noGames {
+    position: sticky;
+    left: 210px;
+    justify-self: start;
+  }
+  /* Radio, slot and player stay put while the stats scroll. */
+  .grid > :nth-child(-n + 3) {
+    position: sticky;
+    z-index: 1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+  }
+  .grid > :nth-child(1) {
+    left: 0;
+    padding-left: 4px;
+  }
+  .grid > :nth-child(2) {
+    left: 26px;
+  }
+  .grid > :nth-child(3) {
+    left: 74px;
+    box-shadow: 1px 0 0 var(--row-divider);
+  }
+  .header > :nth-child(-n + 3) {
+    background: var(--surface-muted);
+  }
+  .dropRow.on > :nth-child(-n + 3) {
+    background: var(--accent-soft);
   }
   .sum {
     margin: 14px 16px 0;

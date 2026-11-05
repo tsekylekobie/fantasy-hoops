@@ -11,6 +11,7 @@
 import type { Pool } from "pg";
 import type {
   CategoryLine,
+  AveragesByRange,
   CategoryWeights,
   GameLogRow,
   PlayDay,
@@ -21,6 +22,7 @@ import type {
   PlayerUpcomingGame,
   PlayersResponse,
   PlayersTeamOption,
+  RangeAverages,
   SeasonRow,
   SortKey,
   StatMode,
@@ -232,6 +234,23 @@ export async function getTotalsFor(
   if (playerIds.length === 0) return new Map();
   const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, playerIds]);
   return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
+}
+
+/** Per-game averages of `playerIds` over each StatRange; every range is null without games. */
+export async function getAveragesByRange(db: Pool, season: number, playerIds: number[]): Promise<Map<number, AveragesByRange>> {
+  if (playerIds.length === 0) return new Map();
+  const rowsOver = async (range: StatRange) => {
+    const days = RANGE_DAYS[range];
+    const window = days === null ? null : await statWindow(db, season, days);
+    if (days !== null && window === null) return new Map<number, SeasonPlayerRow>();
+    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, playerIds]);
+    return new Map(rows.map((r) => [r.player_id, r]));
+  };
+  const [all, last30, last14] = await Promise.all([rowsOver("season"), rowsOver("last30"), rowsOver("last14")]);
+  const averages = (r: SeasonPlayerRow | undefined): RangeAverages | null => (r ? { gp: r.gp, ...categoryLine(r, "avg") } : null);
+  return new Map(playerIds.map((id) => [id, {
+    season: averages(all.get(id)), last30: averages(last30.get(id)), last14: averages(last14.get(id)),
+  }]));
 }
 
 /** The last-14-days window for `season` (see WINDOW_SQL); null before any game is played. */

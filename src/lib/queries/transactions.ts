@@ -33,6 +33,7 @@ import { activeRosterLimit, isIlSlot, isStarting, rosterProblems } from "../line
 import { addMode, dropDestination, faabBidProblem, waiverReason, type MovePolicyLeague } from "../transactions/policy";
 import type {
   AddCandidate,
+  AveragesByRange,
   PlayerWaiver,
   PlayerOwner,
   PlayerSummary,
@@ -40,8 +41,9 @@ import type {
   RosterMoveResult,
   RosterMovesContext,
 } from "../types";
+import { LINEUP_SLOTS } from "../types";
 import { LineupError, freezeLineups, loadDay, withTeamLock, type DayState, type TeamContext, type Values } from "./lineup";
-import { categoryLine } from "./players";
+import { getAveragesByRange } from "./players";
 import { teamLogoUrl } from "./teamLogo";
 import { getTeamFaab } from "./waiverStatus";
 
@@ -201,29 +203,19 @@ function addBlocked(
   return null;
 }
 
-function seasonLine(values: Values, id: number) {
-  const v = values.current.get(id);
-  if (!v) return null;
-  const { min: _min, ...line } = categoryLine(v.totals, "avg");
-  return line;
-}
+const NO_AVERAGES: AveragesByRange = { season: null, last30: null, last14: null };
 
-function rosterOptions(team: TeamContext, day: DayState, values: Values): RosterMoveOption[] {
+function rosterOptions(team: TeamContext, day: DayState, averages: Map<number, AveragesByRange>): RosterMoveOption[] {
   return day.players
-    .map((p) => {
-      const cur = values.current.get(p.id);
-      const avg = cur ? categoryLine(cur.totals, "avg") : null;
-      return {
-        id: p.id, firstName: p.firstName, lastName: p.lastName, teamAbbr: p.teamAbbr,
-        position: p.position, nbaPersonId: p.nbaPersonId, slot: p.slot, injury: p.injury,
-        pts: avg?.pts ?? null, reb: avg?.reb ?? null,
-        value: Math.round((cur?.value ?? values.previous.get(p.id)?.value ?? 0) * 100) / 100,
-        dropBlocked: dropBlocked(p),
-        fixesIllegalRoster: day.problems.length > 0 && problemsAfterDrop(team, day, p.id).length === 0
-          && countsAgainstLimit(day) - (isIlSlot(p.slot) ? 0 : 1) + 1 <= rosterLimit(team),
-      };
-    })
-    .sort((a, b) => a.value - b.value);
+    .map((p) => ({
+      id: p.id, firstName: p.firstName, lastName: p.lastName, teamAbbr: p.teamAbbr,
+      position: p.position, nbaPersonId: p.nbaPersonId, slot: p.slot, injury: p.injury,
+      averages: averages.get(p.id) ?? NO_AVERAGES,
+      dropBlocked: dropBlocked(p),
+      fixesIllegalRoster: day.problems.length > 0 && problemsAfterDrop(team, day, p.id).length === 0
+        && countsAgainstLimit(day) - (isIlSlot(p.slot) ? 0 : 1) + 1 <= rosterLimit(team),
+    }))
+    .sort((a, b) => LINEUP_SLOTS.indexOf(a.slot) - LINEUP_SLOTS.indexOf(b.slot));
 }
 
 /** The add/drop sheet's data: the manager's roster today, limits, and optionally the player to add. */
@@ -239,6 +231,7 @@ export async function getRosterMovesContext(
     getTeamFaab(pool, team.teamId),
   ]);
   if (addPlayerId !== null && !target) return null;
+  const averages = await getAveragesByRange(pool, team.season, [...day.players.map((p) => p.id), ...(target ? [target.id] : [])]);
 
   let add: AddCandidate | null = null;
   if (target) {
@@ -247,7 +240,7 @@ export async function getRosterMovesContext(
       owner: target.owner_team_id === null ? null : ({ teamId: target.owner_team_id, abbreviation: target.owner_abbr! } satisfies PlayerOwner),
       mode: targetMode(rules, target),
       waiver: targetWaiver(rules, target),
-      seasonAverages: seasonLine(values, target.id),
+      averages: averages.get(target.id) ?? NO_AVERAGES,
       addBlocked: addBlocked(team, rules, adds, target),
     };
   }
@@ -265,7 +258,7 @@ export async function getRosterMovesContext(
     maxAddsPerWeek: rules.maxAddsPerWeek,
     addsThisSeason: adds.season,
     maxAddsPerSeason: rules.maxAddsPerSeason,
-    roster: rosterOptions(team, day, values),
+    roster: rosterOptions(team, day, averages),
     add,
     faab,
   };
