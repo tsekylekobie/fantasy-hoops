@@ -354,6 +354,52 @@ a.pageBtn:hover {
   background: var(--accent);
 }
 
+/* Win chance row: toss-ups loud, leans soft, safe and lost faded. */
+
+.csOdds {
+  height: 44px;
+  font-size: 13px;
+}
+
+.csOdds .tn {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.odds {
+  display: inline-block;
+  min-width: 40px;
+  box-sizing: border-box;
+  padding: 3px 4px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.odds-tossup {
+  background: var(--rank-1-bg);
+  color: var(--rank-1-ink);
+  font-weight: 700;
+}
+
+.odds-ahead,
+.odds-behind {
+  background: var(--rank-2-bg);
+  color: var(--ink);
+}
+
+.odds-safe,
+.odds-gone,
+.odds-won,
+.odds-lost,
+.odds-tied {
+  color: var(--ink-subtle);
+  font-weight: 500;
+}
+
 .foot {
   font-size: 13px;
   color: var(--ink-muted);
