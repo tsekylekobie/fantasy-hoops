@@ -23,6 +23,7 @@ import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/pla
 import TeamBadge from "@/components/TeamBadge";
 import Flash from "@/components/live/Flash";
 import LiveRefresh from "@/components/live/LiveRefresh";
+import { fmtChance, matchupOdds, type OddsTier } from "./categoryOdds";
 import styles from "./MatchupView.module.css";
 
 const LABELS: Record<CategoryKey, string> = {
@@ -155,7 +156,7 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
 
       {m && <Scoreboard m={m} projected={data.projected} />}
       <div className={styles.top}>
-        {m ? <Categories m={m} projected={data.projected} /> : (
+        {m ? <Categories m={m} projected={data.projected} showOdds={data.status !== "final"} /> : (
           <div className={`${styles.card} ${styles.notice}`}>
             {!signedIn ? (
               <p>Sign in to see your matchup, or pick one from around the league.</p>
@@ -261,7 +262,33 @@ function statValue(k: CategoryKey, line: CategoryLine): string {
   return k === "fgPct" ? `${line.fgm}/${line.fga}` : k === "ftPct" ? `${line.ftm}/${line.fta}` : String(line[k]);
 }
 
-function Categories({ m, projected }: { m: Matchup; projected: boolean }) {
+const ODDS_LABELS: Record<OddsTier, string> = {
+  won: "won", lost: "lost", tied: "tied", safe: "safe", ahead: "leaning your way",
+  tossup: "toss-up", behind: "leaning their way", gone: "out of reach",
+};
+
+/**
+ * The left side's chance of taking each category by week's end, shaded so the
+ * toss-ups stand out and the safe and lost ones fade.
+ */
+function OddsRow({ m }: { m: Matchup }) {
+  const odds = matchupOdds(m.team.stats, m.team.projected, m.opponent.stats, m.opponent.projected);
+  return (
+    <div className={`${styles.cs} ${styles.csOdds}`} role="row">
+      <span role="rowheader" className={styles.tn}>Win chance</span>
+      {CATEGORY_KEYS.map((k) => (
+        <span role="cell" className={styles.n} key={k}>
+          <Flash as="span" className={`${styles.odds} ${styles[`odds-${odds[k].tier}`]}`} value={fmtChance(odds[k])}>
+            {fmtChance(odds[k])}
+          </Flash>
+          <span className={styles.sr}> ({ODDS_LABELS[odds[k].tier]})</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Categories({ m, projected, showOdds }: { m: Matchup; projected: boolean; showOdds: boolean }) {
   const results = projected ? m.projectedResults : m.results;
   const rows = [
     { side: m.team, line: projected ? m.team.projected : m.team.stats, results },
@@ -290,8 +317,16 @@ function Categories({ m, projected }: { m: Matchup; projected: boolean }) {
             ))}
           </div>
         ))}
+        {showOdds && <OddsRow m={m} />}
       </div>
       <p className={styles.foot}>
+        {showOdds && (
+          <>
+            Win chance: how likely {m.isMine ? "you take" : `${m.team.name} takes`} each category by the end of the week,
+            from the projected totals and how much is left to play. Orange is a toss-up worth chasing; faded is
+            90%+ either way.{" "}
+          </>
+        )}
         {projected
           ? "Projected week totals: games so far plus starters’ remaining games at their recent averages. "
           : "Week totals from starters. "}
