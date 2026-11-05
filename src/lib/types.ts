@@ -791,16 +791,21 @@ export interface PlayerWaiver {
   droppedBy: FantasyTeamSummary | null;
 }
 
-/** One of the manager's players, as the drop list shows him. */
+/** Per-game averages over one StatRange (MIN and GP beside the categories). */
+export interface RangeAverages extends CategoryLine {
+  gp: number;
+  min: number;
+}
+
+/** A player's averages over each StatRange; null where he has no games in it. */
+export type AveragesByRange = Record<StatRange, RangeAverages | null>;
+
+/** One of the manager's players, as the drop table shows him. */
 export interface RosterMoveOption extends PlayerSummary {
   /** His slot today. IL and IL+ don't count against the roster limit. */
   slot: LineupSlot;
   injury: PlayerInjury | null;
-  /** Season per-game points and rebounds; null with no games yet. */
-  pts: number | null;
-  reb: number | null;
-  /** 9CAT value this season (last season before he plays); the list is sorted by it, lowest first. */
-  value: number;
+  averages: AveragesByRange;
   /** Why he can't be dropped right now (e.g. locked in today's lineup); null when he can. */
   dropBlocked: string | null;
   /** The roster is illegal and dropping him (with an add) would make it legal and leave room. */
@@ -813,8 +818,7 @@ export interface AddCandidate extends PlayerSummary {
   mode: AddMode;
   /** Set when mode is "waiver". */
   waiver: PlayerWaiver | null;
-  /** Season per-game averages; null with no games yet. */
-  seasonAverages: CategoryLine | null;
+  averages: AveragesByRange;
   /** Why he can't be added (rostered, adds limit reached); null when he can. */
   addBlocked: string | null;
 }
@@ -846,7 +850,7 @@ export interface RosterMovesContext {
   maxAddsPerWeek: number | null;
   addsThisSeason: number;
   maxAddsPerSeason: number | null;
-  /** Lowest value first. */
+  /** In lineup order, like My team: starters by slot, bench, IL. */
   roster: RosterMoveOption[];
   add: AddCandidate | null;
   /** The team's budget when the league runs FAAB waivers; null otherwise. */

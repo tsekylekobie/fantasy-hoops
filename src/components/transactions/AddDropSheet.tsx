@@ -5,12 +5,17 @@
 // join right away; waiver players (mode "waiver") become a claim that the
 // waiver run processes (cancel or reorder it under My claims on My team). In
 // FAAB leagues a claim carries a blind bid, checked against the team's balance.
+// The drop list is My team's table with per-game averages instead of the day's
+// box score; Season / Last 30 / Last 14 switches it and the added player's line.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import { fetchJson, fmtAvg, fmtInjuryStatus, fmtPct, fmtWaiverTime, fullName, teamPos, todayIn } from "@/components/players/format";
+import { isIlSlot } from "@/lib/lineup/rules";
 import { faabBidProblem } from "@/lib/transactions/policy";
-import type { CategoryLine, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext } from "@/lib/types";
+import { STARTING_SLOTS } from "@/lib/types";
+import type { CategoryLine, RangeAverages, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext, StatRange } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
 
 interface Props {
@@ -21,6 +26,14 @@ interface Props {
   onDone: (result: RosterMoveResult) => void;
 }
 
+const RANGES: SegmentedOption<StatRange>[] = [
+  { value: "season", label: "Season" },
+  { value: "last30", label: "Last 30 days" },
+  { value: "last14", label: "Last 14 days" },
+];
+
+const RANGE_NAMES: Record<StatRange, string> = { season: "Season", last30: "Last 30 days", last14: "Last 14 days" };
+
 type Load =
   | { status: "loading"; id: number }
   | { status: "ready"; id: number; data: RosterMovesContext }
@@ -30,6 +43,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [load, setLoad] = useState<Load | null>(null);
   const [pick, setPick] = useState<number | null>(null);
+  const [range, setRange] = useState<StatRange>("season");
   const [bid, setBid] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +63,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
     const ctrl = new AbortController();
     setLoad({ status: "loading", id: playerId });
     setPick(null);
+    setRange("season");
     setError(null);
     setResult(null);
     fetch(`/api/team/transactions?add=${playerId}`, { signal: ctrl.signal })
@@ -169,7 +184,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
         </button>
       </div>
 
-      {add && <Line data={add.seasonAverages} />}
+      {add && <Line data={add.averages[range]} range={range} />}
 
       {load?.status === "error" && load.id === playerId && (
         <div className={styles.state} role="alert">
@@ -206,11 +221,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                   <p className={styles.lede}>
                     You can&apos;t add players until it&apos;s fixed. Dropping one of these fixes it and makes room for {fullName(add)}:
                   </p>
-                  <div className={styles.list} role="radiogroup" aria-label="Player to drop">
-                    {fixes.map((p) => (
-                      <DropOption key={p.id} p={p} checked={pick === p.id} onPick={() => setPick(p.id)} />
-                    ))}
-                  </div>
+                  <DropTable players={fixes} pick={pick} onPick={setPick} range={range} onRange={setRange} />
                 </>
               ) : (
                 <p className={styles.lede}>
@@ -228,12 +239,8 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
                   : "The dropped player goes back to free agents."}
                 {claim && " Nothing changes until the claim processes."}
               </p>
-              <div className={styles.list} role="radiogroup" aria-label="Player to drop">
-                {/* Dropping an IL player wouldn't open a spot. */}
-                {data.roster.filter((p) => p.slot !== "IL" && p.slot !== "IL+").map((p) => (
-                  <DropOption key={p.id} p={p} checked={pick === p.id} onPick={() => setPick(p.id)} />
-                ))}
-              </div>
+              {/* Dropping an IL player wouldn't open a spot. */}
+              <DropTable players={data.roster.filter((p) => !isIlSlot(p.slot))} pick={pick} onPick={setPick} range={range} onRange={setRange} />
             </div>
           ) : (
             <div className={styles.body}>
@@ -335,7 +342,7 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   );
 }
 
-function Line({ data }: { data: CategoryLine | null }) {
+function Line({ data, range }: { data: CategoryLine | null; range: StatRange }) {
   const tiles: [string, string][] = [
     ["FG%", data ? fmtPct(data.fgPct) : "—"],
     ["FT%", data ? fmtPct(data.ftPct) : "—"],
@@ -348,7 +355,7 @@ function Line({ data }: { data: CategoryLine | null }) {
     ["TO", data ? fmtAvg(data.tov) : "—"],
   ];
   return (
-    <dl className={styles.line} aria-label="Season per-game averages">
+    <dl className={styles.line} aria-label={`${RANGE_NAMES[range]} per-game averages`}>
       {tiles.map(([k, v]) => (
         <div key={k}>
           <dt>{k}</dt>
@@ -359,20 +366,84 @@ function Line({ data }: { data: CategoryLine | null }) {
   );
 }
 
-function DropOption({ p, checked, onPick }: { p: RosterMoveOption; checked: boolean; onPick: () => void }) {
-  const pos = (p.position ?? "").replace("-", "/");
-  const status = p.slot === "IL" || p.slot === "IL+" ? p.slot : p.injury?.status === "Day-To-Day" ? "DTD" : p.injury && fmtInjuryStatus(p.injury, todayIn());
-  const stats = p.pts === null ? "No games yet" : `${fmtAvg(p.pts)} pts, ${fmtAvg(p.reb ?? 0)} reb`;
-  const meta = [pos, status, p.dropBlocked ? "Locked" : stats].filter(Boolean).join(" · ");
-  const disabled = p.dropBlocked !== null;
+/** The roster as My team lists it, each row a radio button for who to drop. */
+function DropTable({ players, pick, onPick, range, onRange }: {
+  players: RosterMoveOption[];
+  pick: number | null;
+  onPick: (id: number) => void;
+  range: StatRange;
+  onRange: (range: StatRange) => void;
+}) {
+  const groups: [string, RosterMoveOption[]][] = [
+    ["Starters", players.filter((p) => STARTING_SLOTS.includes(p.slot))],
+    ["Bench", players.filter((p) => p.slot === "BN")],
+    ["Injured list", players.filter((p) => isIlSlot(p.slot))],
+  ];
   return (
-    <label
-      className={`${styles.opt} ${checked ? styles.on : ""} ${disabled ? styles.off : ""}`}
-      title={p.dropBlocked ?? undefined}
-    >
-      <input type="radio" name="drop" checked={checked} disabled={disabled} onChange={onPick} />
-      <b>{fullName(p)}</b>
-      <small>{meta}</small>
+    <>
+      <div className={styles.rangeBar}>
+        <SegmentedToggle label="Stats over" options={RANGES} value={range} onChange={onRange} />
+      </div>
+      <div className={styles.table} role="radiogroup" aria-label="Player to drop">
+        <div className={`${styles.grid} ${styles.header}`} aria-hidden="true">
+          <span /><span>Slot</span><span>Player</span>
+          {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((h) => (
+            <span key={h} className={styles.num}>{h}</span>
+          ))}
+        </div>
+        {groups.filter(([, list]) => list.length > 0).map(([label, list]) => (
+          <div key={label} role="group" aria-label={label}>
+            <div className={styles.group}><span>{label}</span></div>
+            {list.map((p) => (
+              <DropRow key={p.id} p={p} line={p.averages[range]} checked={pick === p.id} onPick={() => onPick(p.id)} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function DropRow({ p, line, checked, onPick }: { p: RosterMoveOption; line: RangeAverages | null; checked: boolean; onPick: () => void }) {
+  const disabled = p.dropBlocked !== null;
+  const meta = [p.teamAbbr, p.position?.replace(/-/g, "/"), p.dropBlocked && "Locked"].filter(Boolean).join(" · ");
+  const shooting = (pct: number | null, m: number, a: number) => (
+    <span className={styles.num}>
+      {fmtPct(pct)}
+      <small className={styles.shots}>{fmtAvg(m)}/{fmtAvg(a)}</small>
+    </span>
+  );
+  return (
+    <label className={`${styles.grid} ${styles.dropRow} ${checked ? styles.on : ""} ${disabled ? styles.off : ""}`} title={p.dropBlocked ?? undefined}>
+      <span className={styles.radio}>
+        <input type="radio" name="drop" checked={checked} disabled={disabled} onChange={onPick} />
+      </span>
+      <span><span className={styles.slot}>{p.slot}</span></span>
+      <span className={styles.player}>
+        <Avatar player={p} size={32} />
+        <span className={styles.who}>
+          <span className={styles.name}>
+            {fullName(p)}
+            {p.injury && (
+              <span className={`${styles.status} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{fmtInjuryStatus(p.injury, todayIn())}</span>
+            )}
+          </span>
+          <span className={styles.meta}>{meta}</span>
+        </span>
+      </span>
+      {line ? (
+        <>
+          <span className={styles.num}>{line.gp}</span>
+          <span className={styles.num}>{fmtAvg(line.min)}</span>
+          {shooting(line.fgPct, line.fgm, line.fga)}
+          {shooting(line.ftPct, line.ftm, line.fta)}
+          {[line.fg3m, line.pts, line.reb, line.ast, line.stl, line.blk, line.tov].map((v, i) => (
+            <span key={i} className={styles.num}>{fmtAvg(v)}</span>
+          ))}
+        </>
+      ) : (
+        <span className={styles.noGames}>No games</span>
+      )}
     </label>
   );
 }
