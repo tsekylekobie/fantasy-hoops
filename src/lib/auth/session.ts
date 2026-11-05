@@ -6,9 +6,12 @@ import type { SessionUser } from "@/lib/types";
 import { SESSION_COOKIE, SESSION_REFRESH_HOURS, SESSION_TTL_DAYS, secureCookies } from "./config";
 
 export interface Profile {
-  /** Google's `sub`, or "mock:<email>" for mock sign-ins. */
-  googleSub: string;
+  provider: "google" | "yahoo" | "mock";
+  /** The provider's stable account id (the ID token's `sub`); the email for mock sign-ins. */
+  subject: string;
   email: string;
+  /** Whether the provider vouches for the email. Only a verified email links league teams. */
+  emailVerified: boolean;
   name: string;
   pictureUrl: string | null;
 }
@@ -19,18 +22,64 @@ function hashToken(token: string): Buffer {
   return createHash("sha256").update(token).digest();
 }
 
-/** Inserts or refreshes the user and returns their id. */
-export async function upsertUser(p: Profile): Promise<number> {
-  const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO users (google_sub, email, name, picture_url)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (google_sub) DO UPDATE
-       SET email = EXCLUDED.email, name = EXCLUDED.name,
-           picture_url = EXCLUDED.picture_url, last_seen_at = now()
-     RETURNING id`,
-    [p.googleSub, p.email, p.name, p.pictureUrl],
-  );
-  return Number(rows[0].id);
+/**
+ * Finds or creates the user for this provider account and refreshes their
+ * profile; returns their id. A provider account seen for the first time joins
+ * an existing user when both verified the same email (so Google and Yahoo with
+ * one address are one user), else starts a new one.
+ */
+export async function signInUser(p: Profile): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Serializes first sign-ins of the same account (and of the same email).
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`signin:${p.email.toLowerCase()}`]);
+    let userId: string | undefined = (
+      await client.query<{ user_id: string }>(
+        `SELECT user_id FROM user_identities WHERE provider = $1 AND subject = $2`,
+        [p.provider, p.subject],
+      )
+    ).rows[0]?.user_id;
+
+    if (!userId && p.emailVerified) {
+      userId = (
+        await client.query<{ user_id: string }>(
+          `SELECT i.user_id FROM user_identities i JOIN users u ON u.id = i.user_id
+            WHERE i.email_verified AND lower(i.email) = lower($1)
+            ORDER BY u.last_seen_at DESC LIMIT 1`,
+          [p.email],
+        )
+      ).rows[0]?.user_id;
+    }
+    if (!userId) {
+      userId = (
+        await client.query<{ id: string }>(
+          `INSERT INTO users (email, name, picture_url) VALUES ($1, $2, $3) RETURNING id`,
+          [p.email, p.name, p.pictureUrl],
+        )
+      ).rows[0].id;
+    }
+
+    await client.query(
+      `INSERT INTO user_identities (provider, subject, user_id, email, email_verified)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (provider, subject) DO UPDATE
+         SET email = EXCLUDED.email, email_verified = EXCLUDED.email_verified, last_used_at = now()`,
+      [p.provider, p.subject, userId, p.email, p.emailVerified],
+    );
+    await client.query(
+      `UPDATE users SET email = $2, name = $3, picture_url = COALESCE($4, picture_url), last_seen_at = now()
+        WHERE id = $1`,
+      [userId, p.email, p.name, p.pictureUrl],
+    );
+    await client.query("COMMIT");
+    return Number(userId);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /** Starts a session for this device and sets its cookie on `res`. */

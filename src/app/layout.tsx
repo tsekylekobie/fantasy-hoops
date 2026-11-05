@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import { mockAuthEnabled } from "@/lib/auth/config";
+import { signInProviders } from "@/lib/auth/oidc";
 import { currentSession } from "@/lib/auth/viewer";
 import SessionProvider from "@/components/SessionProvider";
 
@@ -28,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <SessionProvider value={{ user: session?.user ?? null, mock: mockAuthEnabled() }}>{children}</SessionProvider>
+        <SessionProvider value={{ user: session?.user ?? null, mock: mockAuthEnabled(), providers: signInProviders() }}>{children}</SessionProvider>
       </body>
     </html>
   );

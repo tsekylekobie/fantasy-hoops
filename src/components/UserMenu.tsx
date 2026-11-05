@@ -28,28 +28,79 @@ export default function UserMenu() {
   return <SignedIn user={session.user} />;
 }
 
-/** "Sign in with Google" (or the mock sign-in in development), returning to this page. */
-export function SignInButton() {
-  const { mock } = useSession();
-  // Built at click time so it returns to the page as it is now (query string included).
-  function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
-    e.preventDefault();
-    const next = window.location.pathname + window.location.search;
-    window.location.href = `/api/auth/google/start?next=${encodeURIComponent(next)}`;
-  }
+type Provider = SessionResponse["providers"][number];
+const PROVIDER_LABEL: Record<Provider, string> = { google: "Google", yahoo: "Yahoo" };
+
+/** Goes to a provider's sign-in, returning to the page as it is now (query string included). */
+function startSignIn(e: React.MouseEvent<HTMLAnchorElement>, provider: Provider) {
+  e.preventDefault();
+  const next = window.location.pathname + window.location.search;
+  window.location.href = `/api/auth/${provider}/start?next=${encodeURIComponent(next)}`;
+}
+
+function ProviderLink({ provider, className, children }: { provider: Provider; className: string; children: React.ReactNode }) {
   return (
-    <a href="/api/auth/google/start" className={styles.signIn} onClick={signIn}>
-      {!mock && <GoogleIcon />}
-      {mock ? "Sign in (mock)" : "Sign in with Google"}
+    <a href={`/api/auth/${provider}/start`} className={className} onClick={(e) => startSignIn(e, provider)}>
+      {children}
     </a>
   );
 }
 
-function SignedIn({ user }: { user: SessionUser }) {
-  const [open, setOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
+/**
+ * Sign-in with each configured provider (or the mock sign-in in development).
+ * With one provider it's a single "Sign in with …" button. With several,
+ * `layout="menu"` (the header) is a "Sign in" button that opens a menu of them,
+ * and `layout="stack"` shows a button for each.
+ */
+export function SignInButton({ layout = "menu" }: { layout?: "menu" | "stack" }) {
+  const { mock, providers } = useSession();
+  if (mock || providers.length === 0) {
+    return (
+      <ProviderLink provider="google" className={styles.signIn}>
+        Sign in (mock)
+      </ProviderLink>
+    );
+  }
+  if (providers.length === 1 || layout === "stack") {
+    return (
+      <div className={styles.stack}>
+        {providers.map((p) => (
+          <ProviderLink key={p} provider={p} className={styles.signIn}>
+            <ProviderIcon provider={p} />
+            Sign in with {PROVIDER_LABEL[p]}
+          </ProviderLink>
+        ))}
+      </div>
+    );
+  }
+  return <SignInMenu providers={providers} />;
+}
 
+function SignInMenu({ providers }: { providers: Provider[] }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useDismiss(open, setOpen, root);
+  return (
+    <div className={styles.root} ref={root}>
+      <button type="button" className={styles.signIn} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        Sign in
+      </button>
+      {open && (
+        <div className={styles.menu} role="menu">
+          {providers.map((p) => (
+            <ProviderLink key={p} provider={p} className={`${styles.item} ${styles.providerItem}`}>
+              <ProviderIcon provider={p} />
+              Continue with {PROVIDER_LABEL[p]}
+            </ProviderLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Closes a popup menu on a click outside `root` or Escape. */
+function useDismiss(open: boolean, setOpen: (open: boolean) => void, root: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
@@ -62,7 +113,15 @@ function SignedIn({ user }: { user: SessionUser }) {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, setOpen, root]);
+}
+
+function SignedIn({ user }: { user: SessionUser }) {
+  const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useDismiss(open, setOpen, root);
 
   async function signOut() {
     setSigningOut(true);
@@ -108,7 +167,7 @@ function userInitials(name: string): string {
   return ((parts[0]?.charAt(0) ?? "") + (parts.length > 1 ? parts[parts.length - 1].charAt(0) : "")).toUpperCase();
 }
 
-/** Google profile photo, falling back to initials. */
+/** Profile photo from the sign-in provider, falling back to initials. */
 function UserAvatar({ user }: { user: SessionUser }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -119,6 +178,21 @@ function UserAvatar({ user }: { user: SessionUser }) {
         userInitials(user.name)
       )}
     </span>
+  );
+}
+
+function ProviderIcon({ provider }: { provider: Provider }) {
+  return provider === "yahoo" ? <YahooIcon /> : <GoogleIcon />;
+}
+
+function YahooIcon() {
+  return (
+    <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+      <rect width="18" height="18" rx="4" fill="#6001D2" />
+      <text x="9" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">
+        Y!
+      </text>
+    </svg>
   );
 }
 

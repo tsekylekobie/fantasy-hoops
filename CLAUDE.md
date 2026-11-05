@@ -11,6 +11,10 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/espn/news.ts`: player news from ESPN's keyless fantasy endpoints (Rotowire blurbs), matched by name and
   fetched live by `/api/players/[id]/news` with an in-memory cache. Not stored; the one exception to reading from our DB.
 - `src/lib/db.ts`: shared `pg` pool.
+- Sign-in: `src/lib/auth/oidc.ts` (Google and Yahoo, OpenID Connect; `profileFromClaims` pure, tested) behind
+  `/api/auth/[provider]/start|callback`; a provider's button shows once its client id and secret are set. Each provider
+  account is a `user_identities` row (migration 0022); `signInUser` (`auth/session.ts`) joins a new one to the user
+  with the same verified email, and only a verified email links league teams (`linkMemberships`).
 - `db/migrations/NNNN_name.sql`: the schema, applied in order by `npm run db:migrate` and tracked in
   `schema_migrations`. Never edit a migration that has been committed; add the next number instead.
   `scripts/dev/seed-league.ts` (`npm run db:seed:league`) seeds a 12-team league with mock managers.

@@ -86,8 +86,9 @@ npm run dev
 
 Open http://localhost:3000.
 
-**Signing in locally:** with `AUTH_MOCK=1` (the default in `.env.example`), or whenever `GOOGLE_CLIENT_ID` is
-empty, sign-in goes to a mock page where you pick a test user instead of using Google. After
+**Signing in locally:** with `AUTH_MOCK=1` (the default in `.env.example`), or whenever neither `GOOGLE_CLIENT_ID`
+nor `YAHOO_SIGNIN_CLIENT_ID` is set, sign-in goes to a mock page where you pick a test user instead of using Google or
+Yahoo. After
 `npm run db:seed:league` you can sign in as any of the 12 managers; the first is the commissioner.
 
 For a production build: `npm run build && npm start`.
@@ -136,7 +137,7 @@ Without the worker, `npm run backfill -- --seasons 2026` pulls in everything sin
 Moves a Yahoo league over mid-season: the import replaces this season's league with the Yahoo league
 as it stood when you exported it. Finished weeks keep Yahoo's results exactly; the current week and
 everything after are scored here, starting from each team's Yahoo lineups so far. Managers sign in
-with Google using the email you list for their team, and land on it.
+with Google or Yahoo using the email you list for their team, and land on it.
 
 One-time setup: create an app at https://developer.yahoo.com/apps/ with Fantasy Sports (Read)
 permission and redirect URI `oob`, and put its `YAHOO_CLIENT_ID` and `YAHOO_CLIENT_SECRET` in `.env`.
@@ -146,8 +147,8 @@ npm run yahoo:export -- --league 12345          # Yahoo league id (in the league
 ```
 
 The first run asks you to sign in to Yahoo and paste back a code. It saves the league to
-`yahoo-export/12345/` (gitignored) and writes `members.csv` there: fill in each manager's Gmail
-(several emails for co-managers go in one cell, separated by `;`) and mark the commissioner. You can
+`yahoo-export/12345/` (gitignored) and writes `members.csv` there: fill in each manager's Gmail or Yahoo
+email (several emails for co-managers go in one cell, separated by `;`) and mark the commissioner. You can
 also add `league-settings.json` there for settings Yahoo doesn't have, in the shape the
 `/api/league/settings` endpoint returns under `settings` (e.g. `{"timeZone": "America/Los_Angeles",
 "gameLimits": {"total": 40, "slots": {}}}`); it goes on top of Yahoo's settings.
@@ -209,9 +210,13 @@ redeploy the code.
    ```
    The plan should create `web`, `worker` and `Postgres` (or, for an existing project, change only what you expect).
 3. Secrets aren't in the file (they're `preserve()`): set them in the dashboard under each service's Variables:
-   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
+   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`. For Yahoo
+   sign-in too, also `YAHOO_SIGNIN_CLIENT_ID` / `YAHOO_SIGNIN_CLIENT_SECRET` on `web` (step 4).
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
-   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
+   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. For Yahoo sign-in,
+   create an app at https://developer.yahoo.com/apps/create/ with API permission "OpenID Connect Permissions"
+   (Email, Profile) and redirect URI `https://<domain>/api/auth/yahoo/callback` (Yahoo wants https, so this is
+   tested on the deployed site, not locally). It is not the Fantasy Sports app the Yahoo import uses. The app uses Railway's
    domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.
 5. Load data from your machine through an SSH tunnel to Postgres (it has no public address). In one terminal:
    ```sh

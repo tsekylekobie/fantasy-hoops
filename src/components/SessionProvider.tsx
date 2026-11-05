@@ -5,7 +5,7 @@
 import { createContext, useContext } from "react";
 import type { SessionResponse } from "@/lib/types";
 
-const Session = createContext<SessionResponse>({ user: null, mock: false });
+const Session = createContext<SessionResponse>({ user: null, mock: false, providers: [] });
 
 export default function SessionProvider({ value, children }: { value: SessionResponse; children: React.ReactNode }) {
   return <Session.Provider value={value}>{children}</Session.Provider>;

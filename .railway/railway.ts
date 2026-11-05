@@ -29,6 +29,8 @@ export default defineRailway(() => {
       ...shared,
       GOOGLE_CLIENT_ID: preserve(),
       GOOGLE_CLIENT_SECRET: preserve(),
+      YAHOO_SIGNIN_CLIENT_ID: preserve(),
+      YAHOO_SIGNIN_CLIENT_SECRET: preserve(),
     },
   });
 

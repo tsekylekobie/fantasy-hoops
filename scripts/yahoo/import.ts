@@ -448,7 +448,9 @@ async function run(db: PoolClient, snap: Snapshot) {
   let linked = 0;
   for (const email of emails) {
     const { rows: [user] } = await db.query<{ id: number }>(
-      `SELECT id::int FROM users WHERE lower(email) = $1 ORDER BY google_sub LIKE 'mock:%', last_seen_at DESC LIMIT 1`, [email],
+      `SELECT u.id::int FROM user_identities i JOIN users u ON u.id = i.user_id
+        WHERE i.email_verified AND lower(i.email) = $1
+        ORDER BY i.provider = 'mock', u.last_seen_at DESC LIMIT 1`, [email],
     );
     if (user) linked += await linkMemberships(db, user.id, email);
   }

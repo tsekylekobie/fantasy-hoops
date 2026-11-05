@@ -1,5 +1,5 @@
 // Mock sign-in for local dev: pick an existing test user or make a new one,
-// instead of going through Google. 404s when mock auth is off (always in production).
+// instead of going through Google or Yahoo. 404s when mock auth is off (always in production).
 import { notFound } from "next/navigation";
 import { mockAuthEnabled, safeNext } from "@/lib/auth/config";
 import { pool } from "@/lib/db";
@@ -18,7 +18,9 @@ export default async function MockSignIn({ searchParams }: { searchParams: Promi
   const next = safeNext((await searchParams).next);
 
   const { rows } = await pool.query<{ email: string; name: string }>(
-    `SELECT email, name FROM users WHERE google_sub LIKE 'mock:%' ORDER BY last_seen_at DESC`,
+    `SELECT u.email, u.name FROM users u
+      WHERE EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id AND i.provider = 'mock')
+      ORDER BY u.last_seen_at DESC`,
   );
   const users = rows.length > 0 ? rows : PRESETS;
 
@@ -27,7 +29,7 @@ export default async function MockSignIn({ searchParams }: { searchParams: Promi
       <div className={styles.card}>
         <p className={styles.badge}>Local dev · mock sign-in</p>
         <h1 className={styles.title}>Sign in as…</h1>
-        <p className={styles.sub}>Stands in for Google while developing. Unavailable in production.</p>
+        <p className={styles.sub}>Stands in for Google and Yahoo while developing. Unavailable in production.</p>
 
         <ul className={styles.users}>
           {users.map((u) => (

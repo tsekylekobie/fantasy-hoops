@@ -59,10 +59,10 @@ export function SignedOutLeague() {
         <div className={styles.signedOut}>
           <p className={styles.lead}>Nothing to see here yet.</p>
           <p>
-            Standings, matchups, rosters and transactions are private to the league&rsquo;s managers. Sign in with Google
-            to see your league and manage your team.
+            Standings, matchups, rosters and transactions are private to the league&rsquo;s managers. Sign in to
+            see your league and manage your team.
           </p>
-          <SignInButton />
+          <SignInButton layout="stack" />
           <p className={styles.fine}>
             Anyone can browse <Link href="/players">Players</Link> and <Link href="/box-scores">Box scores</Link>.
           </p>

@@ -131,7 +131,8 @@ async function main() {
       `SELECT u.email FROM leagues l
          JOIN fantasy_teams ft ON ft.league_id = l.id
          JOIN users u ON u.id = ft.owner_user_id
-        WHERE l.name = $1 AND l.season = $2 AND u.google_sub NOT LIKE 'mock:%'`,
+        WHERE l.name = $1 AND l.season = $2
+          AND EXISTS (SELECT 1 FROM user_identities i WHERE i.user_id = u.id AND i.provider <> 'mock')`,
       [LEAGUE_NAME, CURRENT_SEASON],
     );
     if (realOwners.length > 0) {
@@ -139,14 +140,17 @@ async function main() {
     }
     await client.query(`DELETE FROM leagues WHERE name = $1 AND season = $2`, [LEAGUE_NAME, CURRENT_SEASON]);
 
-    // Same googleSub convention as mock sign-in, so these users can sign in.
+    // Mock sign-in identities (subject = email), so these users can sign in.
     const userIds: string[] = [];
     for (const m of MANAGERS) {
       const { rows: [user] } = await client.query<{ id: string }>(
-        `INSERT INTO users (google_sub, email, name) VALUES ($1, $2, $3)
-         ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name
-         RETURNING id`,
-        [`mock:${m.email}`, m.email, m.name],
+        `WITH existing AS (SELECT user_id FROM user_identities WHERE provider = 'mock' AND subject = $1),
+              upd AS (UPDATE users SET email = $1, name = $2 WHERE id IN (SELECT user_id FROM existing) RETURNING id),
+              ins AS (INSERT INTO users (email, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM existing) RETURNING id),
+              idn AS (INSERT INTO user_identities (provider, subject, user_id, email, email_verified)
+                      SELECT 'mock', $1, id, $1, true FROM ins)
+         SELECT id FROM upd UNION ALL SELECT id FROM ins`,
+        [m.email, m.name],
       );
       userIds.push(user.id);
     }

@@ -13,13 +13,13 @@ export const SESSION_TTL_DAYS = 400;
 export const SESSION_REFRESH_HOURS = 24;
 
 /**
- * Mock sign-in replaces Google with a local "pick a user" page. It is on in
- * dev when AUTH_MOCK=1 or when no Google client id is configured, and it can
- * never be on in a production build.
+ * Mock sign-in replaces Google and Yahoo with a local "pick a user" page. It is
+ * on in dev when AUTH_MOCK=1 or when no provider's client id is configured, and
+ * it can never be on in a production build.
  */
 export function mockAuthEnabled(): boolean {
   if (process.env.NODE_ENV === "production") return false;
-  return process.env.AUTH_MOCK === "1" || !process.env.GOOGLE_CLIENT_ID;
+  return process.env.AUTH_MOCK === "1" || (!process.env.GOOGLE_CLIENT_ID && !process.env.YAHOO_SIGNIN_CLIENT_ID);
 }
 
 /**
