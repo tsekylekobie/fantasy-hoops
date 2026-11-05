@@ -1,6 +1,7 @@
-// The /league page: docs/design/league.mockup.html (standings), plus this
-// week's scoreboard. Team names open that team's roster (yours is /my-team);
-// a score opens that matchup. Trades in review (and yours) sit below. The
+// The /league page: docs/design/league.mockup.html (standings), plus a
+// scoreboard that pages through the season's weeks (?week=N, default this
+// week). Team names open that team's roster (yours is /my-team); a score
+// opens that matchup. Trades in review (and yours) sit below. The
 // Standings card switches to the Playoffs view (PlayoffsBracket): projected
 // from today's standings, or the real bracket once it exists (and then first).
 import Link from "next/link";
@@ -144,19 +145,41 @@ function Scoreboard({ data }: { data: LeagueOverview }) {
   const w = data.week;
   if (!w) return null;
   const state = w.status === "live" ? "Live" : w.status === "final" ? "Final" : "Upcoming";
+  const upcoming = w.status === "upcoming";
   return (
-    <section className={styles.card}>
-      <h3>
-        {w.isPlayoffs ? "Playoffs · " : ""}Week {w.week}
-        <span className={styles.when}>{fmtRange(w.startsOn, w.endsOn)} · {state}</span>
-      </h3>
-      {data.matchups.map((m) => <ScoreRow key={m.teamA.id} m={m} week={w.week} />)}
-      <p className={styles.foot}>Categories won–lost–tied, for the team on the left. Tap a matchup for the box score.</p>
+    <section className={styles.card} aria-label="Scoreboard">
+      <div className={styles.cardHead}>
+        <h3 className={styles.weekTitle}>
+          {w.isPlayoffs ? "Playoffs · " : ""}Week {w.week}
+          <span className={styles.when}>{fmtRange(w.startsOn, w.endsOn)} · {state}</span>
+        </h3>
+        <nav className={styles.pager} aria-label="Weeks">
+          {w.week !== data.currentWeek && <Link href="/league" scroll={false} className={styles.pageBtn}>This week</Link>}
+          <PagerLink week={w.week - 1} disabled={w.week <= 1} label="Previous week"><span className={styles.arrow}>‹</span></PagerLink>
+          <PagerLink week={w.week + 1} disabled={w.week >= data.weekCount} label="Next week"><span className={styles.arrow}>›</span></PagerLink>
+        </nav>
+      </div>
+      {data.matchups.length === 0
+        ? <p className={styles.unset}>Not set yet. Each playoff round is set when the week before it ends.</p>
+        : data.matchups.map((m) => <ScoreRow key={m.teamA.id} m={m} week={w.week} upcoming={upcoming} />)}
+      {data.matchups.length > 0 && (
+        <p className={styles.foot}>
+          {upcoming
+            ? "Tap a matchup to see both rosters."
+            : "Categories won–lost–tied, for the team on the left. Tap a matchup for the box score."}
+        </p>
+      )}
     </section>
   );
 }
 
-function ScoreRow({ m, week }: { m: OtherMatchup; week: number }) {
+// Keeps the scroll position: paging shouldn't jump back to the top of the page.
+function PagerLink({ week, disabled, label, children }: { week: number; disabled: boolean; label: string; children: ReactNode }) {
+  if (disabled) return <span className={styles.pageBtn} aria-disabled="true" aria-label={label}>{children}</span>;
+  return <Link href={`/league?week=${week}`} scroll={false} className={styles.pageBtn} aria-label={label}>{children}</Link>;
+}
+
+function ScoreRow({ m, week, upcoming }: { m: OtherMatchup; week: number; upcoming: boolean }) {
   const side = (t: FantasyTeamSummary, right?: boolean) => (
     <span className={`${styles.side} ${right ? styles.r : ""}`}>
       <TeamBadge team={t} />
@@ -174,17 +197,18 @@ function ScoreRow({ m, week }: { m: OtherMatchup; week: number }) {
       </div>
     );
   }
+  const score = upcoming ? "vs" : fmtScore(m.score);
   // The matchup page puts your team on the left on its own; other matchups open by team.
   const href = m.isMine ? `/matchup?week=${week}` : `/matchup?week=${week}&team=${m.teamA.id}`;
   return (
     <Link
       href={href}
       className={`${styles.m} ${styles.link} ${m.isMine ? styles.mine : ""}`}
-      aria-label={`${m.bracket ? `${m.bracket.label}: ` : ""}${m.teamA.name} ${fmtScore(m.score)} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
+      aria-label={`${m.bracket ? `${m.bracket.label}: ` : ""}${m.teamA.name} ${score} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
     >
       {tag}
       {side(m.teamA)}
-      <b>{fmtScore(m.score)}</b>
+      <b>{score}</b>
       {side(m.teamB, true)}
     </Link>
   );
