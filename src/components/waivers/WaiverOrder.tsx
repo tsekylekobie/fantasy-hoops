@@ -50,7 +50,8 @@ export default function WaiverOrder({
       </ol>
       <p className={styles.foot}>
         {TYPE_TEXT[data.type]} Dropped players stay on waivers for {data.waiverDays} day{data.waiverDays === 1 ? "" : "s"}
-        {data.waiversAfterGameStart && ", and free agents go on waivers once their game starts"}.
+        {data.waiversAfterGameStart && ", and free agents go on waivers once their game starts"}.{" "}
+        {data.allAddsByClaim ? "Every add is a claim at the next run, free agents included." : "Other free agents can be added right away."}
       </p>
     </section>
   );

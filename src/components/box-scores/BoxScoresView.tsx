@@ -16,7 +16,7 @@ import AddDropSheet from "@/components/transactions/AddDropSheet";
 import LiveRefresh from "@/components/live/LiveRefresh";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
-import { fmtGameDate, fmtPct, fmtValue, fmtWaiverTime, fullName } from "@/components/players/format";
+import { fmtGameDate, fmtPct, fmtValue, fullName, waiverTooltip } from "@/components/players/format";
 import styles from "./BoxScoresView.module.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -329,8 +329,8 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
           <button
             type="button"
             className={`${styles.add} ${styles.claim}`}
-            aria-label={`Claim ${fullName(p)} (on waivers, clears ${fmtWaiverTime(p.waiver.clearsAt, data.timeZone, "long")})`}
-            title={`On waivers until ${fmtWaiverTime(p.waiver.clearsAt, data.timeZone, "long")}`}
+            aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, data.timeZone)})`}
+            title={waiverTooltip(p.waiver, data.timeZone)}
             onClick={() => onAdd(p.id)}
           >
             Claim

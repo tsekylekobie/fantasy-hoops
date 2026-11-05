@@ -782,8 +782,12 @@ export type AddMode = "immediate" | "waiver";
 export interface PlayerWaiver {
   /** The waiver run that decides his claims (and after which he's a free agent), ISO UTC. */
   clearsAt: string;
-  /** dropped: recently dropped (leagues.waiver_days); game_started: his game today has tipped off (waivers_after_game_start). */
-  reason: "dropped" | "game_started";
+  /**
+   * dropped: recently dropped (leagues.waiver_days); game_started: his game
+   * today has tipped off (waivers_after_game_start); all_adds: a free agent in a
+   * league where every add is a claim (all_adds_by_claim), not really on waivers.
+   */
+  reason: "dropped" | "game_started" | "all_adds";
   droppedBy: FantasyTeamSummary | null;
 }
 
@@ -1096,6 +1100,7 @@ export interface WaiverOrder {
   waiverDaysOfWeek: number[];
   waiverDays: number;
   waiversAfterGameStart: boolean;
+  allAddsByClaim: boolean;
   nextRunAt: string;
   /** FAAB leagues: the season budget per team and the minimum bid. */
   faabBudget: number;
@@ -1126,6 +1131,8 @@ export interface LeagueSettings {
   /** Days a dropped player stays on waivers; 0 = straight to free agents. */
   waiverDays: number;
   waiversAfterGameStart: boolean;
+  /** Every add is a claim at the next waiver run, free agents included. Drops alone stay immediate. */
+  allAddsByClaim: boolean;
   /**
    * FAAB season budget per team, whole dollars. Switching the league to FAAB
    * gives every team this much; changing it later adds the difference to (or

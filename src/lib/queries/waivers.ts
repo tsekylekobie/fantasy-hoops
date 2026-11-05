@@ -119,6 +119,7 @@ export async function getWaiverOrder(pool: Pool, season: number): Promise<Waiver
     waiverDaysOfWeek: league.waiverDaysOfWeek,
     waiverDays: league.waiverDays,
     waiversAfterGameStart: league.waiversAfterGameStart,
+    allAddsByClaim: league.allAddsByClaim,
     nextRunAt: league.nextRunAt,
     faabBudget: league.faabBudget,
     faabMinBid: league.faabMinBid,

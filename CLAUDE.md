@@ -16,7 +16,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `scripts/dev/seed-league.ts` (`npm run db:seed:league`) seeds a 12-team league with mock managers.
 - `src/app/api/players/`: JSON endpoints. Users read from our DB, never the API directly.
 - `src/app/api/team/transactions/` + `src/lib/queries/transactions.ts`: add/drop. `src/lib/transactions/policy.ts`
-  is the one place that decides immediate add vs. waiver claim (and where dropped players go).
+  is the one place that decides immediate add vs. waiver claim (and where dropped players go). FAAB alone doesn't make
+  free agents claims; `leagues.all_adds_by_claim` (commissioner setting, off by default, migration 0021) does.
 - `src/lib/queries/waivers.ts`: the daily waiver run (worker task `waivers`, at `leagues.waiver_time` in its time zone),
   claims (`/api/team/claims`) and the waiver order. Run by hand: `npm run waivers -- --at next|now|<ISO>` or
   `POST /api/dev/waivers?at=...` (dev only). FAAB (`waiver_type = 'faab'`): `resolveClaims` there (pure, tested) orders

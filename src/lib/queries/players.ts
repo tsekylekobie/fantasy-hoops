@@ -275,7 +275,11 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   const now = new Date();
   const dates = streamDates(now, waivers.timeZone);
   const upcoming = await getUpcomingGames(db, q.plays, dates);
-  const onWaivers = (id: number) => !owners.has(id) && waivers.players.has(id);
+  // all_adds is every free agent, which isn't what the waiver filters ask for.
+  const onWaivers = (id: number) => {
+    const w = waivers.players.get(id);
+    return !owners.has(id) && w !== undefined && w.reason !== "all_adds";
+  };
 
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode, values);
   const sign = q.dir === "asc" ? 1 : -1;

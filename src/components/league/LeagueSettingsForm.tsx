@@ -164,6 +164,11 @@ function changeEffects(d: LeagueSettings, s: LeagueSettings, teamCount: number, 
       ? "Free agents go on waivers once their game starts, until the next run."
       : "Free agents stay free agents after their game starts.");
   }
+  if (d.allAddsByClaim !== s.allAddsByClaim) {
+    out.push(d.allAddsByClaim
+      ? "Every add is a claim at the next waiver run, free agents included."
+      : "Free agents can be added right away again. Pending claims still wait for their run.");
+  }
   for (const [name, slots, statuses] of [
     ["IL", "ilSlots", "ilStatuses"],
     ["IL+", "ilPlusSlots", "ilPlusStatuses"],
@@ -434,6 +439,12 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
             <label className={styles.switch}>
               <input type="checkbox" checked={draft.waiversAfterGameStart} onChange={(e) => set("waiversAfterGameStart", e.target.checked)} />
               Lock free agents once their game starts
+            </label>
+          </Row>
+          <Row label="All adds by claim" help="Off: a free agent who isn't on waivers is added right away, even with FAAB. Dropping a player with no add is always immediate.">
+            <label className={styles.switch}>
+              <input type="checkbox" checked={draft.allAddsByClaim} onChange={(e) => set("allAddsByClaim", e.target.checked)} />
+              Every add waits for the next waiver run
             </label>
           </Row>
         </Section>

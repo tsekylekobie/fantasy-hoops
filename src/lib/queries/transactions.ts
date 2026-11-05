@@ -30,7 +30,7 @@
 //   dollars from the minimum bid to the team's balance. Immediate adds are free.
 import type { Pool, PoolClient } from "pg";
 import { activeRosterLimit, isIlSlot, isStarting, rosterProblems } from "../lineup/rules";
-import { addMode, dropDestination, faabBidProblem, type MovePolicyLeague } from "../transactions/policy";
+import { addMode, dropDestination, faabBidProblem, waiverReason, type MovePolicyLeague } from "../transactions/policy";
 import type {
   AddCandidate,
   PlayerWaiver,
@@ -61,17 +61,17 @@ interface LeagueRules extends MovePolicyLeague {
 async function loadRules(db: Db, leagueId: number): Promise<LeagueRules> {
   const { rows: [r] } = await db.query<{
     max_adds_per_week: number | null; max_adds_per_season: number | null; waiver_days: number;
-    waivers_after_game_start: boolean; team_count: number; time_zone: string; claims_ignore_il_status: boolean;
+    waivers_after_game_start: boolean; all_adds_by_claim: boolean; team_count: number; time_zone: string; claims_ignore_il_status: boolean;
   }>(
     `SELECT l.max_adds_per_week, l.max_adds_per_season, l.waiver_days, l.waivers_after_game_start, l.time_zone,
-            l.claims_ignore_il_status,
+            l.all_adds_by_claim, l.claims_ignore_il_status,
             (SELECT count(*)::int FROM fantasy_teams ft WHERE ft.league_id = l.id) AS team_count
        FROM leagues l WHERE l.id = $1`,
     [leagueId],
   );
   return {
     maxAddsPerWeek: r.max_adds_per_week, maxAddsPerSeason: r.max_adds_per_season, waiverDays: r.waiver_days,
-    waiversAfterGameStart: r.waivers_after_game_start, teamCount: r.team_count, timeZone: r.time_zone,
+    waiversAfterGameStart: r.waivers_after_game_start, allAddsByClaim: r.all_adds_by_claim, teamCount: r.team_count, timeZone: r.time_zone,
     claimsIgnoreIlStatus: r.claims_ignore_il_status,
   };
 }
@@ -168,13 +168,15 @@ const summary = (r: TargetRow): PlayerSummary => ({
   position: r.position, nbaPersonId: r.nba_person_id,
 });
 
-const targetMode = (rules: LeagueRules, t: TargetRow) => addMode(rules, { onWaivers: t.on_waivers, gameStarted: t.game_started });
+const targetState = (t: TargetRow) => ({ onWaivers: t.on_waivers, gameStarted: t.game_started });
+const targetMode = (rules: LeagueRules, t: TargetRow) => addMode(rules, targetState(t));
 
 function targetWaiver(rules: LeagueRules, t: TargetRow): PlayerWaiver | null {
-  if (targetMode(rules, t) !== "waiver") return null;
+  const reason = waiverReason(rules, targetState(t));
+  if (reason === null) return null;
   return {
     clearsAt: t.process_at,
-    reason: t.on_waivers ? "dropped" : "game_started",
+    reason,
     droppedBy: t.dropped_by_id === null ? null : { id: t.dropped_by_id, abbreviation: t.dropped_by_abbr!, name: t.dropped_by_name!, logoUrl: teamLogoUrl(t.dropped_by_id, t.dropped_by_logo) },
   };
 }

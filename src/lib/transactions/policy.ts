@@ -5,20 +5,23 @@
 //
 //   - addMode is "waiver" for players in waiver_players (dropped recently) and,
 //     if leagues.waivers_after_game_start, for every free agent once his game
-//     today has tipped off. runRosterMove then records a pending 'waiver_claim'
-//     (process_at = the run when he clears) instead of moving him.
+//     today has tipped off, and, if leagues.all_adds_by_claim, for every add.
+//     runRosterMove then records a pending 'waiver_claim' (process_at = the run
+//     when he clears) instead of moving him.
 //   - dropDestination is "waivers" unless the league's waiver_days is 0;
 //     runRosterMove then inserts a waiver_players row that clears at the first
 //     waiver run at least waiver_days after the drop.
 //   - In FAAB leagues a claim carries a blind bid (faabBidProblem); a free
-//     agent who isn't on waivers is still an immediate add, for nothing.
+//     agent who isn't on waivers is still an immediate add, for nothing, unless
+//     leagues.all_adds_by_claim makes him a claim too.
 
-import type { AddMode, FaabBudget } from "../types";
+import type { AddMode, FaabBudget, PlayerWaiver } from "../types";
 
 /** League settings the policy reads (a subset of the leagues row). */
 export interface MovePolicyLeague {
   waiverDays: number;
   waiversAfterGameStart: boolean;
+  allAddsByClaim: boolean;
 }
 
 /** What we know about the player being added. */
@@ -29,11 +32,18 @@ export interface AddTarget {
   gameStarted: boolean;
 }
 
-export function addMode(league: MovePolicyLeague, player: AddTarget): AddMode {
-  return player.onWaivers || (league.waiversAfterGameStart && player.gameStarted) ? "waiver" : "immediate";
+/** Why adding him has to be a claim, or null when he can be added right away. */
+export function waiverReason(league: MovePolicyLeague, player: AddTarget): PlayerWaiver["reason"] | null {
+  if (player.onWaivers) return "dropped";
+  if (league.waiversAfterGameStart && player.gameStarted) return "game_started";
+  return league.allAddsByClaim ? "all_adds" : null;
 }
 
-export function dropDestination(league: MovePolicyLeague): "free_agents" | "waivers" {
+export function addMode(league: MovePolicyLeague, player: AddTarget): AddMode {
+  return waiverReason(league, player) ? "waiver" : "immediate";
+}
+
+export function dropDestination(league: Pick<MovePolicyLeague, "waiverDays">): "free_agents" | "waivers" {
   return league.waiverDays > 0 ? "waivers" : "free_agents";
 }
 

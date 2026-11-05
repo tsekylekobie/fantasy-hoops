@@ -141,14 +141,16 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
             <div className={styles.headText}>
               <h2 id="add-sheet-title" className={styles.title}>
                 {claim ? "Claim" : "Add"} {fullName(add)}
-                {claim && <span className={styles.chip}>On waivers</span>}
+                {claim && add.waiver?.reason !== "all_adds" && <span className={styles.chip}>On waivers</span>}
               </h2>
               <p className={styles.sub}>
                 {teamPos(add.teamAbbr, add.position)} ·{" "}
                 {add.owner
                   ? `On ${add.owner.abbreviation}`
-                  : add.waiver
-                    ? `${add.waiver.reason === "game_started" ? "Game started" : add.waiver.droppedBy ? `Dropped by ${add.waiver.droppedBy.name}` : "Waivers"} · Clears ${fmtWaiverTime(add.waiver.clearsAt, tz, "long")}`
+                  : add.waiver?.reason === "all_adds"
+                    ? `Free agent · Next run ${fmtWaiverTime(add.waiver.clearsAt, tz, "long")}`
+                    : add.waiver
+                      ? `${add.waiver.reason === "game_started" ? "Game started" : add.waiver.droppedBy ? `Dropped by ${add.waiver.droppedBy.name}` : "Waivers"} · Clears ${fmtWaiverTime(add.waiver.clearsAt, tz, "long")}`
                     : "Free agent"}
               </p>
             </div>

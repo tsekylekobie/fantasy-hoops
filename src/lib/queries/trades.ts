@@ -687,7 +687,7 @@ export async function processTrade(pool: Pool, tradeId: number): Promise<Process
         `DELETE FROM roster_players WHERE league_id = $1 AND player_id = ANY($2)`,
         [t.league_id, dropped.map((m) => m.player_id)],
       );
-      if (dropDestination({ waiverDays: t.waiver_days, waiversAfterGameStart: false }) === "waivers") {
+      if (dropDestination({ waiverDays: t.waiver_days }) === "waivers") {
         await db.query(
           `INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
            SELECT $1, u.player_id, next_waiver_run($1, now() + make_interval(days => $3)), u.team_id

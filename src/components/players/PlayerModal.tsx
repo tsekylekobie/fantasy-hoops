@@ -221,7 +221,7 @@ function DetailHead({
           {injury && (
             <span className={`${styles.chip} ${injury.status === "Out" ? styles.chipOut : styles.chipDtd}`}>{fmtInjuryStatus(injury, todayIn(data.timeZone))}</span>
           )}
-          {owner === null && waiver && <span className={`${styles.chip} ${styles.chipWaivers}`}>On waivers</span>}
+          {owner === null && waiver && waiver.reason !== "all_adds" && <span className={`${styles.chip} ${styles.chipWaivers}`}>On waivers</span>}
         </h2>
         <p className={styles.subline}>
           {subline}
@@ -238,10 +238,12 @@ function DetailHead({
           <p className={styles.subline}>
             {waiver.reason === "game_started"
               ? "His game has started, so he's on waivers"
-              : waiver.droppedBy
-                ? `Dropped by ${waiver.droppedBy.name}`
-                : "Recently dropped"}{" "}
-            · Clears {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
+              : waiver.reason === "all_adds"
+                ? "Free agent, adds go by claim"
+                : waiver.droppedBy
+                  ? `Dropped by ${waiver.droppedBy.name}`
+                  : "Recently dropped"}{" "}
+            · {waiver.reason === "all_adds" ? "Next run" : "Clears"} {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
           </p>
         )}
       </div>

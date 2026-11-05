@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
 import type { Category, PlayerRow, PlayersResponse, RankTier, SortDir, SortKey, StatMode } from "@/lib/types";
-import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos, todayIn } from "./format";
+import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos, todayIn, waiverTooltip } from "./format";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "./ScrollName";
 import WatchStar from "./WatchStar";
@@ -239,8 +239,8 @@ function Row({
           <button
             type="button"
             className={`${styles.add} ${styles.claim}`}
-            aria-label={`Claim ${fullName(p)} (on waivers, clears ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")})`}
-            title={`On waivers until ${fmtWaiverTime(p.waiver.clearsAt, timeZone, "long")}`}
+            aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, timeZone)})`}
+            title={waiverTooltip(p.waiver, timeZone)}
             onClick={() => onAdd(p.id)}
           >
             Claim ({fmtWaiverTime(p.waiver.clearsAt, timeZone, "date")})

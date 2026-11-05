@@ -1,5 +1,5 @@
 // Number and label formatting shared by the players table and the player modal.
-import type { PlayerInjury, PlayerUpcomingGame } from "@/lib/types";
+import type { PlayerInjury, PlayerUpcomingGame, PlayerWaiver } from "@/lib/types";
 
 /** 0.492 -> ".492"; 1 -> "1.000"; null -> "—" */
 export function fmtPct(value: number | null): string {
@@ -125,4 +125,10 @@ export function fmtWaiverDays(days: number[]): string {
   if (set.size === 7) return "daily";
   if (set.size === 5 && [1, 2, 3, 4, 5].every((d) => set.has(d))) return "on weekdays";
   return `on ${[...set].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")}`;
+}
+
+/** Tooltip for a Claim button: when the claim is decided. */
+export function waiverTooltip(waiver: PlayerWaiver, timeZone: string): string {
+  const when = fmtWaiverTime(waiver.clearsAt, timeZone, "long");
+  return waiver.reason === "all_adds" ? `Free agent. Claims process ${when}` : `On waivers until ${when}`;
 }

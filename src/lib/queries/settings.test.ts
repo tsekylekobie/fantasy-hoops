@@ -6,7 +6,7 @@ import { parseSettings } from "./settings";
 
 const valid: LeagueSettings = {
   waiverType: "continual_rolling", waiverTime: "03:00", timeZone: "America/New_York",
-  waiverDaysOfWeek: [1, 2, 3, 4, 5, 6, 7], waiverDays: 2, waiversAfterGameStart: false,
+  waiverDaysOfWeek: [1, 2, 3, 4, 5, 6, 7], waiverDays: 2, waiversAfterGameStart: false, allAddsByClaim: false,
   faabBudget: 100, faabMinBid: 0,
   ilSlots: 2, ilStatuses: ["Out"], ilPlusSlots: 0, ilPlusStatuses: [], claimsIgnoreIlStatus: true,
   tradeReview: "league_vote", tradeReviewDays: 2, tradeVetoVotes: 4, tradeDeadline: null,
@@ -59,6 +59,9 @@ test("claims and IL status changes is a yes/no", () => {
   assert.equal(error({ claimsIgnoreIlStatus: false }), null);
   assert.ok(error({ claimsIgnoreIlStatus: undefined }));
   assert.ok(error({ claimsIgnoreIlStatus: "yes" }));
+  assert.equal(error({ allAddsByClaim: true }), null);
+  assert.ok(error({ allAddsByClaim: undefined }));
+  assert.ok(error({ allAddsByClaim: "yes" }));
 });
 
 test("veto votes leave out the two teams in the trade", () => {

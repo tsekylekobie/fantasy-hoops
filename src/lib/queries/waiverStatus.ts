@@ -18,6 +18,7 @@ export interface WaiverLeague {
   waiverDaysOfWeek: number[];
   waiverDays: number;
   waiversAfterGameStart: boolean;
+  allAddsByClaim: boolean;
   nextRunAt: string;
   faabBudget: number;
   faabMinBid: number;
@@ -27,19 +28,21 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
   const bySeason = "season" in where;
   const { rows: [r] } = await db.query<{
     id: number; season: number; waiver_type: WaiverOrder["type"]; time_zone: string; waiver_time: string;
-    waiver_days_of_week: number[]; waiver_days: number; waivers_after_game_start: boolean; next_run_at: string;
+    waiver_days_of_week: number[]; waiver_days: number; waivers_after_game_start: boolean; all_adds_by_claim: boolean;
+    next_run_at: string;
     faab_budget: number; faab_min_bid: number;
   }>(
     `SELECT id::int, season, waiver_type, time_zone, to_char(waiver_time, 'HH24:MI') AS waiver_time,
             waiver_days_of_week, waiver_days, faab_budget, faab_min_bid,
-            waivers_after_game_start, ${ISO("next_waiver_run(id, now())")} AS next_run_at
+            waivers_after_game_start, all_adds_by_claim, ${ISO("next_waiver_run(id, now())")} AS next_run_at
        FROM leagues WHERE ${bySeason ? "season" : "id"} = $1 ORDER BY id DESC LIMIT 1`,
     [bySeason ? where.season : where.leagueId],
   );
   if (!r) return null;
   return {
     id: r.id, season: r.season, type: r.waiver_type, timeZone: r.time_zone, waiverTime: r.waiver_time,
-    waiverDaysOfWeek: r.waiver_days_of_week, waiverDays: r.waiver_days, waiversAfterGameStart: r.waivers_after_game_start, nextRunAt: r.next_run_at,
+    waiverDaysOfWeek: r.waiver_days_of_week, waiverDays: r.waiver_days, waiversAfterGameStart: r.waivers_after_game_start,
+    allAddsByClaim: r.all_adds_by_claim, nextRunAt: r.next_run_at,
     faabBudget: r.faab_budget, faabMinBid: r.faab_min_bid,
   };
 }
@@ -56,9 +59,10 @@ export async function getTeamFaab(db: Db, teamId: number): Promise<FaabBudget | 
 }
 
 /**
- * Free agents on waivers in the season's league, by player id: recently
- * dropped players, plus (waivers_after_game_start) free agents whose game
- * today has tipped off. For the Players table and the player modal.
+ * Free agents who can only be claimed in the season's league, by player id:
+ * recently dropped players, plus (waivers_after_game_start) free agents whose
+ * game today has tipped off, plus (all_adds_by_claim) every other free agent.
+ * For the Players table and the player modal.
  */
 export async function getWaiverStatus(db: Pool, season: number): Promise<{ timeZone: string; players: Map<number, PlayerWaiver> }> {
   const league = await getWaiverLeague(db, { season });
@@ -72,16 +76,18 @@ export async function getWaiverStatus(db: Pool, season: number): Promise<{ timeZ
        FROM waiver_players w LEFT JOIN fantasy_teams ft ON ft.id = w.dropped_by_team_id
       WHERE w.league_id = $1
      UNION ALL
-     SELECT p.id, ${ISO("next_waiver_run($1, now())")}, 'game_started', NULL, NULL, NULL, NULL
+     SELECT p.id, $5, CASE WHEN s.started THEN 'game_started' ELSE 'all_adds' END, NULL, NULL, NULL, NULL
        FROM players p
-      WHERE $2
-        AND EXISTS (SELECT 1 FROM games g
+      CROSS JOIN LATERAL (
+        SELECT $2::boolean AND EXISTS (SELECT 1 FROM games g
                      WHERE g.date = (now() AT TIME ZONE $3)::date AND NOT g.postponed
                        AND p.team_id IN (g.home_team_id, g.visitor_team_id)
-                       AND coalesce(g.status_state <> 'scheduled' OR g.datetime <= now(), false))
+                       AND coalesce(g.status_state <> 'scheduled' OR g.datetime <= now(), false)) AS started
+      ) s
+      WHERE (s.started OR $4::boolean)
         AND NOT EXISTS (SELECT 1 FROM roster_players rp WHERE rp.league_id = $1 AND rp.player_id = p.id)
         AND NOT EXISTS (SELECT 1 FROM waiver_players w WHERE w.league_id = $1 AND w.player_id = p.id)`,
-    [league.id, league.waiversAfterGameStart, league.timeZone],
+    [league.id, league.waiversAfterGameStart, league.timeZone, league.allAddsByClaim, league.nextRunAt],
   );
   for (const r of rows) {
     players.set(r.player_id, {
