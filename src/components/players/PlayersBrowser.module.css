@@ -159,10 +159,11 @@
 .select {
   height: 44px;
   max-width: 100%;
-  padding: 0 14px;
+  padding: 0 38px 0 16px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: var(--surface);
+  appearance: none;
+  background: var(--surface) var(--select-caret) no-repeat right 16px center / 12px;
   color: var(--ink);
   font: inherit;
   font-size: 13px;

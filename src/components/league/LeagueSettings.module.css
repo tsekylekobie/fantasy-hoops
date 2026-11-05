@@ -221,6 +221,12 @@
   min-width: 0;
 }
 
+select.inp {
+  padding-right: 34px;
+  appearance: none;
+  background: var(--surface) var(--select-caret) no-repeat right 12px center / 12px;
+}
+
 .num {
   width: 96px;
   font-variant-numeric: tabular-nums;
