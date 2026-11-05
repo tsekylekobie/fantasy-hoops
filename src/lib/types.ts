@@ -796,6 +796,8 @@ export interface PlayerWaiver {
 
 /** Per-game averages over one StatRange (MIN and GP beside the categories). */
 export interface RangeAverages extends CategoryLine {
+  /** 9CAT rank over the range, as the Players page ranks him with the user's punt weights. */
+  rank: number;
   gp: number;
   min: number;
 }

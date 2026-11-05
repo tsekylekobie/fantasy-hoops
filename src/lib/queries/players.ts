@@ -236,21 +236,28 @@ export async function getTotalsFor(
   return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
 }
 
-/** Per-game averages of `playerIds` over each StatRange; every range is null without games. */
-export async function getAveragesByRange(db: Pool, season: number, playerIds: number[]): Promise<Map<number, AveragesByRange>> {
+/**
+ * Per-game averages and 9CAT rank of `playerIds` over each StatRange; every range is null without games.
+ * Ranks are the Players page's: among every player with a game in the range, with `weights`.
+ */
+export async function getAveragesByRange(
+  db: Pool, season: number, playerIds: number[], weights: CategoryWeights,
+): Promise<Map<number, AveragesByRange>> {
   if (playerIds.length === 0) return new Map();
-  const rowsOver = async (range: StatRange) => {
+  const over = async (range: StatRange) => {
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
-    if (days !== null && window === null) return new Map<number, SeasonPlayerRow>();
-    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, playerIds]);
-    return new Map(rows.map((r) => [r.player_id, r]));
+    if (days !== null && window === null) return () => null;
+    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null]);
+    const values = valuePlayers(rows.map(toTotals), weights);
+    const byId = new Map(rows.map((r) => [r.player_id, r]));
+    return (id: number): RangeAverages | null => {
+      const r = byId.get(id);
+      return r ? { gp: r.gp, rank: values.get(id)!.rank, ...categoryLine(r, "avg") } : null;
+    };
   };
-  const [all, last30, last14] = await Promise.all([rowsOver("season"), rowsOver("last30"), rowsOver("last14")]);
-  const averages = (r: SeasonPlayerRow | undefined): RangeAverages | null => (r ? { gp: r.gp, ...categoryLine(r, "avg") } : null);
-  return new Map(playerIds.map((id) => [id, {
-    season: averages(all.get(id)), last30: averages(last30.get(id)), last14: averages(last14.get(id)),
-  }]));
+  const [all, last30, last14] = await Promise.all([over("season"), over("last30"), over("last14")]);
+  return new Map(playerIds.map((id) => [id, { season: all(id), last30: last30(id), last14: last14(id) }]));
 }
 
 /** The last-14-days window for `season` (see WINDOW_SQL); null before any game is played. */

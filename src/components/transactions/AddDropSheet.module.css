@@ -87,7 +87,7 @@
 /* 9CAT season line */
 .line {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   margin: 0;
   padding: 12px 24px;
   background: var(--surface-muted);
@@ -192,11 +192,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 22px 48px minmax(180px, 1fr) 30px 40px repeat(2, 54px) repeat(7, 42px);
+  grid-template-columns: 22px 48px minmax(180px, 1fr) 34px 30px 40px repeat(2, 54px) repeat(7, 42px);
   column-gap: 6px;
   align-items: center;
   padding: 0 12px;
-  min-width: 720px;
+  min-width: 760px;
 }
 
 .header {
@@ -212,7 +212,7 @@
 
 .group {
   padding: 10px 12px 6px;
-  min-width: 720px;
+  min-width: 760px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
@@ -544,13 +544,13 @@
     border-radius: 0;
   }
   .grid {
-    grid-template-columns: 22px 44px 124px 28px 38px repeat(2, 52px) repeat(7, 40px);
+    grid-template-columns: 22px 44px 124px 32px 28px 38px repeat(2, 52px) repeat(7, 40px);
     column-gap: 4px;
     padding: 0 12px 0 0;
-    min-width: 650px;
+    min-width: 686px;
   }
   .group {
-    min-width: 650px;
+    min-width: 686px;
   }
   .group span {
     position: sticky;

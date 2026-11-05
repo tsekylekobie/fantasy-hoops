@@ -15,7 +15,7 @@ import { fetchJson, fmtAvg, fmtInjuryStatus, fmtPct, fmtWaiverTime, fullName, te
 import { isIlSlot } from "@/lib/lineup/rules";
 import { faabBidProblem } from "@/lib/transactions/policy";
 import { STARTING_SLOTS } from "@/lib/types";
-import type { CategoryLine, RangeAverages, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext, StatRange } from "@/lib/types";
+import type { RangeAverages, RosterMoveOption, RosterMoveRequest, RosterMoveResult, RosterMovesContext, StatRange } from "@/lib/types";
 import styles from "./AddDropSheet.module.css";
 
 interface Props {
@@ -342,8 +342,9 @@ export default function AddDropSheet({ playerId, onClose, onDone }: Props) {
   );
 }
 
-function Line({ data, range }: { data: CategoryLine | null; range: StatRange }) {
+function Line({ data, range }: { data: RangeAverages | null; range: StatRange }) {
   const tiles: [string, string][] = [
+    ["#", data ? String(data.rank) : "—"],
     ["FG%", data ? fmtPct(data.fgPct) : "—"],
     ["FT%", data ? fmtPct(data.ftPct) : "—"],
     ["3PM", data ? fmtAvg(data.fg3m) : "—"],
@@ -387,6 +388,7 @@ function DropTable({ players, pick, onPick, range, onRange }: {
       <div className={styles.table} role="radiogroup" aria-label="Player to drop">
         <div className={`${styles.grid} ${styles.header}`} aria-hidden="true">
           <span /><span>Slot</span><span>Player</span>
+          <span className={styles.num} title="9CAT rank">#</span>
           {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((h) => (
             <span key={h} className={styles.num}>{h}</span>
           ))}
@@ -433,6 +435,7 @@ function DropRow({ p, line, checked, onPick }: { p: RosterMoveOption; line: Rang
       </span>
       {line ? (
         <>
+          <span className={styles.num}>{line.rank}</span>
           <span className={styles.num}>{line.gp}</span>
           <span className={styles.num}>{fmtAvg(line.min)}</span>
           {shooting(line.fgPct, line.fgm, line.fga)}

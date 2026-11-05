@@ -9,6 +9,7 @@ import { getSession } from "@/lib/auth/session";
 import { pool } from "@/lib/db";
 import { getUserTeam, loadValues, type TeamContext } from "@/lib/queries/lineup";
 import { getRosterMovesContext, runRosterMove } from "@/lib/queries/transactions";
+import { getWeights } from "@/lib/queries/weights";
 import { CURRENT_SEASON } from "@/lib/types";
 import { NO_STORE, errorResponse, handleError } from "../lineup/shared";
 
@@ -33,7 +34,8 @@ export async function GET(req: Request) {
     const add = raw === null ? null : Number(raw);
     if (add !== null && !(Number.isInteger(add) && add > 0)) return errorResponse("add must be a player id", 400);
     const values = await loadValues(pool, who.team.season);
-    const body = await getRosterMovesContext(pool, who.team, values, add);
+    const weights = await getWeights(pool, who.userId);
+    const body = await getRosterMovesContext(pool, who.team, values, add, weights);
     if (!body) return errorResponse("Player not found.", 404);
     return NextResponse.json(body, { headers: NO_STORE });
   } catch (err) {

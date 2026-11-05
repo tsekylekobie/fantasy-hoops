@@ -34,6 +34,7 @@ import { addMode, dropDestination, faabBidProblem, waiverReason, type MovePolicy
 import type {
   AddCandidate,
   AveragesByRange,
+  CategoryWeights,
   PlayerWaiver,
   PlayerOwner,
   PlayerSummary,
@@ -220,7 +221,7 @@ function rosterOptions(team: TeamContext, day: DayState, averages: Map<number, A
 
 /** The add/drop sheet's data: the manager's roster today, limits, and optionally the player to add. */
 export async function getRosterMovesContext(
-  pool: Pool, team: TeamContext, values: Values, addPlayerId: number | null,
+  pool: Pool, team: TeamContext, values: Values, addPlayerId: number | null, weights: CategoryWeights,
 ): Promise<RosterMovesContext | null> {
   await withTeamLock(pool, team.teamId, (db) => freezeLineups(db, team.teamId));
   const [day, rules, adds, target, faab] = await Promise.all([
@@ -231,7 +232,7 @@ export async function getRosterMovesContext(
     getTeamFaab(pool, team.teamId),
   ]);
   if (addPlayerId !== null && !target) return null;
-  const averages = await getAveragesByRange(pool, team.season, [...day.players.map((p) => p.id), ...(target ? [target.id] : [])]);
+  const averages = await getAveragesByRange(pool, team.season, [...day.players.map((p) => p.id), ...(target ? [target.id] : [])], weights);
 
   let add: AddCandidate | null = null;
   if (target) {
