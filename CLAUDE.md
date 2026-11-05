@@ -61,6 +61,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `injured=hide` defaults to showing them).
 - Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`); the player modal shows
   his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
+  Past seasons show his rank each season at `DEFAULT_WEIGHTS` (`pastSeasonRanks`, cached in memory).
   Stat cells and Value are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game
   z-scores (`Valuation.tiers` in `value.ts`, `PlayerRow.tiers`), so green/red means better/worse than a rostered player.
   In Totals mode the stats are placed among the pool's season totals instead (`totalTiers`; FG%/FT% by total impact),

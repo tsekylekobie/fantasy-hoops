@@ -7,7 +7,7 @@ import Avatar from "@/components/Avatar";
 import TeamBadge from "@/components/TeamBadge";
 import { useSignedIn } from "@/components/SessionProvider";
 import type {
-  PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PlayerTransaction, PlayerWeek, SeasonRow,
+  PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PastSeasonRow, PlayerTransaction, PlayerWeek,
 } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
@@ -471,6 +471,9 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
                 <thead>
                   <tr>
                     <th scope="col">Season</th>
+                    <th scope="col" className={styles.n} title="9CAT rank that season (default weights)">
+                      Rank
+                    </th>
                     {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (
                       <th key={c} scope="col" className={styles.n}>
                         {c}
@@ -710,10 +713,11 @@ function weekGameText(g: PlayerWeek["games"][number], timeZone: string): string 
   return `${result}${score || "Final"}`;
 }
 
-function SeasonLine({ s }: { s: SeasonRow }) {
+function SeasonLine({ s }: { s: PastSeasonRow }) {
   return (
     <tr>
       <td>{seasonLabel(s.season)}</td>
+      <td className={styles.n}>{s.rank === null ? "—" : `#${s.rank}`}</td>
       <td className={styles.n}>{fmtInt(s.gp)}</td>
       <td className={styles.n}>{fmtAvg(s.min)}</td>
       <td className={styles.n}>{fmtPct(s.fgPct)}</td>

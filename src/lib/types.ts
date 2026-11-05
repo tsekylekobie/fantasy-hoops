@@ -211,6 +211,12 @@ export interface SeasonRow extends CategoryLine {
   min: number;
 }
 
+/** A finished season's averages, with his 9CAT rank that season. */
+export interface PastSeasonRow extends SeasonRow {
+  /** Rank among every player with a game that season, at DEFAULT_WEIGHTS (not your punt weights); null if unranked. */
+  rank: number | null;
+}
+
 /** One fantasy news update (ESPN / Rotowire). */
 export interface PlayerNewsItem {
   id: string;
@@ -248,7 +254,7 @@ export interface PlayerDetailResponse {
   /** Newest game first. */
   gameLog: GameLogRow[];
   /** Seasons before `season`, newest first. */
-  pastSeasons: SeasonRow[];
+  pastSeasons: PastSeasonRow[];
   /** His games in the league's current matchup week; null outside the schedule. */
   thisWeek: PlayerWeek | null;
   /** Every completed move of his in the season's league, newest first. */

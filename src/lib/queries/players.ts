@@ -15,6 +15,7 @@ import type {
   CategoryWeights,
   GameLogRow,
   PlayDay,
+  PastSeasonRow,
   PlayerDetailResponse,
   PlayerOwner,
   PlayerRanks,
@@ -28,6 +29,7 @@ import type {
   StatMode,
   StatRange,
 } from "../types";
+import { DEFAULT_WEIGHTS } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals, type Valuation } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
@@ -397,6 +399,24 @@ async function getRanks(db: Pool, playerId: number, season: number, weights: Cat
   return { season: all, last30, last14 };
 }
 
+// Ranks for finished seasons barely change (only a stats backfill moves them), so keep each season's for a while.
+const PAST_RANKS_TTL_MS = 6 * 60 * 60 * 1000;
+const pastRanksCache = new Map<number, { at: number; ranks: Promise<Map<number, number>> }>();
+
+/** Every player's 9CAT rank in a finished `season`, at DEFAULT_WEIGHTS. */
+function pastSeasonRanks(db: Pool, season: number): Promise<Map<number, number>> {
+  const hit = pastRanksCache.get(season);
+  if (hit && Date.now() - hit.at < PAST_RANKS_TTL_MS) return hit.ranks;
+  const ranks = db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]).then(({ rows }) => {
+    const out = new Map<number, number>();
+    for (const [id, v] of valuePlayers(rows.map(toTotals), DEFAULT_WEIGHTS)) out.set(id, v.rank);
+    return out;
+  });
+  ranks.catch(() => pastRanksCache.delete(season));
+  pastRanksCache.set(season, { at: Date.now(), ranks });
+  return ranks;
+}
+
 /** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
  *  Ranks use `weights`. Returns null when the player id does not exist. */
 export async function getPlayerDetail(
@@ -462,6 +482,12 @@ export async function getPlayerDetail(
   if (!p) return null;
 
   const current = seasonsRes.rows.find((r) => r.season === season);
+  const past = seasonsRes.rows.filter((r) => r.season < season);
+  const pastRanks = await Promise.all(past.map((r) => pastSeasonRanks(db, r.season)));
+  const pastSeasons: PastSeasonRow[] = past.map((r, i) => ({
+    ...seasonRow(r.season, r),
+    rank: pastRanks[i].get(playerId) ?? null,
+  }));
   const gameLog: GameLogRow[] = logRes.rows.map((r) => ({
     gameId: r.game_id,
     date: r.date,
@@ -491,7 +517,7 @@ export async function getPlayerDetail(
     seasonAverages: current ? seasonRow(season, current) : null,
     ranks,
     gameLog,
-    pastSeasons: seasonsRes.rows.filter((r) => r.season < season).map((r) => seasonRow(r.season, r)),
+    pastSeasons,
     watched: userId === null ? null : watched.has(p.id),
   };
 }
