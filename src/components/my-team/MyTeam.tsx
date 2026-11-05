@@ -477,6 +477,8 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
         )}
       </div>
 
+      {!readOnly && <MyClaims />}
+
       <div className={styles.days} role="group" aria-label="Lineup day">
         <span className={styles.daysLabel}>
           {data.week ? `${data.week.isPlayoffs ? "Playoffs · " : ""}Week ${data.week.week}` : "Off week"}
@@ -587,7 +589,6 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
         {!readOnly && " Changes save right away and carry forward to later days until a day you set separately."}
       </p>
       {!readOnly && <TradesPanel scope="mine" />}
-      {!readOnly && <MyClaims />}
       {(!readOnly || canEditProfile) && (
         <EditTeamSheet
           team={data.team}
