@@ -5,7 +5,8 @@
 // decided in the last week with why any failed. In FAAB leagues each pending
 // claim shows its bid, editable in place, and the list is in bid order: the
 // arrows only reorder claims with the same bid, the one thing the manager's
-// own order decides. API: /api/team/claims.
+// own order decides. Collapsed by default; the header still says how many are
+// pending, so they aren't missed. API: /api/team/claims.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchJson, fmtWaiverDays, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
@@ -23,6 +24,7 @@ export default function MyClaims() {
   const [data, setData] = useState<MyClaimsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -72,89 +74,106 @@ export default function MyClaims() {
   if (!data) {
     return (
       <section className={styles.card} aria-labelledby="my-claims-heading">
-        <h3 id="my-claims-heading">My claims</h3>
-        <p className={styles.empty} role={error ? "alert" : "status"}>{error ?? "Loading claims…"}</p>
+        <div className={styles.hd}>
+          <h3 id="my-claims-heading">My claims</h3>
+          <p className={styles.sub} role={error ? "alert" : "status"}>{error ?? "Loading claims…"}</p>
+        </div>
       </section>
     );
   }
 
   const tz = data.timeZone;
   const faab = data.faab;
+  const pending = data.pending.length;
   return (
     <section className={styles.card} aria-labelledby="my-claims-heading" id="claims">
-      <div className={styles.hd}>
-        <h3 id="my-claims-heading">My claims</h3>
-        <p className={styles.sub}>
-          Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {fmtWaiverTime(data.nextRunAt, tz, "long").split(" · ")[1]}
-          {faab && ` · FAAB $${faab.balance} of $${faab.budget} left`}
-          {data.waiverPriority !== null && ` · ${faab ? "Priority on tied bids" : "Your waiver priority"} ${data.waiverPriority} of ${data.teamCount}`}
-        </p>
-      </div>
+      <h3 id="my-claims-heading">
+        <button
+          type="button"
+          className={styles.toggle}
+          aria-expanded={open}
+          aria-controls="my-claims-body"
+          onClick={() => setOpen((o) => !o)}
+        >
+          My claims
+          <span className={`${styles.status} ${pending > 0 ? styles.pending : styles.cancelled}`}>
+            {pending > 0 ? `${pending} pending` : "None pending"}
+          </span>
+          <span className={styles.sub}>
+            Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {fmtWaiverTime(data.nextRunAt, tz, "long").split(" · ")[1]}
+            {faab && ` · FAAB $${faab.balance} of $${faab.budget} left`}
+            {data.waiverPriority !== null && ` · ${faab ? "Priority on tied bids" : "Your waiver priority"} ${data.waiverPriority} of ${data.teamCount}`}
+          </span>
+          <span className={styles.chevron} aria-hidden="true" />
+        </button>
+      </h3>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      {data.pending.length === 0 ? (
-        <p className={styles.empty}>
-          No pending claims. Players on waivers have a Claim button on <Link href="/players">Players</Link>.
-        </p>
-      ) : (
-        <>
-          <p className={styles.lede}>
-            {faab
-              ? "Highest bids are tried first. Bids are blind, you pay only for claims you win, and each is checked against what you have left when the run gets to it. Use the arrows to choose which of your claims with the same bid goes first."
-              : "When more than one of your claims processes in the same run, they’re tried top to bottom."}
+      <div id="my-claims-body" hidden={!open}>
+        {pending === 0 ? (
+          <p className={styles.empty}>
+            No pending claims. Players on waivers have a Claim button on <Link href="/players">Players</Link>.
           </p>
-          <ol className={styles.list}>
-            {data.pending.map((c, i) => (
-              <li
-                key={c.id}
-                className={`${styles.claim} ${faab && i > 0 && data.pending[i - 1].bid !== c.bid ? styles.newBid : ""}`}
-              >
-                <span className={styles.rank}>{i + 1}</span>
-                <Players c={c} />
-                <span className={styles.when}>Processes {fmtWaiverTime(c.processAt, tz, "long")}</span>
-                <span className={styles.actions}>
-                  {faab && <BidInput claim={c} faab={faab} disabled={saving} onSave={(bid) => setBid(c.id, bid)} />}
-                  <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || !canSwap(i, i - 1)} onClick={() => move(i, -1)}>
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.icon}
-                    aria-label={`Move ${fullName(c.add)} claim down`}
-                    disabled={saving || !canSwap(i, i + 1)}
-                    onClick={() => move(i, 1)}
-                  >
-                    ↓
-                  </button>
-                  <button type="button" className={styles.btn} disabled={saving} onClick={() => cancel(c.id)}>
-                    Cancel
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-      {data.recent.length > 0 && (
-        <>
-          <h4 className={styles.h4}>Last 7 days</h4>
-          <ul className={styles.list}>
-            {data.recent.map((c) => {
-              const s = STATUS[c.status as keyof typeof STATUS];
-              return (
-                <li key={c.id} className={styles.claim}>
-                  <span className={`${styles.status} ${s.className}`}>
-                    {s.label}
-                    {c.status === "completed" && c.bid !== null && ` $${c.bid}`}
+        ) : (
+          <>
+            <p className={styles.lede}>
+              {faab
+                ? "Highest bids are tried first. Bids are blind, you pay only for claims you win, and each is checked against what you have left when the run gets to it. Use the arrows to choose which of your claims with the same bid goes first."
+                : "When more than one of your claims processes in the same run, they’re tried top to bottom."}
+            </p>
+            <ol className={styles.list}>
+              {data.pending.map((c, i) => (
+                <li
+                  key={c.id}
+                  className={`${styles.claim} ${faab && i > 0 && data.pending[i - 1].bid !== c.bid ? styles.newBid : ""}`}
+                >
+                  <span className={styles.rank}>{i + 1}</span>
+                  <Players c={c} />
+                  <span className={styles.when}>Processes {fmtWaiverTime(c.processAt, tz, "long")}</span>
+                  <span className={styles.actions}>
+                    {faab && <BidInput claim={c} faab={faab} disabled={saving} onSave={(bid) => setBid(c.id, bid)} />}
+                    <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || !canSwap(i, i - 1)} onClick={() => move(i, -1)}>
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.icon}
+                      aria-label={`Move ${fullName(c.add)} claim down`}
+                      disabled={saving || !canSwap(i, i + 1)}
+                      onClick={() => move(i, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" className={styles.btn} disabled={saving} onClick={() => cancel(c.id)}>
+                      Cancel
+                    </button>
                   </span>
-                  <Players c={c} reason={c.status === "failed" ? c.failureReason : null} />
-                  <span className={styles.when}>{c.processedAt ? fmtWaiverTime(c.processedAt, tz, "long") : ""}</span>
-                  <span />
                 </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+              ))}
+            </ol>
+          </>
+        )}
+        {data.recent.length > 0 && (
+          <>
+            <h4 className={styles.h4}>Last 7 days</h4>
+            <ul className={styles.list}>
+              {data.recent.map((c) => {
+                const s = STATUS[c.status as keyof typeof STATUS];
+                return (
+                  <li key={c.id} className={styles.claim}>
+                    <span className={`${styles.status} ${s.className}`}>
+                      {s.label}
+                      {c.status === "completed" && c.bid !== null && ` $${c.bid}`}
+                    </span>
+                    <Players c={c} reason={c.status === "failed" ? c.failureReason : null} />
+                    <span className={styles.when}>{c.processedAt ? fmtWaiverTime(c.processedAt, tz, "long") : ""}</span>
+                    <span />
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </div>
     </section>
   );
 }
