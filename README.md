@@ -183,6 +183,8 @@ the league's Yahoo pages instead of an export. The folder has `league.json` inst
 
 `league-settings.json` and `player-overrides.csv` work as above. Run `npm run yahoo:import -- <folder>` the same way;
 it reports every problem in the files first. Transactions and waivers aren't carried over this way.
+To build or refresh this folder from Yahoo's pages, run the `/yahoo-csv-refresh <league-id>` skill in Claude Code
+([.claude/skills/yahoo-csv-refresh/SKILL.md](.claude/skills/yahoo-csv-refresh/SKILL.md)).
 
 ## Deploying (Railway)
 
