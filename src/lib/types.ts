@@ -1263,7 +1263,7 @@ export interface BoxScorePlayer {
   owner: PlayerOwner | null;
   /** Set when he's a free agent on waivers: adding him is a claim. */
   waiver: PlayerWaiver | null;
-  /** His line, plus personal fouls (shown, not a category); null = on the box score with 0 minutes (DNP). */
+  /** His line, plus personal fouls (shown, not a category). Not null in practice: DNP (0-minute) lines are left off the box score. */
   line: (CategoryLine & { min: number; pf: number }) | null;
   /** Value of this one game (the Players page's per-game scale and your punt weights); null for DNP. */
   value: number | null;
@@ -1276,7 +1276,7 @@ export interface BoxScoreTeam {
   abbreviation: string;
   /** Null before tip-off. */
   score: number | null;
-  /** Players by Value, best first; DNP last. */
+  /** Players by Value, best first; players who did not play (0 minutes) are left off. */
   players: BoxScorePlayer[];
   totals: CategoryLine & { min: number; pf: number };
 }

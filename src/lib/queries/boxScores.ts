@@ -4,7 +4,7 @@
 // played that date. `rankDay` is pure (tested).
 //
 // Rules: a player is on a box score once he has a stat row for the game;
-// 0 minutes = DNP (no ranks). In-progress games count with their stats so far.
+// 0 minutes = DNP, left off the box score. In-progress games count with their stats so far.
 // FG% and FT% rank by impact (makes above the pool's percentage, weighted by
 // attempts: the category z), so 4/5 beats 1/1; no attempts, no rank. Fewer
 // turnovers ranks higher.
@@ -231,7 +231,7 @@ export async function getBoxScores(
 
   const team = (g: GameRow, home: boolean): BoxScoreTeam => {
     const teamId = home ? g.home_team_id : g.visitor_team_id;
-    const rows = statsRes.rows.filter((r) => r.game_id === g.id && r.team_id === teamId);
+    const rows = statsRes.rows.filter((r) => r.game_id === g.id && r.team_id === teamId && r.min > 0);
     const totals = emptyTotals();
     const players: BoxScorePlayer[] = rows.map((r) => {
       const line = r.min > 0 ? toLine(r) : null;
