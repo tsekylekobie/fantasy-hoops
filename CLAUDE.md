@@ -98,7 +98,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   appears (its page, or /my-team for yours); in a row that links elsewhere (scoreboard pairings, bracket games), that
   row's link is a cover over the row and the names sit above it, never nested links. Wide tables (Players, Box scores) use
   `table/StickyHeadTable` (sideways scroll, header pinned to the page via a measured copy, `data-scrolled` once
-  scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled).
+  scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled); My team's roster sets `data-scrolled` itself and also hides headshots then).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
   value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).

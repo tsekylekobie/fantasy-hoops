@@ -24,6 +24,7 @@ import Avatar from "@/components/Avatar";
 import SiteHeader from "@/components/SiteHeader";
 import TeamBadge from "@/components/TeamBadge";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
+import ScrollName from "@/components/players/ScrollName";
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
@@ -396,10 +397,10 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
         <span className={styles.player}>
           {p ? (
             <PlayerButton playerId={p.id}>
-              <Avatar player={p} size={38} />
+              <span className={styles.headshot}><Avatar player={p} size={38} /></span>
               <span className={styles.who}>
                 <span className={styles.name} data-player-name>
-                  {fullName(p)}
+                  <ScrollName firstName={p.firstName} lastName={p.lastName} />
                   {p.injury && (
                     <span className={`${styles.status} ${p.injury.status === "Out" ? styles.out : styles.dtd}`}>{fmtInjuryStatus(p.injury, todayIn())}</span>
                   )}
@@ -550,7 +551,8 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
         </div>
       )}
 
-      <div className={styles.table}>
+      {/* Scrolled sideways (phones), names shorten and headshots drop out (ScrollName, as on Players). */}
+      <div className={styles.table} onScroll={(e) => e.currentTarget.toggleAttribute("data-scrolled", e.currentTarget.scrollLeft > 2)}>
         <div className={`${styles.grid} ${styles.header}`}>
           <span>Slot</span><span>Player</span><span className={styles.game}>{isToday ? "Today" : shortDay(data.date)}</span>
           <span className={styles.weekCell}>

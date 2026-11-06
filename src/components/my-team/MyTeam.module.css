@@ -398,6 +398,11 @@
   display: none;
 }
 
+.headshot {
+  display: flex;
+  flex: none;
+}
+
 .emptyAvatar {
   width: 38px;
   height: 38px;
@@ -696,6 +701,16 @@
   }
 
   .player > [aria-hidden="true"] {
+    display: none;
+  }
+
+  /* Headshots show until the stats are scrolled sideways, then drop out with
+     the name shortening (ScrollName) to give the stats room. */
+  .player button {
+    gap: 8px;
+  }
+
+  .table[data-scrolled] .headshot {
     display: none;
   }
 
