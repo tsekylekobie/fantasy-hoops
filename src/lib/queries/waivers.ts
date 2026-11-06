@@ -400,12 +400,9 @@ export async function resolveRunTime(pool: Pool, leagueId: number, at: string): 
 
 interface ClaimRow {
   id: number;
-  status: WaiverClaim["status"];
-  claim_rank: number | null;
+  claim_rank: number;
   faab_bid: number | null;
   process_at: string;
-  processed_at: string | null;
-  failure_reason: string | null;
   created_at: string;
   player_id: number;
   first_name: string;
@@ -416,13 +413,13 @@ interface ClaimRow {
   is_add: boolean;
 }
 
-/** The team's pending claims (rank order) and the ones processed or cancelled in the last 7 days. */
+/** The team's pending claims, in the order the waiver run tries them. */
 export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClaimsResponse> {
   const [league, { rows }] = await Promise.all([
     getWaiverLeague(pool, { leagueId: team.leagueId }),
     pool.query<ClaimRow>(
-      `SELECT t.id::int, t.status, t.claim_rank, t.faab_bid, ${ISO("t.process_at")} AS process_at,
-              ${ISO("t.processed_at")} AS processed_at, t.failure_reason, ${ISO("t.created_at")} AS created_at,
+      `SELECT t.id::int, t.claim_rank, t.faab_bid, ${ISO("t.process_at")} AS process_at,
+              ${ISO("t.created_at")} AS created_at,
               p.id AS player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
               nt.abbreviation AS team_abbr, tp.to_team_id IS NOT NULL AS is_add
          FROM transactions t
@@ -430,7 +427,7 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
          JOIN players p ON p.id = tp.player_id
          LEFT JOIN teams nt ON nt.id = p.team_id
         WHERE t.team_id = $1 AND t.type = 'waiver_claim'
-          AND (t.status = 'pending' OR t.processed_at > now() - interval '7 days')
+          AND t.status = 'pending'
         ORDER BY t.id`,
       [team.teamId],
     ),
@@ -451,18 +448,16 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
     let c = claims.get(r.id);
     if (!c) {
       c = {
-        id: r.id, status: r.status, rank: r.status === "pending" ? r.claim_rank : null,
-        // A pending bid shows only in FAAB leagues; a won claim shows what it cost.
-        bid: r.status === "completed" || (r.status === "pending" && faab) ? r.faab_bid : null,
-        add: player, drop: null, processAt: r.process_at, processedAt: r.processed_at,
-        failureReason: r.failure_reason, createdAt: r.created_at,
+        id: r.id, rank: r.claim_rank,
+        // Bids show only in FAAB leagues.
+        bid: faab ? r.faab_bid : null,
+        add: player, drop: null, processAt: r.process_at, createdAt: r.created_at,
       };
       claims.set(r.id, c);
     }
     if (r.is_add) c.add = player;
     else c.drop = player;
   }
-  const all = [...claims.values()];
   return {
     timeZone: league!.timeZone,
     waiverTime: league!.waiverTime,
@@ -472,9 +467,8 @@ export async function getMyClaims(pool: Pool, team: TeamContext): Promise<MyClai
     teamCount: tc.n,
     faab,
     // The order the run tries them: FAAB by bid, then the team's own ranking.
-    pending: all.filter((c) => c.status === "pending")
-      .sort((a, b) => (faab ? (b.bid ?? 0) - (a.bid ?? 0) : 0) || (a.rank ?? 0) - (b.rank ?? 0) || a.id - b.id),
-    recent: all.filter((c) => c.status !== "pending").sort((a, b) => (b.processedAt ?? "").localeCompare(a.processedAt ?? "") || b.id - a.id),
+    pending: [...claims.values()]
+      .sort((a, b) => (faab ? (b.bid ?? 0) - (a.bid ?? 0) : 0) || a.rank - b.rank || a.id - b.id),
   };
 }
 

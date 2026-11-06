@@ -1,4 +1,4 @@
-// GET /api/team/claims          the signed-in manager's pending and recent waiver claims
+// GET /api/team/claims          the signed-in manager's pending waiver claims
 // PUT /api/team/claims { order } reorder the pending claims (first = tried first)
 // Contract: MyClaimsResponse and ClaimOrderRequest in src/lib/types.ts. Claims are
 // placed through POST /api/team/transactions; the run is src/lib/queries/waivers.ts.

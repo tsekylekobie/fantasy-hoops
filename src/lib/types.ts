@@ -1072,26 +1072,23 @@ export interface FaabBudget {
   balance: number;
 }
 
-/** One of the manager's waiver claims. */
+/** One of the manager's pending waiver claims. */
 export interface WaiverClaim {
   id: number;
-  status: "pending" | "completed" | "failed" | "cancelled";
-  /** The team's preference order among its pending claims, 1 = first; null once processed. */
-  rank: number | null;
-  /** FAAB bid (pending), or what a won claim cost; null when the league isn't FAAB. */
+  /** The team's preference order among its pending claims, 1 = first. */
+  rank: number;
+  /** FAAB bid; null when the league isn't FAAB. */
   bid: number | null;
   add: PlayerSummary;
   drop: PlayerSummary | null;
-  /** ISO UTC: when it processes (pending) or processed. */
+  /** ISO UTC: when it processes. */
   processAt: string;
-  processedAt: string | null;
-  failureReason: string | null;
   createdAt: string;
 }
 
 /**
- * GET /api/team/claims: the signed-in manager's pending claims in rank order,
- * and claims processed in the last 7 days, newest first.
+ * GET /api/team/claims: the signed-in manager's pending claims in the order the
+ * waiver run tries them.
  */
 export interface MyClaimsResponse {
   timeZone: string;
@@ -1105,7 +1102,6 @@ export interface MyClaimsResponse {
   /** Set when the league runs FAAB waivers: bids decide claims, the waiver priority breaks ties. */
   faab: FaabBudget | null;
   pending: WaiverClaim[];
-  recent: WaiverClaim[];
 }
 
 /**

@@ -1,24 +1,17 @@
 "use client";
 
 // My team's "My claims": the manager's pending waiver claims in the order the
-// waiver run tries them (reorder with the arrows, or cancel), and the claims
-// decided in the last week with why any failed. In FAAB leagues each pending
-// claim shows its bid, editable in place, and the list is in bid order: the
-// arrows only reorder claims with the same bid, the one thing the manager's
-// own order decides. Collapsed by default; the header still says how many are
-// pending, so they aren't missed. API: /api/team/claims.
-import Link from "next/link";
+// waiver run tries them (reorder with the arrows, or cancel). Shown only while
+// a claim is pending. In FAAB leagues each claim shows its bid, editable in
+// place, and the list is in bid order: the arrows only reorder claims with the
+// same bid, the one thing the manager's own order decides. Collapsed by
+// default; the header still says how many are pending, so they aren't missed.
+// API: /api/team/claims.
 import { useEffect, useState } from "react";
 import { fetchJson, fmtWaiverDays, fmtWaiverTime, fullName, teamPos } from "@/components/players/format";
 import { faabBidProblem } from "@/lib/transactions/policy";
 import type { ClaimOrderRequest, FaabBudget, MyClaimsResponse, WaiverClaim } from "@/lib/types";
 import styles from "./MyClaims.module.css";
-
-const STATUS: Record<Exclude<WaiverClaim["status"], "pending">, { label: string; className: string }> = {
-  completed: { label: "Won", className: styles.won },
-  failed: { label: "Failed", className: styles.failed },
-  cancelled: { label: "Cancelled", className: styles.cancelled },
-};
 
 export default function MyClaims() {
   const [data, setData] = useState<MyClaimsResponse | null>(null);
@@ -71,12 +64,15 @@ export default function MyClaims() {
   const setBid = (id: number, bid: number) =>
     send(`/api/team/claims/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bid }) });
 
+  // Nothing until it loads, and nothing at all with no pending claims (it
+  // disappears once the last one is cancelled). A failed load still says so.
   if (!data) {
+    if (!error) return null;
     return (
       <section className={styles.card} aria-labelledby="my-claims-heading">
         <div className={styles.hd}>
           <h3 id="my-claims-heading">My claims</h3>
-          <p className={styles.sub} role={error ? "alert" : "status"}>{error ?? "Loading claims…"}</p>
+          <p className={styles.sub} role="alert">{error}</p>
         </div>
       </section>
     );
@@ -85,6 +81,7 @@ export default function MyClaims() {
   const tz = data.timeZone;
   const faab = data.faab;
   const pending = data.pending.length;
+  if (pending === 0) return null;
   return (
     <section className={styles.card} aria-labelledby="my-claims-heading" id="claims">
       <h3 id="my-claims-heading">
@@ -96,9 +93,7 @@ export default function MyClaims() {
           onClick={() => setOpen((o) => !o)}
         >
           My claims
-          <span className={`${styles.status} ${pending > 0 ? styles.pending : styles.cancelled}`}>
-            {pending > 0 ? `${pending} pending` : "None pending"}
-          </span>
+          <span className={`${styles.status} ${styles.pending}`}>{pending} pending</span>
           <span className={styles.sub}>
             Waivers run {fmtWaiverDays(data.waiverDaysOfWeek)} at {fmtWaiverTime(data.nextRunAt, tz, "long").split(" · ")[1]}
             {faab && ` · FAAB $${faab.balance} of $${faab.budget} left`}
@@ -109,76 +104,47 @@ export default function MyClaims() {
       </h3>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <div id="my-claims-body" hidden={!open}>
-        {pending === 0 ? (
-          <p className={styles.empty}>
-            No pending claims. Players on waivers have a Claim button on <Link href="/players">Players</Link>.
-          </p>
-        ) : (
-          <>
-            <p className={styles.lede}>
-              {faab
-                ? "Highest bids are tried first. Bids are blind, you pay only for claims you win, and each is checked against what you have left when the run gets to it. Use the arrows to choose which of your claims with the same bid goes first."
-                : "When more than one of your claims processes in the same run, they’re tried top to bottom."}
-            </p>
-            <ol className={styles.list}>
-              {data.pending.map((c, i) => (
-                <li
-                  key={c.id}
-                  className={`${styles.claim} ${faab && i > 0 && data.pending[i - 1].bid !== c.bid ? styles.newBid : ""}`}
+        <p className={styles.lede}>
+          {faab
+            ? "Highest bids are tried first. Bids are blind, you pay only for claims you win, and each is checked against what you have left when the run gets to it. Use the arrows to choose which of your claims with the same bid goes first."
+            : "When more than one of your claims processes in the same run, they’re tried top to bottom."}
+        </p>
+        <ol className={styles.list}>
+          {data.pending.map((c, i) => (
+            <li
+              key={c.id}
+              className={`${styles.claim} ${faab && i > 0 && data.pending[i - 1].bid !== c.bid ? styles.newBid : ""}`}
+            >
+              <span className={styles.rank}>{i + 1}</span>
+              <Players c={c} />
+              <span className={styles.when}>Processes {fmtWaiverTime(c.processAt, tz, "long")}</span>
+              <span className={styles.actions}>
+                {faab && <BidInput claim={c} faab={faab} disabled={saving} onSave={(bid) => setBid(c.id, bid)} />}
+                <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || !canSwap(i, i - 1)} onClick={() => move(i, -1)}>
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className={styles.icon}
+                  aria-label={`Move ${fullName(c.add)} claim down`}
+                  disabled={saving || !canSwap(i, i + 1)}
+                  onClick={() => move(i, 1)}
                 >
-                  <span className={styles.rank}>{i + 1}</span>
-                  <Players c={c} />
-                  <span className={styles.when}>Processes {fmtWaiverTime(c.processAt, tz, "long")}</span>
-                  <span className={styles.actions}>
-                    {faab && <BidInput claim={c} faab={faab} disabled={saving} onSave={(bid) => setBid(c.id, bid)} />}
-                    <button type="button" className={styles.icon} aria-label={`Move ${fullName(c.add)} claim up`} disabled={saving || !canSwap(i, i - 1)} onClick={() => move(i, -1)}>
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.icon}
-                      aria-label={`Move ${fullName(c.add)} claim down`}
-                      disabled={saving || !canSwap(i, i + 1)}
-                      onClick={() => move(i, 1)}
-                    >
-                      ↓
-                    </button>
-                    <button type="button" className={styles.btn} disabled={saving} onClick={() => cancel(c.id)}>
-                      Cancel
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </>
-        )}
-        {data.recent.length > 0 && (
-          <>
-            <h4 className={styles.h4}>Last 7 days</h4>
-            <ul className={styles.list}>
-              {data.recent.map((c) => {
-                const s = STATUS[c.status as keyof typeof STATUS];
-                return (
-                  <li key={c.id} className={styles.claim}>
-                    <span className={`${styles.status} ${s.className}`}>
-                      {s.label}
-                      {c.status === "completed" && c.bid !== null && ` $${c.bid}`}
-                    </span>
-                    <Players c={c} reason={c.status === "failed" ? c.failureReason : null} />
-                    <span className={styles.when}>{c.processedAt ? fmtWaiverTime(c.processedAt, tz, "long") : ""}</span>
-                    <span />
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        )}
+                  ↓
+                </button>
+                <button type="button" className={styles.btn} disabled={saving} onClick={() => cancel(c.id)}>
+                  Cancel
+                </button>
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
 }
 
-function Players({ c, reason = null }: { c: WaiverClaim; reason?: string | null }) {
+function Players({ c }: { c: WaiverClaim }) {
   return (
     <span className={styles.players}>
       <span>
@@ -189,7 +155,6 @@ function Players({ c, reason = null }: { c: WaiverClaim; reason?: string | null 
           <b className={styles.minus} aria-label="Drop">−</b> {fullName(c.drop)} <small>{teamPos(c.drop.teamAbbr, c.drop.position)}</small>
         </span>
       )}
-      {reason && <span className={styles.reason}>{reason}</span>}
     </span>
   );
 }
