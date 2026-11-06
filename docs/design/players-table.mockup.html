@@ -98,7 +98,7 @@ h1{font:700 48px/1 'Barlow Condensed',sans-serif;margin:32px 0 8px;text-transfor
 <button class="pw" aria-expanded="{{showW}}" onClick="{{flipW}}">{{pwLabel}}</button>
 </div>
 <sc-if value="{{showW}}" hint-placeholder-val="{{ true }}">
-<section class="panel" aria-label="Punt weights">
+<section class="panel" aria-label="Category weights">
 <div class="wgrid">
 <sc-for list="{{weights}}" as="w" hint-placeholder-count="9"><label class="cat"><span class="hd2">{{w.label}}<b>{{w.text}}</b></span><input type="range" min="0" max="1" step="0.1" value="{{w.v}}" aria-label="{{w.aria}}" onInput="{{w.set}}"></label></sc-for>
 </div>
@@ -159,7 +159,7 @@ return {
 title:range==='last14'?'Last 14 days':'Season averages',last14:range==='last14',
 ranges:[['season','Season'],['last14','Last 14 days']].map(function(o){return {label:o[1],on:o[0]===range?'true':'false',pick:function(){self.setState({range:o[0]});}};}),
 modes:[['avg','Per game'],['total','Totals']].map(function(o){return {label:o[1],on:o[0]===mode?'true':'false',pick:function(){self.setState({mode:o[0]});}};}),
-showW:showW,flipW:function(){self.setState({showW:!showW});},pwLabel:'Punt weights'+(isDefault?'':' · custom'),
+showW:showW,flipW:function(){self.setState({showW:!showW});},pwLabel:'Category weights'+(isDefault?'':' · custom'),
 showF:showF,hideF:!showF,
 summary:[{fa:'Free agents',all:'All players',watch:'Watchlist'}[scope],tl.length?tl.join(' · '):'Any team','All positions','Plays any day','Any waiver status'].join(' · '),
 faOn:scope==='fa'?'true':'false',allOn:scope==='all'?'true':'false',watchOn:scope==='watch'?'true':'false',team:team,nba:nba,

@@ -144,7 +144,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
             Shading ranks each stat against every player who played on this date, across all games. FG% and FT% rank by
             how much a line moves a team’s percentage (makes above the league rate, so volume counts: 8/10 beats 1/1); no
             attempts, no shading. Fewer turnovers ranks higher. Value is this game’s weighted average of category
-            z-scores, on the same per-game scale and punt weights as Players. In-progress games count with their stats so
+            z-scores, on the same per-game scale and category weights as Players. In-progress games count with their stats so
             far. Hover a cell for its rank.
           </p>
         </PlayerModalHost>

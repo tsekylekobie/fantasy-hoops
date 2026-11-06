@@ -60,7 +60,7 @@ interface Props {
 /** One slider per category: 0 ignores it (a punt), 1 counts it fully. Feeds the Value column and rank. */
 export default function PuntWeights({ weights, onChange, signedIn, saveError }: Props) {
   return (
-    <section className={styles.panel} aria-label="Punt weights">
+    <section className={styles.panel} aria-label="Category weights">
       <div className={styles.grid}>
         {CATEGORIES.map((c) => (
           <label key={c} className={`${styles.cat} ${weights[c] === 0 ? styles.punted : ""}`}>

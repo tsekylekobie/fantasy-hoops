@@ -22,7 +22,7 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "STL", sort: "stl" },
   { label: "BLK", sort: "blk" },
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
-  { label: "Value", sort: "value", title: "9CAT value: average of the nine category z-scores, weighted by your punt weights. 0 is an average rostered player" },
+  { label: "Value", sort: "value", title: "9CAT value: average of the nine category z-scores, weighted by your category weights. 0 is an average rostered player" },
 ];
 
 const TIER_CLASS: Record<RankTier, string | undefined> = {

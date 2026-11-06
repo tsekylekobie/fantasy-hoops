@@ -397,7 +397,7 @@ export default function PlayersBrowser() {
             aria-expanded={showWeights}
             onClick={() => setShowWeights((v) => !v)}
           >
-            Punt weights{isDefaultWeights(weights) ? "" : " · custom"}
+            Category weights{isDefaultWeights(weights) ? "" : " · custom"}
           </button>
         </div>
 
