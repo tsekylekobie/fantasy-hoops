@@ -11,6 +11,7 @@ import styles from "./PlayersTable.module.css";
 
 /** Stat columns after #, Player and this week's games, each sortable by its header. */
 const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
+  { label: "GP", sort: "gp", title: "Games played" },
   { label: "MIN", sort: "min", title: "Minutes" },
   { label: "FG%", sort: "fgPct", title: "Field goal % (makes/attempts below)" },
   { label: "FT%", sort: "ftPct", title: "Free throw % (makes/attempts below)" },
@@ -123,6 +124,7 @@ export default function PlayersTable({
           <col className={styles.cRank} />
           <col />
           <col className={styles.cWeek} />
+          <col className={styles.cGp} />
           <col className={styles.cMin} />
           <col className={styles.cPct} />
           <col className={styles.cPct} />
@@ -230,6 +232,7 @@ function Row({
           <span className={styles.none}>–</span>
         )}
       </td>
+      <td className={styles.n}>{fmtInt(p.gp)}</td>
       <td className={styles.n}>{mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
       <Shaded mode={mode} k="fgPct" tier={t.fgPct}>
         <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} />

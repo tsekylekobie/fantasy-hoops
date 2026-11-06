@@ -61,7 +61,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   The Categories table's Win chance row (`components/matchup/categoryOdds.ts`, pure, tested): each category's chance of
   winning by week's end, the projected margin over a spread that grows with what's left to play (projected minus actual);
   shaded red to green by the chance. Hidden once the week is final.
-- Players page Gms column: each row's games left / total in the league's current matchup week, the same count and
+- Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and
   colors as My team's chip (`getWeekGames` in `queries/weekGames.ts`, run for the page's rows only; not sortable).
 - Players page filters: Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
   `injured=hide` defaults to showing them).
