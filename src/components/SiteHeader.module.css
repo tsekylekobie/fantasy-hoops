@@ -109,6 +109,8 @@
     height: 58px;
     padding: 0 4px;
     font-size: 11px;
+    line-height: 1.15;
+    text-align: center;
     color: var(--ink-subtle);
     border-bottom: 0;
   }

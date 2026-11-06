@@ -37,6 +37,7 @@ const TABS: { href: string; label: string; also?: string; private?: boolean; ico
       </>
     ),
   },
+  { href: "/rankings", label: "Power Rankings", private: true, icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/players",
     label: "Players",
@@ -47,7 +48,6 @@ const TABS: { href: string; label: string; also?: string; private?: boolean; ico
       </>
     ),
   },
-  { href: "/rankings", label: "Rankings", private: true, icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   {
     href: "/box-scores",
     label: "Box scores",

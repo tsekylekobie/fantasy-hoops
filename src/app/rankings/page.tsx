@@ -5,7 +5,7 @@ import { getRankings } from "@/lib/queries/rankings";
 import { CURRENT_SEASON } from "@/lib/types";
 import RankingsView from "@/components/rankings/RankingsView";
 
-export const metadata: Metadata = { title: "Rankings · Fantasy Hoops" };
+export const metadata: Metadata = { title: "Power Rankings · Fantasy Hoops" };
 export const dynamic = "force-dynamic";
 
 const positiveInt = (raw: string | undefined) => {
