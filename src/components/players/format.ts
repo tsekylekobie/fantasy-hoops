@@ -45,9 +45,10 @@ export function todayIn(timeZone = "America/New_York", now: Date = new Date()): 
 /**
  * The status chip text: "Out 5D", "Out 3W", "Out 2M" (time until the estimated return, under
  * 14 days in days, under 60 in weeks, then months); just the status when there's no return
- * date, it isn't Out, or the return is today or past.
+ * date, it isn't Out, or the return is today or past. Day-To-Day is "DTD".
  */
 export function fmtInjuryStatus(i: PlayerInjury, today: string): string {
+  if (/^day[- ]to[- ]day$/i.test(i.status)) return "DTD";
   if (i.status !== "Out" || !i.returnDate) return i.status;
   const days = Math.round((Date.parse(i.returnDate.slice(0, 10)) - Date.parse(today)) / 86_400_000);
   if (!(days > 0)) return i.status;

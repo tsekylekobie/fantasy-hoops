@@ -431,26 +431,100 @@
 /* Phones: the table scrolls inside its card with # and Player sticky
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
+  /* Compact columns so more stats fit beside the sticky # and Player:
+     30 · Player 104 · Gms 46 · MIN 40 · 2 × 62 · 7 × 44 · Value 54 · Owner 108. */
   .table {
-    min-width: 1042px;
+    min-width: 814px;
   }
 
   .table.noOwner {
-    min-width: calc(1042px - 120px);
+    min-width: calc(814px - 108px);
   }
 
-  /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
-     sticky Player column narrows with them, leaving more room for stats. */
-  .card[data-scrolled] .table {
-    min-width: 1018px;
-  }
-
-  .card[data-scrolled] .table.noOwner {
-    min-width: calc(1018px - 120px);
+  /* The card runs edge to edge (the my-team phone pattern), past the page's 16px padding. */
+  .card {
+    margin: 0 -16px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
   }
 
   .cRank {
+    width: 30px;
+  }
+  .cWeek {
+    width: 46px;
+  }
+  .cMin {
     width: 40px;
+  }
+  .cPct {
+    width: 62px;
+  }
+  .cStat {
+    width: 44px;
+  }
+  .cValue {
+    width: 54px;
+  }
+  .cOwner {
+    width: 108px;
+  }
+
+  .table thead tr {
+    height: 36px;
+  }
+
+  .table th {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .sort {
+    height: 36px;
+  }
+
+  .table tbody tr {
+    height: 48px;
+  }
+
+  .c {
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+
+  .volume {
+    font-size: 10px;
+  }
+
+  .team {
+    font-size: 11px;
+  }
+
+  .injury {
+    margin-left: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+  }
+
+  .weekGames {
+    min-width: 32px;
+    padding: 2px 5px;
+    font-size: 11px;
+  }
+
+  .add {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .claimWrap {
+    gap: 6px;
+  }
+
+  .clears {
+    font-size: 11px;
   }
 
   .table th:nth-child(-n + 2),
@@ -467,12 +541,12 @@
   .table th:first-child,
   .table td:first-child {
     left: 0;
-    padding-left: 12px;
+    padding-left: 8px;
   }
 
   .table th:nth-child(2),
   .table td:nth-child(2) {
-    left: 40px;
+    left: 30px;
     padding-right: 8px;
     box-shadow: 1px 0 0 var(--row-divider);
   }
@@ -485,7 +559,7 @@
   .message {
     position: sticky;
     left: 12px;
-    width: calc(100vw - 60px);
+    width: calc(100vw - 24px);
   }
 
   .player > [aria-hidden="true"] {
@@ -493,11 +567,11 @@
   }
 
   .table tbody tr {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .name {
-    font-size: 14px;
+    font-size: 13px;
   }
 }
 
