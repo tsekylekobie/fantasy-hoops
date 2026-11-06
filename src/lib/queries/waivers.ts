@@ -53,8 +53,7 @@ const RUN_LOCK = 727_031_007;
 
 type Db = Pool | PoolClient;
 
-/** Same as getUserTeam (queries/lineup.ts), by team id: the run acts for teams, not signed-in users. Its today
- * stays the league's date (not GAME_DAY_TZ), so claims land on the day the run is scheduled for. */
+/** Same as getUserTeam (queries/lineup.ts), by team id: the run acts for teams, not signed-in users. */
 async function getTeamContext(db: Db, teamId: number): Promise<TeamContext | null> {
   const { rows: [r] } = await db.query<{
     team_name: string; manager_name: string | null; abbreviation: string; waiver_priority: number | null;

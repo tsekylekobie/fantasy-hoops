@@ -1,6 +1,5 @@
 // Any team in a league, for read-only views (/team/[id]).
 import type { Pool } from "pg";
-import { GAME_DAY_TZ } from "../gameDay";
 import type { SlotCounts } from "../lineup/rules";
 import type { TeamContext } from "./lineup";
 import { teamLogoUrl } from "./teamLogo";
@@ -21,7 +20,7 @@ export async function getTeamById(
     `SELECT ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.logo_updated_at, ft.waiver_priority, ft.owner_user_id::int,
             l.id::int AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
             l.il_statuses, l.il_plus_statuses,
-            to_char((now() AT TIME ZONE '${GAME_DAY_TZ}')::date, 'YYYY-MM-DD') AS today
+            to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
        LEFT JOIN users u ON u.id = ft.owner_user_id
       WHERE ft.id = $1 AND l.season = $2`,

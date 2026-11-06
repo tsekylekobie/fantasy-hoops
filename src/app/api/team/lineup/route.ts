@@ -1,8 +1,9 @@
-// GET /api/team/lineup?date=yyyy-mm-dd  (default: the league's today)
+// GET /api/team/lineup?date=yyyy-mm-dd  (default: today, Pacific)
 // PUT /api/team/lineup  { date, slots: [{ playerId, slot }] }
 // The signed-in user's team. Contract: TeamLineupResponse and
 // LineupUpdateRequest in src/lib/types.ts.
 import { NextResponse } from "next/server";
+import { gameDayToday } from "@/lib/gameDay";
 import { pool } from "@/lib/db";
 import { getTeamLineup, loadValues, setLineup } from "@/lib/queries/lineup";
 import { processDueTrades } from "@/lib/queries/trades";
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
     const team = await requireTeam();
     if (team instanceof NextResponse) return team;
     const raw = new URL(req.url).searchParams.get("date");
-    const date = raw === null ? team.today : parseDate(raw);
+    const date = raw === null ? gameDayToday() : parseDate(raw);
     if (!date) return errorResponse("date must be yyyy-mm-dd", 400);
     await processDueTrades(pool, team.leagueId);
     const values = await loadValues(pool, team.season);

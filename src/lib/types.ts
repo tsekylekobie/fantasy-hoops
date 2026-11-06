@@ -750,9 +750,11 @@ export interface TeamLineupResponse {
    * days). While illegal the team can't add players or place claims.
    */
   rosterProblems: string[];
-  /** The lineup's date and the league's today (league time zone), yyyy-mm-dd. */
+  /** The lineup's date and today (Pacific, GAME_DAY_TZ: what the page labels "Today"), yyyy-mm-dd. */
   date: string;
   today: string;
+  /** The league's today (its time zone): days before it are locked. Can be a day after `today` late at night. */
+  lockedBefore: string;
   /** The matchup week containing `date`; null outside the schedule. */
   week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean } | null;
   /** Each day of that week (or the Mon–Sun around `date`) with its NBA game count. */
