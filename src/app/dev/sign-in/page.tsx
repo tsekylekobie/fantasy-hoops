@@ -1,5 +1,5 @@
 // Mock sign-in for local dev: pick an existing test user or make a new one,
-// instead of going through Google or Yahoo. 404s when mock auth is off (always in production).
+// instead of going through Google. 404s when mock auth is off (always in production).
 import { notFound } from "next/navigation";
 import { mockAuthEnabled, safeNext } from "@/lib/auth/config";
 import { pool } from "@/lib/db";
@@ -29,7 +29,7 @@ export default async function MockSignIn({ searchParams }: { searchParams: Promi
       <div className={styles.card}>
         <p className={styles.badge}>Local dev · mock sign-in</p>
         <h1 className={styles.title}>Sign in as…</h1>
-        <p className={styles.sub}>Stands in for Google and Yahoo while developing. Unavailable in production.</p>
+        <p className={styles.sub}>Stands in for Google while developing. Unavailable in production.</p>
 
         <ul className={styles.users}>
           {users.map((u) => (

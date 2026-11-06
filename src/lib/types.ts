@@ -671,10 +671,8 @@ export interface SessionUser {
 /** GET /api/auth/session */
 export interface SessionResponse {
   user: SessionUser | null;
-  /** True when sign-in goes to the local mock page instead of Google or Yahoo. */
+  /** True when sign-in goes to the local mock page instead of Google. */
   mock: boolean;
-  /** Sign-in providers offered, in button order (empty when mock). */
-  providers: ("google" | "yahoo")[];
 }
 
 // Team lineup (/my-team)

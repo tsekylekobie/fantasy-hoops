@@ -1,12 +1,11 @@
-// Sign-in with Google or Yahoo: the OAuth 2.0 authorization-code flow with
-// PKCE, using OpenID Connect for the profile. No SDK; it is two HTTP calls.
-// Each provider is a row in PROVIDERS; the routes are /api/auth/<provider>/start
-// and /api/auth/<provider>/callback (register the callback with the provider).
+// Sign-in with Google: the OAuth 2.0 authorization-code flow with PKCE, using
+// OpenID Connect for the profile. No SDK; it is two HTTP calls. Providers are
+// rows in PROVIDERS; the routes are /api/auth/<provider>/start and
+// /api/auth/<provider>/callback (register the callback with the provider).
 import { createHash, randomBytes } from "node:crypto";
-import { mockAuthEnabled } from "./config";
 import type { Profile } from "./session";
 
-export type OAuthProvider = "google" | "yahoo";
+export type OAuthProvider = "google";
 
 interface ProviderConfig {
   label: string;
@@ -15,8 +14,6 @@ interface ProviderConfig {
   issuers: string[];
   idEnv: string;
   secretEnv: string;
-  /** How the token endpoint takes the client secret. */
-  clientAuth: "body" | "basic";
   /** Extra authorization parameters. */
   extra: Record<string, string>;
 }
@@ -29,21 +26,7 @@ const PROVIDERS: Record<OAuthProvider, ProviderConfig> = {
     issuers: ["https://accounts.google.com", "accounts.google.com"],
     idEnv: "GOOGLE_CLIENT_ID",
     secretEnv: "GOOGLE_CLIENT_SECRET",
-    clientAuth: "body",
     extra: { prompt: "select_account" },
-  },
-  // https://developer.yahoo.com/oauth2/guide/openid_connect/ — a Yahoo app with
-  // the "OpenID Connect" permission (Email, Profile). Separate from the Fantasy
-  // Sports app the Yahoo import uses (YAHOO_CLIENT_ID), which needs Yahoo's approval.
-  yahoo: {
-    label: "Yahoo",
-    authUrl: "https://api.login.yahoo.com/oauth2/request_auth",
-    tokenUrl: "https://api.login.yahoo.com/oauth2/get_token",
-    issuers: ["https://api.login.yahoo.com"],
-    idEnv: "YAHOO_SIGNIN_CLIENT_ID",
-    secretEnv: "YAHOO_SIGNIN_CLIENT_SECRET",
-    clientAuth: "basic",
-    extra: {},
   },
 };
 
@@ -55,16 +38,11 @@ export function providerLabel(p: OAuthProvider): string {
   return PROVIDERS[p].label;
 }
 
-/** Providers whose client id and secret are set, Google first. */
+/** Providers whose client id and secret are set. */
 export function configuredProviders(): OAuthProvider[] {
   return (Object.keys(PROVIDERS) as OAuthProvider[]).filter(
     (p) => process.env[PROVIDERS[p].idEnv] && process.env[PROVIDERS[p].secretEnv],
   );
-}
-
-/** The sign-in buttons to show: none while mock sign-in stands in for them. */
-export function signInProviders(): OAuthProvider[] {
-  return mockAuthEnabled() ? [] : configuredProviders();
 }
 
 function credentials(p: OAuthProvider): { clientId: string; clientSecret: string } {
@@ -125,7 +103,7 @@ export function profileFromClaims(p: OAuthProvider, claims: IdTokenClaims, clien
   if (!(claims.exp * 1000 > nowMs)) throw new Error(`${label} ID token expired`);
   if (!claims.sub) throw new Error(`${label} ID token has no subject`);
   const email = claims.email?.trim();
-  if (!email) throw new Error(`${label} account shared no email (is the Email permission on?)`);
+  if (!email) throw new Error(`${label} account shared no email`);
 
   const fullName = [claims.given_name, claims.family_name].filter(Boolean).join(" ");
   return {
@@ -145,19 +123,22 @@ export function profileFromClaims(p: OAuthProvider, claims: IdTokenClaims, clien
  */
 export async function exchangeCode(p: OAuthProvider, code: string, verifier: string, redirectUri: string): Promise<Profile> {
   const { clientId, clientSecret } = credentials(p);
-  const { tokenUrl, clientAuth, label } = PROVIDERS[p];
-  const body = new URLSearchParams({ code, redirect_uri: redirectUri, grant_type: "authorization_code", code_verifier: verifier });
-  const headers: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
-  if (clientAuth === "basic") {
-    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
-  } else {
-    body.set("client_id", clientId);
-    body.set("client_secret", clientSecret);
-  }
-  const res = await fetch(tokenUrl, { method: "POST", headers, body });
+  const { tokenUrl, label } = PROVIDERS[p];
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+      code_verifier: verifier,
+    }),
+  });
   if (!res.ok) throw new Error(`${label} token exchange failed: ${res.status} ${await res.text()}`);
   const { id_token } = (await res.json()) as { id_token?: string };
-  if (!id_token) throw new Error(`${label} token response had no id_token (is the OpenID Connect permission on?)`);
+  if (!id_token) throw new Error(`${label} token response had no id_token `);
 
   const claims = JSON.parse(Buffer.from(id_token.split(".")[1] ?? "", "base64url").toString("utf8")) as IdTokenClaims;
   return profileFromClaims(p, claims, clientId, Date.now());

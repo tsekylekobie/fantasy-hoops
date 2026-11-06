@@ -1,6 +1,5 @@
-// A league snapshot from hand-made CSVs instead of Yahoo's API, for the Yahoo
-// import (scripts/yahoo/import.ts) when the API isn't available. Builds the same
-// ImportSnapshot the API export does, so everything after loading is shared.
+// A league snapshot from CSVs built from Yahoo's league pages (the
+// yahoo-csv-refresh skill), for the Yahoo import (scripts/yahoo/import.ts).
 // Pure, so it can be unit tested. Files, all in one folder:
 //   league.json    {name, season, today, rosterSlots, playoffStartWeek?, settings?}
 //                  today: the date rosters.csv reflects (yyyy-mm-dd, league time)
@@ -211,8 +210,6 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
       weeks: sorted,
       matchups,
       rosters: new Map([...rosters].sort(([x], [y]) => x.localeCompare(y))),
-      transactions: [],
-      waivers: [],
     },
     members,
     errors,

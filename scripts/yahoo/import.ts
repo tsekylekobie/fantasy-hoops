@@ -1,26 +1,22 @@
-// Replaces this season's league with a Yahoo league as it stood when
-// scripts/yahoo/export.ts saved the snapshot folder. A dry run by default:
-// everything runs in one transaction that is rolled back, and the report says
-// what would change. --apply commits it.
-//   npm run yahoo:import -- yahoo-export/12345              # dry run
-//   npm run yahoo:import -- yahoo-export/12345 --apply      # first import
-//   npm run yahoo:import -- yahoo-export/12345 --apply --replace   # over an existing league
-// Or from a folder of hand-made CSVs (league.json instead of meta.json; formats in
-// src/lib/yahoo/csv.ts), when Yahoo's API isn't available. Those carry no
-// transactions or waivers, and emails come from teams.csv instead of members.csv.
+// Replaces this season's league with a Yahoo league, from a folder of CSVs built
+// from Yahoo's league pages (formats in src/lib/yahoo/csv.ts; the
+// yahoo-csv-refresh skill builds them). A dry run by default: everything runs
+// in one transaction that is rolled back, and the report says what would
+// change. --apply commits it.
+//   npm run yahoo:import -- yahoo-csv/my-league              # dry run
+//   npm run yahoo:import -- yahoo-csv/my-league --apply      # first import
+//   npm run yahoo:import -- yahoo-csv/my-league --apply --replace   # over an existing league
 //
-// What carries over: teams, the schedule (Yahoo's matchup weeks and
-// pairings), every finished week's result exactly as Yahoo scored it
-// (week_results), each team's lineup on every day so far, today's rosters,
-// waiver order, FAAB balances, players on waivers, the season's transactions,
-// and the settings Yahoo has that we do too (src/lib/yahoo/parse.ts parseLeague).
-// What doesn't: pending trades and waiver claims (managers resubmit them),
-// lineups set ahead for future days, and a playoff bracket in progress
-// (import before the playoffs start).
+// What carries over: teams and their managers' emails, the schedule (Yahoo's
+// matchup weeks and pairings), every finished week's result exactly as Yahoo
+// scored it (week_results), each team's lineup on every day in lineups.csv,
+// today's rosters, waiver order, FAAB balances, and the settings in league.json.
+// What doesn't: transactions, players on waivers, pending trades and claims
+// (managers resubmit them), lineups set ahead for future days, and a playoff
+// bracket in progress (import before the playoffs start).
 //
-// Read from the folder besides raw/:
-//   members.csv            each team's manager email(s) and the commissioner; see league_members
-//   league-settings.json   optional: settings to use instead of Yahoo's or our defaults, in the
+// Also read from the folder:
+//   league-settings.json   optional: settings to use instead of league.json's or our defaults, in the
 //                          /league/settings shape (LeagueSettings in src/lib/types.ts), e.g.
 //                          {"timeZone": "America/Los_Angeles", "gameLimits": {"total": 40, "slots": {}}}
 //   player-overrides.csv   Yahoo players matched by hand (yahoo_player_key -> player_id). The import
@@ -30,7 +26,7 @@
 // linked to their teams right away, everyone else on first sign-in
 // (src/lib/auth/members.ts).
 import "dotenv/config";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Pool, type PoolClient } from "pg";
 import { linkMemberships } from "../../src/lib/auth/members";
@@ -48,55 +44,25 @@ const STALE_OK = process.argv.includes("--stale-ok");
 
 const read = (path: string): unknown => JSON.parse(readFileSync(join(dir!, path), "utf8"));
 const has = (path: string) => existsSync(join(dir!, path));
-/** Every page in a raw/ subfolder, in file order. */
-const pages = (folder: string): unknown[] =>
-  has(folder) ? readdirSync(join(dir!, folder)).filter((f) => f.endsWith(".json")).sort().map((f) => read(join(folder, f))) : [];
 
 const errors: string[] = [];
 const warnings: string[] = [];
 const notes: string[] = [];
 
 type Snapshot = Y.ImportSnapshot;
-/** Manager emails per team (members.csv's columns); from teams.csv for a CSV snapshot. */
-let csvMembers: Record<string, string>[] | null = null;
+/** Manager emails per team, from teams.csv (yahoo_team_key, email, commissioner, abbreviation). */
+let members: Record<string, string>[] = [];
 
 function loadSnapshot(): Snapshot {
-  if (has("league.json")) {
-    const text = (f: string) => (has(f) ? readFileSync(join(dir!, f), "utf8") : "");
-    for (const f of ["teams.csv", "schedule.csv", "results.csv", "rosters.csv"]) if (!has(f)) errors.push(`${f} is missing.`);
-    const csv = snapshotFromCsv({
-      league: read("league.json"), teams: text("teams.csv"), schedule: text("schedule.csv"),
-      results: text("results.csv"), rosters: text("rosters.csv"), lineups: text("lineups.csv"),
-    });
-    errors.push(...csv.errors);
-    csvMembers = csv.members;
-    return csv.snapshot;
-  }
-  const meta = read("meta.json") as Snapshot["meta"];
-  const league = Y.parseLeague(read("raw/league-settings.json"));
-  const rosters = new Map<string, Map<string, Y.YahooRosterEntry[]>>();
-  for (const date of has("raw/rosters") ? readdirSync(join(dir!, "raw/rosters")).sort() : []) {
-    const byTeam = new Map<string, Y.YahooRosterEntry[]>();
-    for (const f of readdirSync(join(dir!, "raw/rosters", date)).filter((f) => f.endsWith(".json"))) {
-      byTeam.set(f.replace(/\.json$/, ""), Y.parseRoster(read(join("raw/rosters", date, f))));
-    }
-    rosters.set(date, byTeam);
-  }
-  const seen = new Set<string>();
-  return {
-    meta,
-    league,
-    teams: Y.parseTeams(read("raw/teams.json")),
-    weeks: Y.parseGameWeeks(read("raw/game-weeks.json"))
-      .filter((w) => w.week >= league.startWeek && w.week <= league.endWeek)
-      .sort((a, b) => a.week - b.week),
-    matchups: pages("raw/scoreboard").flatMap(Y.parseScoreboard),
-    rosters,
-    transactions: pages("raw/transactions").flatMap(Y.parseTransactions)
-      .filter((t) => !seen.has(t.key) && seen.add(t.key))
-      .sort((a, b) => a.timestamp - b.timestamp),
-    waivers: pages("raw/waivers").flatMap(Y.parseWaivers),
-  };
+  const text = (f: string) => (has(f) ? readFileSync(join(dir!, f), "utf8") : "");
+  for (const f of ["teams.csv", "schedule.csv", "results.csv", "rosters.csv"]) if (!has(f)) errors.push(`${f} is missing.`);
+  const csv = snapshotFromCsv({
+    league: read("league.json"), teams: text("teams.csv"), schedule: text("schedule.csv"),
+    results: text("results.csv"), rosters: text("rosters.csv"), lineups: text("lineups.csv"),
+  });
+  errors.push(...csv.errors);
+  members = csv.members;
+  return csv.snapshot;
 }
 
 /** Yahoo player key -> our player id, from the overrides file and then by name. Rewrites the overrides file with what's still unmatched. */
@@ -110,8 +76,6 @@ async function matchPlayers(db: PoolClient, snap: Snapshot): Promise<Map<string,
   for (const [date, byTeam] of snap.rosters) {
     for (const entries of byTeam.values()) for (const e of entries) note(e.player, date === snap.meta.today ? "roster" : "past lineups");
   }
-  for (const t of snap.transactions) for (const p of t.players) note(p.player, "transactions");
-  for (const w of snap.waivers) note(w.player, "waivers");
 
   const OVERRIDES = "player-overrides.csv";
   const overrides = has(OVERRIDES) ? Y.parseCsv(readFileSync(join(dir!, OVERRIDES), "utf8")) : [];
@@ -156,7 +120,7 @@ async function run(db: PoolClient, snap: Snapshot) {
   if (snap.teams.length < 2) errors.push("The snapshot has no teams.");
   if (snap.weeks.length === 0) errors.push("The snapshot has no matchup weeks.");
   const todayRosters = snap.rosters.get(meta.today);
-  if (!todayRosters || todayRosters.size !== snap.teams.length) errors.push(`The snapshot has no rosters for ${meta.today} for every team; export again.`);
+  if (!todayRosters || todayRosters.size !== snap.teams.length) errors.push(`The snapshot has no rosters for ${meta.today} for every team; rebuild the CSVs.`);
 
   const playerIds = await matchPlayers(db, snap);
   const pid = (p: Y.YahooPlayer) => playerIds.get(p.key) ?? null;
@@ -192,8 +156,6 @@ async function run(db: PoolClient, snap: Snapshot) {
   }
 
   // --- Teams and members ---
-  const members = csvMembers ?? (has("members.csv") ? Y.parseCsv(readFileSync(join(dir!, "members.csv"), "utf8")) : []);
-  if (!csvMembers && !has("members.csv")) errors.push("members.csv is missing (yahoo:export writes one to fill in).");
   const teamIds = new Map<string, number>();
   const taken = new Set<string>();
   for (const t of snap.teams) {
@@ -218,12 +180,12 @@ async function run(db: PoolClient, snap: Snapshot) {
   for (const r of members) {
     const id = teamIds.get(r.yahoo_team_key);
     if (id === undefined) {
-      warnings.push(`members.csv: no team ${r.yahoo_team_key} in the snapshot; row skipped.`);
+      warnings.push(`teams.csv: no team ${r.yahoo_team_key} in the snapshot; row skipped.`);
       continue;
     }
     for (const email of r.email.split(/[;\s]+/).map((e) => e.trim().toLowerCase()).filter(Boolean)) {
-      if (!/^[^\s@]+@[^\s@]+$/.test(email)) warnings.push(`members.csv: "${email}" isn't an email; skipped.`);
-      else if (emails.has(email)) warnings.push(`members.csv: ${email} is listed twice; only its first team counts.`);
+      if (!/^[^\s@]+@[^\s@]+$/.test(email)) warnings.push(`teams.csv: "${email}" isn't an email; skipped.`);
+      else if (emails.has(email)) warnings.push(`teams.csv: ${email} is listed twice; only its first team counts.`);
       else {
         emails.add(email);
         const isCommish = YES.has(r.commissioner.toLowerCase());
@@ -237,9 +199,9 @@ async function run(db: PoolClient, snap: Snapshot) {
   }
   const unclaimed = snap.teams.filter((t) => !members.some((r) => r.yahoo_team_key === t.key && r.email.trim()));
   if (unclaimed.length > 0) warnings.push(`No email for ${unclaimed.map((t) => t.name).join(", ")}: nobody can sign in as ${unclaimed.length === 1 ? "that team" : "those teams"} yet.`);
-  if (!commissioner) warnings.push("Nobody is marked commissioner in members.csv, so nobody can change league settings.");
+  if (!commissioner) warnings.push("Nobody is marked commissioner in teams.csv, so nobody can change league settings.");
 
-  // --- Settings: our defaults, then Yahoo's, then league-settings.json ---
+  // --- Settings: our defaults, then league.json's, then league-settings.json ---
   const base = (await getLeagueSettings(db as unknown as Pool, CURRENT_SEASON, null))!.data.settings;
   const fromYahoo = {
     ...yl.settings,
@@ -249,7 +211,7 @@ async function run(db: PoolClient, snap: Snapshot) {
   };
   const fromFile = has("league-settings.json") ? (read("league-settings.json") as Record<string, unknown>) : {};
   const parsed = parseSettings({ ...base, ...fromYahoo, ...fromFile }, snap.teams.length, snap.weeks.length);
-  if ("error" in parsed) throw new Error(`League settings (ours, then Yahoo's, then league-settings.json): ${parsed.error}`);
+  if ("error" in parsed) throw new Error(`League settings (ours, then league.json's, then league-settings.json): ${parsed.error}`);
   const s = parsed.settings;
   const slots = { ...yl.rosterSlots, IL: s.ilSlots, "IL+": s.ilPlusSlots };
   for (const k of ["IL", "IL+"] as const) if (slots[k] === 0) delete slots[k];
@@ -274,7 +236,7 @@ async function run(db: PoolClient, snap: Snapshot) {
   );
   const { rows: [{ today }] } = await db.query<{ today: string }>(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS today`, [s.timeZone]);
   if (today !== meta.today) {
-    const msg = `The snapshot is from ${meta.today} but today is ${today} (${s.timeZone}): export again so rosters are current.`;
+    const msg = `The snapshot is from ${meta.today} but today is ${today} (${s.timeZone}): rebuild the CSVs so rosters are current.`;
     if (STALE_OK) warnings.push(msg);
     else errors.push(`${msg} (--stale-ok imports it anyway.)`);
   }
@@ -332,11 +294,6 @@ async function run(db: PoolClient, snap: Snapshot) {
   ]);
   const info = new Map(positions.map((p) => [p.id, p]));
   const ilRules: IlRules = { il: { statuses: s.ilStatuses }, ilPlus: { statuses: s.ilPlusStatuses } };
-  // When each player joined his current team, from the transactions.
-  const joined = new Map<string, number>();
-  for (const t of snap.transactions) {
-    for (const p of t.players) if (p.destinationTeamKey) joined.set(`${p.destinationTeamKey}:${p.player.key}`, t.timestamp);
-  }
   const todaySlots = new Map<number, Map<number, LineupSlot>>();
   let rostered = 0;
   for (const [key, entries] of today_) {
@@ -358,10 +315,9 @@ async function run(db: PoolClient, snap: Snapshot) {
       }
       slotsToday.set(id, slot);
       check.push({ id, slot, eligible, name: p?.name ?? e.player.full });
-      const at = joined.get(`${key}:${e.player.key}`);
       await db.query(
         `INSERT INTO roster_players (league_id, player_id, fantasy_team_id, slot, acquired_at) VALUES ($1, $2, $3, $4, $5)`,
-        [leagueId, id, tid, slot, at ? new Date(at * 1000) : new Date(`${yl.startDate}T00:00:00Z`)],
+        [leagueId, id, tid, slot, new Date(`${yl.startDate}T00:00:00Z`)],
       );
       rostered++;
     }
@@ -396,54 +352,6 @@ async function run(db: PoolClient, snap: Snapshot) {
   );
   notes.push(`Rosters: ${rostered} players on ${todaySlots.size} teams; ${rows.team.length} daily lineup rows over ${snap.rosters.size} days.`);
 
-  // --- Transactions (completed ones; pending trades and claims aren't imported) ---
-  let txCount = 0;
-  const lastDrop = new Map<number, number>();
-  for (const t of snap.transactions) {
-    if (t.status !== "successful") continue;
-    const players = t.players
-      .map((p) => ({ ...p, id: pid(p.player), from: p.sourceType === "team" ? teamId(p.sourceTeamKey) : null, to: p.destinationType === "team" ? teamId(p.destinationTeamKey) : null }))
-      .filter((p) => p.id !== null && (p.from !== null || p.to !== null));
-    if (players.length === 0) continue;
-    const add = players.find((p) => p.type === "add");
-    const drop = players.find((p) => p.type === "drop");
-    const claim = add?.sourceType === "waivers";
-    const type = { add: claim ? "waiver_claim" : "add", drop: "drop", "add/drop": claim ? "waiver_claim" : "add_drop", trade: "trade", commish: "commissioner" }[t.type];
-    if (!type) continue;
-    const team = t.type === "trade" ? teamId(t.traderTeamKey) : add?.to ?? drop?.from ?? players[0].to ?? players[0].from;
-    const at = new Date(t.timestamp * 1000);
-    const { rows: [tx] } = await db.query<{ id: number }>(
-      `INSERT INTO transactions (league_id, type, status, team_id, trade_team_id, created_at, processed_at, faab_bid)
-       VALUES ($1, $2, 'completed', $3, $4, $5, $5, $6) RETURNING id::int`,
-      [leagueId, type, team, t.type === "trade" ? teamId(t.tradeeTeamKey) : null, at, claim ? t.faabBid : null],
-    );
-    for (const p of players) {
-      await db.query(
-        `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-        [tx.id, p.id, p.from, p.to],
-      );
-      if (p.to === null && p.from !== null) lastDrop.set(p.id!, p.from);
-    }
-    txCount++;
-  }
-
-  // --- Waivers ---
-  let onWaivers = 0;
-  for (const w of snap.waivers) {
-    const id = pid(w.player);
-    if (id === null) continue;
-    const { rowCount } = await db.query(
-      `INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
-       SELECT $1, $2, next_waiver_run($1, CASE WHEN $3::date IS NULL THEN now() ELSE ($3::date::timestamp AT TIME ZONE l.time_zone) END), $4
-         FROM leagues l WHERE l.id = $1
-          AND NOT EXISTS (SELECT 1 FROM roster_players r WHERE r.league_id = $1 AND r.player_id = $2)
-       ON CONFLICT DO NOTHING`,
-      [leagueId, id, w.clearsOn, lastDrop.get(id) ?? null],
-    );
-    onWaivers += rowCount ?? 0;
-  }
-  notes.push(`History: ${txCount} transactions; ${onWaivers} players on waivers.`);
-
   // --- Managers who have signed in before get their teams now ---
   let linked = 0;
   for (const email of emails) {
@@ -458,10 +366,8 @@ async function run(db: PoolClient, snap: Snapshot) {
 }
 
 async function main() {
-  if (!dir) throw new Error("Usage: npm run yahoo:import -- <snapshot dir> [--apply] [--replace] [--stale-ok]");
-  if (!has("meta.json") && !has("league.json")) {
-    throw new Error(`${dir} isn't a snapshot (no meta.json from npm run yahoo:export, or league.json for CSVs; see src/lib/yahoo/csv.ts).`);
-  }
+  if (!dir) throw new Error("Usage: npm run yahoo:import -- <CSV folder> [--apply] [--replace] [--stale-ok]");
+  if (!has("league.json")) throw new Error(`${dir} has no league.json (formats in src/lib/yahoo/csv.ts).`);
   const snap = loadSnapshot();
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = await pool.connect();
@@ -471,7 +377,7 @@ async function main() {
     const commit = APPLY && errors.length === 0;
     await db.query(commit ? "COMMIT" : "ROLLBACK");
 
-    console.log(`Yahoo import from ${dir} (snapshot ${snap.meta.exportedAt})\n`);
+    console.log(`Yahoo import from ${dir} (rosters as of ${snap.meta.today})\n`);
     for (const n of notes) console.log(`  ${n}`);
     if (warnings.length > 0) console.log(`\nWarnings (${warnings.length}):`);
     for (const w of warnings) console.log(`  - ${w}`);

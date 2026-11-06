@@ -1,4 +1,4 @@
-// GET /api/auth/<google|yahoo>/callback — the provider redirects here after the
+// GET /api/auth/google/callback — the provider redirects here after the
 // user signs in. Checks state, exchanges the code, and signs this device in.
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

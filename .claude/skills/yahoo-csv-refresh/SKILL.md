@@ -1,6 +1,6 @@
 ---
 name: yahoo-csv-refresh
-description: Build or refresh a Yahoo fantasy basketball league's CSV snapshot from its Yahoo pages in Chrome, then dry-run and import it with `npm run yahoo:import`. Use when asked to refresh the Yahoo CSVs, re-export or re-import a Yahoo league, or move a league over while Yahoo's Fantasy API answers 403.
+description: Build or refresh a Yahoo fantasy basketball league's CSV snapshot from its Yahoo pages in Chrome, then dry-run and import it with `npm run yahoo:import`. Use when asked to refresh the Yahoo CSVs, re-export or re-import a Yahoo league, or move a league over from Yahoo.
 argument-hint: <yahoo-league-id>
 ---
 
@@ -9,7 +9,7 @@ argument-hint: <yahoo-league-id>
 League id: `$ARGUMENTS`. If that's blank, ask for it (it's in the league's Yahoo URL, `/nba/<league-id>`). Below,
 `<id>` is that id and `<folder>` is `yahoo-export/<id>-csv`.
 
-Use this while Yahoo's Fantasy API answers 403 (README, "Without Yahoo's API: from CSVs"). File formats are there and
+The app doesn't use Yahoo's API; this is how a league comes over (README, "Importing a league from Yahoo"). File formats are there and
 in `src/lib/yahoo/csv.ts`.
 
 ## Ground rules
@@ -308,4 +308,3 @@ nothing. Delete any scratch file holding the URL.
 - **Row counts look wrong, or `nba_team` is blank:** Yahoo changed its markup. Look at one row with
   `document.querySelector("table tbody tr").innerText` and update the selectors here.
 - **`noId` is above 0 or the team count looks wrong:** check the Managers table's columns against step 2.
-- **Yahoo's API is back:** prefer `npm run yahoo:export`, which also brings transactions and waivers (README).

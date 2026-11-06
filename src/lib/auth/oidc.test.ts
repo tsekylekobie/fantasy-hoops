@@ -4,53 +4,49 @@ import { test } from "node:test";
 import { profileFromClaims, type IdTokenClaims } from "./oidc";
 
 const NOW = Date.UTC(2026, 10, 5);
+const CLIENT = "google-client";
 const base = (over: Partial<IdTokenClaims> = {}): IdTokenClaims => ({
-  iss: "https://api.login.yahoo.com",
-  aud: "yahoo-client",
-  sub: "ABC123",
+  iss: "https://accounts.google.com",
+  aud: CLIENT,
+  sub: "1234567890",
   exp: NOW / 1000 + 600,
-  email: "manager@yahoo.com",
+  email: "manager@gmail.com",
   email_verified: true,
   name: "Pat Manager",
-  picture: "https://s.yimg.com/pic.jpg",
+  picture: "https://lh3.googleusercontent.com/pic.jpg",
   ...over,
 });
 
-test("a Yahoo ID token becomes a verified profile", () => {
-  assert.deepEqual(profileFromClaims("yahoo", base(), "yahoo-client", NOW), {
-    provider: "yahoo",
-    subject: "ABC123",
-    email: "manager@yahoo.com",
+test("a Google ID token becomes a verified profile", () => {
+  assert.deepEqual(profileFromClaims("google", base(), CLIENT, NOW), {
+    provider: "google",
+    subject: "1234567890",
+    email: "manager@gmail.com",
     emailVerified: true,
     name: "Pat Manager",
-    pictureUrl: "https://s.yimg.com/pic.jpg",
+    pictureUrl: "https://lh3.googleusercontent.com/pic.jpg",
   });
+  assert.doesNotThrow(() => profileFromClaims("google", base({ iss: "accounts.google.com" }), CLIENT, NOW));
 });
 
 test("issuer, audience and expiry are checked", () => {
-  assert.throws(() => profileFromClaims("yahoo", base({ iss: "https://accounts.google.com" }), "yahoo-client", NOW), /issuer/);
-  assert.throws(() => profileFromClaims("google", base(), "yahoo-client", NOW), /issuer/);
-  assert.throws(() => profileFromClaims("yahoo", base({ aud: "other" }), "yahoo-client", NOW), /audience/);
-  assert.doesNotThrow(() => profileFromClaims("yahoo", base({ aud: ["other", "yahoo-client"] }), "yahoo-client", NOW));
-  assert.throws(() => profileFromClaims("yahoo", base({ exp: NOW / 1000 }), "yahoo-client", NOW), /expired/);
+  assert.throws(() => profileFromClaims("google", base({ iss: "https://evil.example" }), CLIENT, NOW), /issuer/);
+  assert.throws(() => profileFromClaims("google", base({ aud: "other" }), CLIENT, NOW), /audience/);
+  assert.doesNotThrow(() => profileFromClaims("google", base({ aud: ["other", CLIENT] }), CLIENT, NOW));
+  assert.throws(() => profileFromClaims("google", base({ exp: NOW / 1000 }), CLIENT, NOW), /expired/);
 });
 
 test("an email is required; it is verified only when the provider says so", () => {
-  assert.throws(() => profileFromClaims("yahoo", base({ email: undefined }), "yahoo-client", NOW), /no email/);
-  assert.equal(profileFromClaims("yahoo", base({ email_verified: undefined }), "yahoo-client", NOW).emailVerified, false);
-  assert.equal(profileFromClaims("yahoo", base({ email_verified: "true" }), "yahoo-client", NOW).emailVerified, true);
-  assert.equal(profileFromClaims("yahoo", base({ email_verified: false }), "yahoo-client", NOW).emailVerified, false);
+  assert.throws(() => profileFromClaims("google", base({ email: undefined }), CLIENT, NOW), /no email/);
+  assert.equal(profileFromClaims("google", base({ email_verified: undefined }), CLIENT, NOW).emailVerified, false);
+  assert.equal(profileFromClaims("google", base({ email_verified: "true" }), CLIENT, NOW).emailVerified, true);
+  assert.equal(profileFromClaims("google", base({ email_verified: false }), CLIENT, NOW).emailVerified, false);
 });
 
 test("the name falls back to given + family name, nickname, then email", () => {
-  const p = (over: Partial<IdTokenClaims>) => profileFromClaims("yahoo", base({ name: undefined, ...over }), "yahoo-client", NOW);
+  const p = (over: Partial<IdTokenClaims>) => profileFromClaims("google", base({ name: undefined, ...over }), CLIENT, NOW);
   assert.equal(p({ given_name: "Pat", family_name: "M" }).name, "Pat M");
   assert.equal(p({ nickname: "patm" }).name, "patm");
-  assert.equal(p({}).name, "manager@yahoo.com");
+  assert.equal(p({}).name, "manager@gmail.com");
   assert.equal(p({ picture: undefined }).pictureUrl, null);
-});
-
-test("Google tokens still check as before", () => {
-  const g = profileFromClaims("google", base({ iss: "accounts.google.com", aud: "g" }), "g", NOW);
-  assert.equal(g.provider, "google");
 });

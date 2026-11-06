@@ -86,9 +86,8 @@ npm run dev
 
 Open http://localhost:3000.
 
-**Signing in locally:** with `AUTH_MOCK=1` (the default in `.env.example`), or whenever neither `GOOGLE_CLIENT_ID`
-nor `YAHOO_SIGNIN_CLIENT_ID` is set, sign-in goes to a mock page where you pick a test user instead of using Google or
-Yahoo. After
+**Signing in locally:** with `AUTH_MOCK=1` (the default in `.env.example`), or whenever `GOOGLE_CLIENT_ID` is
+empty, sign-in goes to a mock page where you pick a test user instead of using Google. After
 `npm run db:seed:league` you can sign in as any of the 12 managers; the first is the commissioner.
 
 For a production build: `npm run build && npm start`.
@@ -135,57 +134,40 @@ Without the worker, `npm run backfill -- --seasons 2026` pulls in everything sin
 ## Importing a league from Yahoo
 
 Moves a Yahoo league over mid-season: the import replaces this season's league with the Yahoo league
-as it stood when you exported it. Finished weeks keep Yahoo's results exactly; the current week and
-everything after are scored here, starting from each team's Yahoo lineups so far. Managers sign in
-with Google or Yahoo using the email you list for their team, and land on it.
+as it stood on the day its CSVs were copied from the league's Yahoo pages. Finished weeks keep Yahoo's
+results exactly; the current week and everything after are scored here, starting from each team's Yahoo
+lineups so far. Managers sign in with Google using the email you list for their team, and land on it.
 
-One-time setup: create an app at https://developer.yahoo.com/apps/ with Fantasy Sports (Read)
-permission and redirect URI `oob`, and put its `YAHOO_CLIENT_ID` and `YAHOO_CLIENT_SECRET` in `.env`.
-
-```sh
-npm run yahoo:export -- --league 12345          # Yahoo league id (in the league's URL)
-```
-
-The first run asks you to sign in to Yahoo and paste back a code. It saves the league to
-`yahoo-export/12345/` (gitignored) and writes `members.csv` there: fill in each manager's Gmail or Yahoo
-email (several emails for co-managers go in one cell, separated by `;`) and mark the commissioner. You can
-also add `league-settings.json` there for settings Yahoo doesn't have, in the shape the
-`/api/league/settings` endpoint returns under `settings` (e.g. `{"timeZone": "America/Los_Angeles",
-"gameLimits": {"total": 40, "slots": {}}}`); it goes on top of Yahoo's settings.
-
-```sh
-npm run yahoo:import -- yahoo-export/12345                    # dry run: report only
-npm run yahoo:import -- yahoo-export/12345 --apply --replace  # replace the season's league with it
-```
-
-The dry run lists what it would do and any problems: Yahoo players it couldn't match to ours (add
-their ids to `player-overrides.csv`, which it fills with the unmatched ones), starters whose Yahoo
-position doesn't fit ours (they go to the bench), illegal rosters, teams with no email. Point
-`DATABASE_URL` at production to import there. You can import as often as you like (a practice run
-now, the real one on moving day); each run starts over from the snapshot, but users and sign-ins
-are kept. Export and import on the same day: the import refuses a snapshot from an earlier day.
-Not imported: pending trades and waiver claims (managers resubmit them), lineups set for future
-days, and playoff brackets (import before the playoffs).
-
-### Without Yahoo's API: from CSVs
-
-Since mid-2026 Yahoo's Fantasy API answers 403 ("This application is not authorized") until Yahoo approves your
-app (apply at sports.yahoo.com/developer/access/). Until then, the same import reads a folder of CSVs copied from
-the league's Yahoo pages instead of an export. The folder has `league.json` instead of `meta.json`:
+The import reads a folder of CSVs (keep it under `yahoo-export/`, which is gitignored: it holds manager emails):
 
 | File | Contents |
 |---|---|
 | `league.json` | `{"name", "season": 2026, "today": "yyyy-mm-dd", "rosterSlots": {"PG": 1, ..., "BN": 3, "IL": 2}, "playoffStartWeek"}`; `today` is the day `rosters.csv` shows |
-| `teams.csv` | `team,name,abbreviation,email,commissioner,waiver_priority,faab_balance` (`team` is a short id the other files use) |
+| `teams.csv` | `team,name,abbreviation,email,commissioner,waiver_priority,faab_balance` (`team` is a short id the other files use; several emails for co-managers go in one cell, separated by `;`) |
 | `schedule.csv` | `week,start,end,team_a,team_b`, one row per matchup |
 | `results.csv` | `week,team,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov` for every finished week |
 | `rosters.csv` | `team,player,nba_team,positions,slot`: today's rosters and lineup slots |
 | `lineups.csv` | optional, `date,team,player,nba_team,positions,slot`: this week's earlier days, so it's scored as Yahoo had it |
 
-`league-settings.json` and `player-overrides.csv` work as above. Run `npm run yahoo:import -- <folder>` the same way;
-it reports every problem in the files first. Transactions and waivers aren't carried over this way.
-To build or refresh this folder from Yahoo's pages, run the `/yahoo-csv-refresh <league-id>` skill in Claude Code
+You can also add `league-settings.json` for settings Yahoo's pages don't give, in the shape the
+`/api/league/settings` endpoint returns under `settings` (e.g. `{"timeZone": "America/Los_Angeles",
+"gameLimits": {"total": 40, "slots": {}}}`); it goes on top of `league.json`'s settings.
+To build or refresh the folder from Yahoo's pages, run the `/yahoo-csv-refresh <league-id>` skill in Claude Code
 ([.claude/skills/yahoo-csv-refresh/SKILL.md](.claude/skills/yahoo-csv-refresh/SKILL.md)).
+
+```sh
+npm run yahoo:import -- yahoo-export/12345-csv                    # dry run: report only
+npm run yahoo:import -- yahoo-export/12345-csv --apply --replace  # replace the season's league with it
+```
+
+The dry run lists what it would do and any problems: errors in the files, Yahoo players it couldn't match to
+ours (add their ids to `player-overrides.csv`, which it fills with the unmatched ones), starters whose Yahoo
+position doesn't fit ours (they go to the bench), illegal rosters, teams with no email. Point
+`DATABASE_URL` at production to import there. You can import as often as you like (a practice run
+now, the real one on moving day); each run starts over from the files, but users and sign-ins
+are kept. Copy and import on the same day: the import refuses rosters from an earlier day.
+Not imported: transactions, players on waivers, pending trades and waiver claims (managers resubmit them),
+lineups set for future days, and playoff brackets (import before the playoffs).
 
 ## Deploying (Railway)
 
@@ -210,13 +192,9 @@ redeploy the code.
    ```
    The plan should create `web`, `worker` and `Postgres` (or, for an existing project, change only what you expect).
 3. Secrets aren't in the file (they're `preserve()`): set them in the dashboard under each service's Variables:
-   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`. For Yahoo
-   sign-in too, also `YAHOO_SIGNIN_CLIENT_ID` / `YAHOO_SIGNIN_CLIENT_SECRET` on `web` (step 4).
+   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
-   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. For Yahoo sign-in,
-   create an app at https://developer.yahoo.com/apps/create/ with API permission "OpenID Connect Permissions"
-   (Email, Profile) and redirect URI `https://<domain>/api/auth/yahoo/callback` (Yahoo wants https, so this is
-   tested on the deployed site, not locally). It is not the Fantasy Sports app the Yahoo import uses. The app uses Railway's
+   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
    domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.
 5. Load data from your machine through an SSH tunnel to Postgres (it has no public address). In one terminal:
    ```sh

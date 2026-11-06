@@ -1,4 +1,4 @@
-// GET /api/auth/<google|yahoo>/start?next=/path — sends the browser to the
+// GET /api/auth/google/start?next=/path — sends the browser to the
 // provider's sign-in (or to the mock sign-in page in local dev).
 import { NextResponse } from "next/server";
 import { OAUTH_COOKIE, appOrigin, mockAuthEnabled, safeNext, secureCookies } from "@/lib/auth/config";

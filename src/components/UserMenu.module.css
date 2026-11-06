@@ -116,19 +116,3 @@ a.item {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-
-.stack {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-button.signIn {
-  cursor: pointer;
-}
-
-a.providerItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}

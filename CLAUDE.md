@@ -11,10 +11,10 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/espn/news.ts`: player news from ESPN's keyless fantasy endpoints (Rotowire blurbs), matched by name and
   fetched live by `/api/players/[id]/news` with an in-memory cache. Not stored; the one exception to reading from our DB.
 - `src/lib/db.ts`: shared `pg` pool.
-- Sign-in: `src/lib/auth/oidc.ts` (Google and Yahoo, OpenID Connect; `profileFromClaims` pure, tested) behind
+- Sign-in: `src/lib/auth/oidc.ts` (Google, OpenID Connect; `profileFromClaims` pure, tested) behind
   `/api/auth/[provider]/start|callback`; a provider's button shows once its client id and secret are set. Each provider
   account is a `user_identities` row (migration 0022); `signInUser` (`auth/session.ts`) joins a new one to the user
-  with the same verified email, and only a verified email links league teams (`linkMemberships`).
+  with the same verified email (Yahoo sign-in was tried and removed; old `yahoo` rows are inert), and only a verified email links league teams (`linkMemberships`).
 - `db/migrations/NNNN_name.sql`: the schema, applied in order by `npm run db:migrate` and tracked in
   `schema_migrations`. Never edit a migration that has been committed; add the next number instead.
   `scripts/dev/seed-league.ts` (`npm run db:seed:league`) seeds a 12-team league with mock managers.
@@ -75,10 +75,10 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier.
-- Yahoo import (README, "Importing a league from Yahoo"): `scripts/yahoo/export.ts` saves a Yahoo league's raw API JSON
-  to a snapshot folder, `scripts/yahoo/import.ts` replaces the season's league with it (dry run unless `--apply`).
-  Parsing and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Without API access (Yahoo now gates it), the import
-  reads a folder of CSVs instead (`src/lib/yahoo/csv.ts`, pure, tested; README has the formats; the `yahoo-csv-refresh` skill builds them from Yahoo's pages). Imported finished weeks keep Yahoo's
+- Yahoo import (README, "Importing a league from Yahoo"): no Yahoo API (sign-in or Fantasy); `scripts/yahoo/import.ts`
+  replaces the season's league from a folder of CSVs (dry run unless `--apply`) read by `src/lib/yahoo/csv.ts`
+  (pure, tested; README has the formats; the `yahoo-csv-refresh` skill builds them from Yahoo's pages). The snapshot
+  shape and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
   totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
 - Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is

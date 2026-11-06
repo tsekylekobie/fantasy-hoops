@@ -1,5 +1,5 @@
 // POST /api/auth/mock (form: email, name, next) — local-dev stand-in for
-// Google and Yahoo. 404s unless mock auth is enabled, which it never is in production.
+// Google. 404s unless mock auth is enabled, which it never is in production.
 import { NextResponse } from "next/server";
 import { mockAuthEnabled, safeNext } from "@/lib/auth/config";
 import { linkMemberships } from "@/lib/auth/members";

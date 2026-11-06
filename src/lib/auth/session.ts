@@ -6,7 +6,7 @@ import type { SessionUser } from "@/lib/types";
 import { SESSION_COOKIE, SESSION_REFRESH_HOURS, SESSION_TTL_DAYS, secureCookies } from "./config";
 
 export interface Profile {
-  provider: "google" | "yahoo" | "mock";
+  provider: "google" | "mock";
   /** The provider's stable account id (the ID token's `sub`); the email for mock sign-ins. */
   subject: string;
   email: string;
@@ -25,7 +25,7 @@ function hashToken(token: string): Buffer {
 /**
  * Finds or creates the user for this provider account and refreshes their
  * profile; returns their id. A provider account seen for the first time joins
- * an existing user when both verified the same email (so Google and Yahoo with
+ * an existing user when both verified the same email (so two sign-in methods with
  * one address are one user), else starts a new one.
  */
 export async function signInUser(p: Profile): Promise<number> {
