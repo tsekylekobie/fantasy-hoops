@@ -354,7 +354,7 @@ a.pageBtn:hover {
   background: var(--accent);
 }
 
-/* Win chance row: toss-ups loud, leans soft, safe and lost faded. */
+/* Win chance row: red (losing) to green (winning), by the chance itself (--chance, 0–100). */
 
 .csOdds {
   height: 44px;
@@ -377,27 +377,8 @@ a.pageBtn:hover {
   border-radius: 6px;
   text-align: center;
   font-weight: 600;
-}
-
-.odds-tossup {
-  background: var(--rank-1-bg);
-  color: var(--rank-1-ink);
-  font-weight: 700;
-}
-
-.odds-ahead,
-.odds-behind {
-  background: var(--rank-2-bg);
   color: var(--ink);
-}
-
-.odds-safe,
-.odds-gone,
-.odds-won,
-.odds-lost,
-.odds-tied {
-  color: var(--ink-subtle);
-  font-weight: 500;
+  background: color-mix(in oklch, var(--odds-win-bg) calc(var(--chance, 50) * 1%), var(--odds-lose-bg));
 }
 
 .foot {
