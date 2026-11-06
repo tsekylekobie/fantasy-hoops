@@ -144,9 +144,19 @@
   background: var(--surface-muted);
 }
 
-.link:focus-visible {
+.link:has(.cover:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* A game's link to its matchup, over the whole card; team names (TeamLink) sit above it. */
+.cover {
+  position: absolute;
+  inset: 0;
+}
+
+.cover:focus-visible {
+  outline: none;
 }
 
 .gameMine {

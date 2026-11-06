@@ -12,6 +12,7 @@ import { SignInButton } from "@/components/UserMenu";
 import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import PlayoffsBracket from "./PlayoffsBracket";
 import StandingsCard from "./StandingsCard";
 import styles from "./LeagueView.module.css";
@@ -28,9 +29,6 @@ function fmtRange(from: string, to: string): string {
   const b = fmtGameDate(to);
   return a.slice(0, 3) === b.slice(0, 3) ? `${a}–${b.slice(4)}` : `${a} – ${b}`;
 }
-
-const teamHref = (t: FantasyTeamSummary, myTeam: FantasyTeamSummary | null) =>
-  t.id === myTeam?.id ? "/my-team" : `/team/${t.id}`;
 
 /**
  * `children` render below standings and the scoreboard (Recent transactions).
@@ -121,7 +119,7 @@ function Standings({ data }: { data: LeagueOverview }) {
             <span role="cell">{t.rank}</span>
             <span role="cell" className={styles.tn}>
               <TeamBadge team={t} />
-              <Link href={teamHref(t, data.myTeam)}>{t.name}</Link>
+              <TeamLink team={t} myTeamId={data.myTeam?.id} />
             </span>
             <span role="cell" className={styles.n}>{fmtScore(t.record)}</span>
             <span role="cell" className={styles.n}>{fmtPct(t.pct)}</span>
@@ -161,7 +159,7 @@ function Scoreboard({ data }: { data: LeagueOverview }) {
       </div>
       {data.matchups.length === 0
         ? <p className={styles.unset}>Not set yet. Each playoff round is set when the week before it ends.</p>
-        : data.matchups.map((m) => <ScoreRow key={m.teamA.id} m={m} week={w.week} upcoming={upcoming} />)}
+        : data.matchups.map((m) => <ScoreRow key={m.teamA.id} m={m} week={w.week} upcoming={upcoming} myTeamId={data.myTeam?.id} />)}
       {data.matchups.length > 0 && (
         <p className={styles.foot}>
           {upcoming
@@ -179,11 +177,11 @@ function PagerLink({ week, disabled, label, children }: { week: number; disabled
   return <Link href={`/league?week=${week}`} scroll={false} className={styles.pageBtn} aria-label={label}>{children}</Link>;
 }
 
-function ScoreRow({ m, week, upcoming }: { m: OtherMatchup; week: number; upcoming: boolean }) {
+function ScoreRow({ m, week, upcoming, myTeamId }: { m: OtherMatchup; week: number; upcoming: boolean; myTeamId: number | undefined }) {
   const side = (t: FantasyTeamSummary, right?: boolean) => (
     <span className={`${styles.side} ${right ? styles.r : ""}`}>
       <TeamBadge team={t} />
-      <span>{t.name}</span>
+      <span><TeamLink team={t} myTeamId={myTeamId} /></span>
     </span>
   );
   const tag = m.bracket && <small className={styles.tag}>{m.bracket.label}</small>;
@@ -200,16 +198,19 @@ function ScoreRow({ m, week, upcoming }: { m: OtherMatchup; week: number; upcomi
   const score = upcoming ? "vs" : fmtScore(m.score);
   // The matchup page puts your team on the left on its own; other matchups open by team.
   const href = m.isMine ? `/matchup?week=${week}` : `/matchup?week=${week}&team=${m.teamA.id}`;
+  // The score's link covers the row (opens the matchup); the team names sit above it.
   return (
-    <Link
-      href={href}
-      className={`${styles.m} ${styles.link} ${m.isMine ? styles.mine : ""}`}
-      aria-label={`${m.bracket ? `${m.bracket.label}: ` : ""}${m.teamA.name} ${score} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
-    >
+    <div className={`${styles.m} ${styles.link} ${m.isMine ? styles.mine : ""}`}>
       {tag}
       {side(m.teamA)}
-      <b>{score}</b>
+      <Link
+        href={href}
+        className={styles.cover}
+        aria-label={`${m.bracket ? `${m.bracket.label}: ` : ""}${m.teamA.name} ${score} ${m.teamB.name}${m.isMine ? " (your matchup)" : ""}`}
+      >
+        <b>{score}</b>
+      </Link>
       {side(m.teamB, true)}
-    </Link>
+    </div>
   );
 }

@@ -7,10 +7,11 @@
 // lineup after (empty slots are positional holes). The numbers come from
 // src/lib/trades/analysis.ts over GET /api/trades/analysis; used by the trade
 // builder and by pending trades in TradesPanel.
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { fmtAvg, fmtPct, fmtValue, fullName } from "@/components/players/format";
 import { analyzeTrade, playerValue, type CategoryChange, type SideAnalysis, type TradeSideInput, type WeightSet } from "@/lib/trades/analysis";
 import { CATEGORIES, type Category, type CategoryWeights, type TradeAnalysisResponse, type TradeWindow } from "@/lib/types";
+import TeamLink from "@/components/TeamLink";
 import styles from "./TradeAnalysis.module.css";
 
 const LABEL: Record<Category, string> = {
@@ -112,7 +113,9 @@ export default function TradeAnalysis({ data, sides, viewerTeamId, statWindow, w
   const [phoneSide, setPhoneSide] = useState(0);
   const result = analyzeTrade(data, sides, statWindow, weights);
   const name = (teamId: number) => data.teams.find((t) => t.id === teamId)?.name ?? "Team";
-  const title = (teamId: number) => `${name(teamId)}${teamId === viewerTeamId ? " (you)" : ""}`;
+  const title = (teamId: number) => (
+    <><TeamLink team={{ id: teamId, name: name(teamId) }} myTeamId={viewerTeamId} />{teamId === viewerTeamId ? " (you)" : ""}</>
+  );
   const weightName = weights === "mine" && !data.weightsAreDefault ? `your weights (${weightsLabel(data.weights)})` : "default weights";
   const windowName = statWindow === "season" ? "season averages" : "the last 14 days";
 
@@ -231,7 +234,7 @@ function Cols({ children }: { children: React.ReactNode }) {
 }
 
 function Tile({ s, title, you, weightName, hidePhone }: {
-  s: SideAnalysis; title: string; you: boolean; weightName: string; hidePhone: boolean;
+  s: SideAnalysis; title: ReactNode; you: boolean; weightName: string; hidePhone: boolean;
 }) {
   const up = s.categories.filter((c) => c.rankAfter < c.rankBefore).map((c) => LABEL[c.key]);
   const down = s.categories.filter((c) => c.rankAfter > c.rankBefore).map((c) => LABEL[c.key]);
@@ -258,7 +261,7 @@ function Consequences({ s, side, data, hidePhone, title, teamName, you, weightNa
   side: AnalysisSide;
   data: TradeAnalysisResponse;
   hidePhone: boolean;
-  title: string;
+  title: ReactNode;
   teamName: string;
   you: boolean;
   weightName: string;

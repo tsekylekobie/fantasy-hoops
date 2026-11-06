@@ -21,6 +21,7 @@ import Avatar from "@/components/Avatar";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import Flash from "@/components/live/Flash";
 import LiveRefresh from "@/components/live/LiveRefresh";
 import { fmtChance, matchupOdds, type OddsTier } from "./categoryOdds";
@@ -154,16 +155,16 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
         </div>
       </div>
 
-      {m && <Scoreboard m={m} projected={data.projected} />}
+      {m && <Scoreboard m={m} projected={data.projected} myTeamId={data.myTeam?.id} />}
       <div className={styles.top}>
-        {m ? <Categories m={m} projected={data.projected} showOdds={data.status !== "final"} /> : (
+        {m ? <Categories m={m} projected={data.projected} showOdds={data.status !== "final"} myTeamId={data.myTeam?.id} /> : (
           <div className={`${styles.card} ${styles.notice}`}>
             {!signedIn ? (
               <p>Sign in to see your matchup, or pick one from around the league.</p>
             ) : !data.myTeam ? (
               <p>You don’t have a team in this league. Pick a matchup from around the league.</p>
             ) : (
-              <p>{data.myTeam.name} has no matchup this week.</p>
+              <p><TeamLink team={data.myTeam} myTeamId={data.myTeam.id} /> has no matchup this week.</p>
             )}
           </div>
         )}
@@ -218,14 +219,14 @@ function PagerLink({ href, disabled, children }: { href: string; disabled: boole
   return <Link className={styles.pageBtn} href={href}>{children}</Link>;
 }
 
-function Scoreboard({ m, projected }: { m: Matchup; projected: boolean }) {
+function Scoreboard({ m, projected, myTeamId }: { m: Matchup; projected: boolean; myTeamId: number | undefined }) {
   const score = projected ? m.projectedScore : m.score;
   const sub = (s: MatchupSide) =>
     `${s.managerName ? `${s.managerName} · ` : ""}${s.gamesPlayed}/${s.gamesPlayed + s.gamesLeft} games played${s.gameLimit ? ` (limit ${s.gameLimit})` : ""}`;
   return (
     <section className={styles.board} aria-label="Score">
       <div className={styles.side}>
-        <div className={styles.t}><TeamBadge team={m.team} /><h2>{m.team.name}</h2></div>
+        <div className={styles.t}><TeamBadge team={m.team} /><h2><TeamLink team={m.team} myTeamId={myTeamId} /></h2></div>
         <p>{sub(m.team)}</p>
         {m.isMine && <Link href="/my-team">Set lineup</Link>}
       </div>
@@ -241,7 +242,7 @@ function Scoreboard({ m, projected }: { m: Matchup; projected: boolean }) {
         {projected && <span className={styles.scoreTag} aria-hidden="true">Projected</span>}
       </div>
       <div className={`${styles.side} ${styles.r}`}>
-        <div className={styles.t}><TeamBadge team={m.opponent} /><h2>{m.opponent.name}</h2></div>
+        <div className={styles.t}><TeamBadge team={m.opponent} /><h2><TeamLink team={m.opponent} myTeamId={myTeamId} /></h2></div>
         <p>{sub(m.opponent)}</p>
       </div>
     </section>
@@ -288,7 +289,7 @@ function OddsRow({ m }: { m: Matchup }) {
   );
 }
 
-function Categories({ m, projected, showOdds }: { m: Matchup; projected: boolean; showOdds: boolean }) {
+function Categories({ m, projected, showOdds, myTeamId }: { m: Matchup; projected: boolean; showOdds: boolean; myTeamId: number | undefined }) {
   const results = projected ? m.projectedResults : m.results;
   const rows = [
     { side: m.team, line: projected ? m.team.projected : m.team.stats, results },
@@ -308,7 +309,7 @@ function Categories({ m, projected, showOdds }: { m: Matchup; projected: boolean
         </div>
         {rows.map(({ side, line, results }) => (
           <div className={`${styles.cs} ${styles.csRow}`} role="row" key={side.id}>
-            <span role="rowheader" className={styles.tn}>{side.name}</span>
+            <span role="rowheader" className={styles.tn}><TeamLink team={side} myTeamId={myTeamId} /></span>
             {CATEGORY_KEYS.map((k) => (
               <Flash role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`} value={statValue(k, line)}>
                 <Stat k={k} line={line} />
@@ -343,25 +344,25 @@ function AroundTheLeague({ data, view }: { data: MatchupWeek; view: View }) {
       <h3>Around the league{data.projected && <span className={styles.h3Tag}>Projected</span>}</h3>
       {data.others.map((o) => {
         const score = data.projected ? o.projectedScore ?? o.score : o.score;
-        const body = (
-          <>
-            {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
-            <span>{o.teamA.name}</span>
-            <Flash as="b" value={o.teamB ? fmtScore(score) : null}>{o.teamB ? fmtScore(score) : "Bye"}</Flash>
-            <span>{o.teamB?.name ?? ""}</span>
-          </>
-        );
-        if (!o.teamB) return <div className={styles.other} key={o.teamA.id}>{body}</div>;
+        const myTeamId = data.myTeam?.id;
+        const scoreText = <Flash as="b" value={o.teamB ? fmtScore(score) : null}>{o.teamB ? fmtScore(score) : "Bye"}</Flash>;
+        // The score's link covers the row (opens the matchup); the team names sit above it.
         return (
-          <Link
-            className={`${styles.other} ${styles.otherLink} ${o.isMine ? styles.otherMine : ""}`}
-            key={o.teamA.id}
-            href={viewHref({ ...view, team: o.isMine ? null : o.teamA.id })}
-            scroll={false}
-            aria-label={`${o.teamA.name} ${fmtScore(score)} ${o.teamB.name}${data.projected ? " (projected)" : ""}${o.isMine ? " (your matchup)" : ""}`}
-          >
-            {body}
-          </Link>
+          <div className={`${styles.other} ${o.teamB ? styles.otherLink : ""} ${o.teamB && o.isMine ? styles.otherMine : ""}`} key={o.teamA.id}>
+            {o.bracket && <small className={styles.otherTag}>{o.bracket.label}</small>}
+            <span><TeamLink team={o.teamA} myTeamId={myTeamId} /></span>
+            {o.teamB ? (
+              <Link
+                className={styles.otherCover}
+                href={viewHref({ ...view, team: o.isMine ? null : o.teamA.id })}
+                scroll={false}
+                aria-label={`${o.teamA.name} ${fmtScore(score)} ${o.teamB.name}${data.projected ? " (projected)" : ""}${o.isMine ? " (your matchup)" : ""}`}
+              >
+                {scoreText}
+              </Link>
+            ) : scoreText}
+            <span>{o.teamB && <TeamLink team={o.teamB} myTeamId={myTeamId} />}</span>
+          </div>
         );
       })}
     </section>
@@ -411,7 +412,7 @@ function Roster({ side, data }: { side: MatchupSide; data: MatchupWeek }) {
     : day ? (day === data.today ? "Today" : `${weekday(day)}, ${fmtGameDate(day)}`) : "Week totals";
   return (
     <section className={styles.card}>
-      <h3 className={styles.rosH}>{side.name}<span>{hint}</span></h3>
+      <h3 className={styles.rosH}><TeamLink team={side} myTeamId={data.myTeam?.id} /><span>{hint}</span></h3>
       <div role="table" aria-label={`${side.name} roster`}>
         <div className={`${styles.g} ${styles.gHead}`} role="row">
           <span role="columnheader">Slot</span>

@@ -612,6 +612,10 @@ a.arw:hover,
   color: var(--ink-subtle);
 }
 
+.mp a:hover {
+  color: inherit;
+}
+
 .mp {
   padding: 3px 9px;
   border-radius: 999px;

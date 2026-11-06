@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import { useSignedIn } from "@/components/SessionProvider";
 import type {
   PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PastSeasonRow, PlayerTransaction, PlayerWeek,
@@ -140,7 +141,7 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
           <CloseButton onClose={requestClose} />
         </div>
         {data ? (
-          <Detail key={data.player.id} data={data} onClose={requestClose} />
+          <Detail key={data.player.id} data={data} onClose={requestClose} myTeamId={myTeamId} />
         ) : (
           <>
             <div className={styles.state} role={current?.status === "error" ? "alert" : "status"}>
@@ -225,7 +226,14 @@ function DetailHead({
         </h2>
         <p className={styles.subline}>
           {subline}
-          {owner && ` · ${owner.teamId === myTeamId ? "On your team" : `On ${owner.abbreviation}`}`}
+          {owner && (
+            <>
+              {" · "}
+              {owner.teamId === myTeamId
+                ? <TeamLink team={{ id: owner.teamId, name: owner.abbreviation }} myTeamId={myTeamId}>On your team</TeamLink>
+                : <>On <TeamLink team={{ id: owner.teamId, name: owner.abbreviation }} myTeamId={myTeamId} /></>}
+            </>
+          )}
         </p>
         <Ranks ranks={data.ranks} />
         {injury && (injuryLine || injury.note) && (
@@ -241,7 +249,7 @@ function DetailHead({
               : waiver.reason === "all_adds"
                 ? "Free agent, adds go by claim"
                 : waiver.droppedBy
-                  ? `Dropped by ${waiver.droppedBy.name}`
+                  ? <>Dropped by <TeamLink team={waiver.droppedBy} myTeamId={myTeamId} /></>
                   : "Recently dropped"}{" "}
             · {waiver.reason === "all_adds" ? "Next run" : "Clears"} {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
           </p>
@@ -303,7 +311,7 @@ type Tab = (typeof TABS)[number]["value"];
 /** A game's box score (the box scores page opens on ?game). */
 const boxScoreHref = (date: string, gameId: number) => `/box-scores?date=${date}&game=${gameId}`;
 
-function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => void }) {
+function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClose: () => void; myTeamId: number | null }) {
   const { season, seasonAverages: avg, gameLog, pastSeasons } = data;
   const label = seasonLabel(season);
   // Remounted per player (keyed by id), so each player opens on Overview; a refresh keeps the tab.
@@ -379,7 +387,7 @@ function Detail({ data, onClose }: { data: PlayerDetailResponse; onClose: () => 
         <News playerId={data.player.id} />
 
         {/* League data is private: signed out, no transaction history. */}
-        {signedIn && <Transactions transactions={data.transactions} timeZone={data.timeZone} />}
+        {signedIn && <Transactions transactions={data.transactions} timeZone={data.timeZone} myTeamId={myTeamId} />}
       </div>
 
       <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
@@ -575,7 +583,7 @@ function moveText(tx: PlayerTransaction): { sign: "+" | "−" | "→"; verb: str
 }
 
 /** Everyone who has added, dropped, claimed or traded him in this league, newest first. */
-function Transactions({ transactions, timeZone }: { transactions: PlayerTransaction[]; timeZone: string }) {
+function Transactions({ transactions, timeZone, myTeamId }: { transactions: PlayerTransaction[]; timeZone: string; myTeamId: number | null }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? transactions : transactions.slice(0, TRANSACTIONS_PREVIEW);
   return (
@@ -600,16 +608,16 @@ function Transactions({ transactions, timeZone }: { transactions: PlayerTransact
                     {tx.from && tx.to ? (
                       <>
                         <TeamBadge team={tx.from} className={styles.txBadge} />
-                        <span className={styles.txTeam}>{tx.from.name}</span>
+                        <TeamLink className={styles.txTeam} team={tx.from} myTeamId={myTeamId} />
                         {" to "}
                         <TeamBadge team={tx.to} className={styles.txBadge} />
-                        <span className={styles.txTeam}>{tx.to.name}</span>
+                        <TeamLink className={styles.txTeam} team={tx.to} myTeamId={myTeamId} />
                       </>
                     ) : (
                       team && (
                         <>
                           <TeamBadge team={team} className={styles.txBadge} />
-                          <span className={styles.txTeam}>{team.name}</span>
+                          <TeamLink className={styles.txTeam} team={team} myTeamId={myTeamId} />
                         </>
                       )
                     )}
