@@ -123,6 +123,8 @@ export interface PlayerRow extends PlayerSummary {
   waiver: PlayerWaiver | null;
   /** His team's scheduled games on the requested `plays` days, in date order; empty without `plays`. */
   games: PlayerUpcomingGame[];
+  /** His NBA games in the league's current matchup week, as on My team (LineupPlayer.weekGames); null outside the schedule. */
+  weekGames: { remaining: number; total: number } | null;
   /** Null when healthy. */
   injury: PlayerInjury | null;
   /** On the signed-in user's watchlist; null when signed out (no star). */
