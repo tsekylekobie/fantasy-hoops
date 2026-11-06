@@ -41,6 +41,7 @@ import { gamesInProgress } from "./live";
 import { teamGameLimitUsage } from "./matchups";
 import { getSeasonValues } from "./players";
 import { teamLogoUrl } from "./teamLogo";
+import { getCurrentWeek, getWeekGames, started } from "./weekGames";
 
 type Db = Pool | PoolClient;
 
@@ -146,9 +147,6 @@ interface DayPlayerRow {
   pts: number; reb: number; ast: number; stl: number; blk: number; tov: number;
 }
 
-// Whether game `g` has started: the provider says so, or the clock has passed
-// tip-off (so stale data locks early, never late).
-const started = (g: string) => `coalesce(${g}.status_state <> 'scheduled' OR ${g}.datetime <= now(), false)`;
 
 // One row per player: his team on $2 (player_team_on, so a traded player's
 // past days show the team he was on) and that team's game.
@@ -460,45 +458,12 @@ export async function remainingWeekDays(db: Db, team: TeamContext, date: string)
   return out;
 }
 
-type WeekGames = LineupPlayer["weekGames"];
-
-/**
- * Each player's NBA team's games from `start` to `end` (inclusive): those not
- * yet tipped off, and in all. A game counts as played once it has started.
- * Each day uses his team that day (player_team_on), so a week he was traded in
- * counts his old team's games before the trade and his new team's after.
- */
-export async function getWeekGames(db: Db, ids: number[], start: string, end: string): Promise<Map<number, WeekGames>> {
-  const { rows } = await db.query<{ id: number; total: number; remaining: number }>(
-    `SELECT p.id, count(g.id)::int AS total, count(g.id) FILTER (WHERE NOT ${started("g")})::int AS remaining
-       FROM players p
-       CROSS JOIN generate_series($2::date, $3::date, interval '1 day') d
-       CROSS JOIN LATERAL (SELECT player_team_on(p.id, d::date) AS team_id OFFSET 0) pt
-       LEFT JOIN games g ON g.date = d::date AND NOT g.postponed
-                        AND pt.team_id IN (g.home_team_id, g.visitor_team_id)
-      WHERE p.id = ANY($1)
-      GROUP BY p.id`,
-    [ids, start, end],
-  );
-  return new Map(rows.map((r) => [r.id, { remaining: r.remaining, total: r.total }]));
-}
-
 /**
  * A player's games in `season`'s league's current matchup week (the one
  * containing the league's today), for the player modal. Null outside the schedule.
  */
 export async function getPlayerWeek(db: Db, playerId: number, season: number): Promise<PlayerWeek | null> {
-  const { rows: [w] } = await db.query<{
-    week: number; starts_on: string; ends_on: string; is_playoffs: boolean; time_zone: string;
-  }>(
-    `SELECT lw.week, to_char(lw.starts_on, 'YYYY-MM-DD') AS starts_on, to_char(lw.ends_on, 'YYYY-MM-DD') AS ends_on,
-            lw.is_playoffs, l.time_zone
-       FROM leagues l JOIN league_weeks lw ON lw.league_id = l.id
-      WHERE l.season = $1 AND (now() AT TIME ZONE l.time_zone)::date BETWEEN lw.starts_on AND lw.ends_on
-      ORDER BY l.id DESC
-      LIMIT 1`,
-    [season],
-  );
+  const w = await getCurrentWeek(db, season);
   if (!w) return null;
   const [gamesRes, counts] = await Promise.all([
     db.query<GameRow & { date: string }>(
@@ -515,16 +480,12 @@ export async function getPlayerWeek(db: Db, playerId: number, season: number): P
          LEFT JOIN teams opp ON opp.id = CASE WHEN g.home_team_id = pt.team_id THEN g.visitor_team_id ELSE g.home_team_id END
         WHERE p.id = $1
         ORDER BY g.datetime, g.id`,
-      [playerId, w.starts_on, w.ends_on],
+      [playerId, w.startsOn, w.endsOn],
     ),
-    getWeekGames(db, [playerId], w.starts_on, w.ends_on),
+    getWeekGames(db, [playerId], w.startsOn, w.endsOn),
   ]);
   return {
-    week: w.week,
-    startsOn: w.starts_on,
-    endsOn: w.ends_on,
-    isPlayoffs: w.is_playoffs,
-    timeZone: w.time_zone,
+    ...w,
     games: gamesRes.rows.map((r) => ({ gameId: r.game_id!, date: r.date, ...toGame(r)! })),
     ...(counts.get(playerId) ?? { remaining: 0, total: 0 }),
   };

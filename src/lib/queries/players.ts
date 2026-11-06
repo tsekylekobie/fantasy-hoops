@@ -36,6 +36,7 @@ import { playDates, streamDates, clearsByTomorrow } from "./streaming";
 import { ISO, getWaiverStatus } from "./waiverStatus";
 import { getInjuries } from "./injuries";
 import { getWatchedIds } from "./watchlist";
+import { getCurrentWeek, getWeekGames } from "./weekGames";
 
 // Shared aggregate columns. All casts make pg return JS numbers, not strings.
 const AGG = `
@@ -296,7 +297,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   const days = q.range === "custom" ? null : RANGE_DAYS[q.range];
   const window = q.range === "custom" ? q.dates : days === null ? null : await statWindow(db, q.season, days);
   // No played games yet: a null bound returns no rows for the windows either way.
-  const [{ rows }, owners, waivers, injuries, teamOptions, watched, bounds] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries, teamOptions, watched, bounds, week] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null, q.range === "custom" ? window!.to : null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
@@ -304,6 +305,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     getTeamOptions(db, q.season),
     getWatchedIds(db, userId),
     db.query<{ first: string | null; last: string | null }>(SEASON_BOUNDS_SQL, [q.season]),
+    getCurrentWeek(db, q.season),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -343,7 +345,12 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     });
 
   const start = (q.page - 1) * q.perPage;
-  const players: PlayerRow[] = matching.slice(start, start + q.perPage).map(({ r, v }) => {
+  const page = matching.slice(start, start + q.perPage);
+  // This week's games for the page only: player_team_on runs per player per day.
+  const weekGames = week
+    ? await getWeekGames(db, page.map(({ r }) => r.player_id), week.startsOn, week.endsOn)
+    : null;
+  const players: PlayerRow[] = page.map(({ r, v }) => {
     const { min, ...stats } = categoryLine(r, q.mode);
     return {
       id: r.player_id,
@@ -361,6 +368,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
+      weekGames: weekGames ? weekGames.get(r.player_id) ?? { remaining: 0, total: 0 } : null,
       injury: injuries.get(r.player_id) ?? null,
       watched: userId === null ? null : watched.has(r.player_id),
     };

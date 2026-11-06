@@ -10,9 +10,8 @@ import WatchStar from "./WatchStar";
 import TeamLink from "@/components/TeamLink";
 import styles from "./PlayersTable.module.css";
 
-/** Stat columns after # and Player, each sortable by its header. */
+/** Stat columns after #, Player and this week's games, each sortable by its header. */
 const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
-  { label: "GP", sort: "gp", title: "Games played" },
   { label: "MIN", sort: "min", title: "Minutes" },
   { label: "FG%", sort: "fgPct", title: "Field goal % (makes/attempts below)" },
   { label: "FT%", sort: "ftPct", title: "Free throw % (makes/attempts below)" },
@@ -29,6 +28,9 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
 const TIER_CLASS: Record<RankTier, string | undefined> = {
   top10: styles.top10, top25: styles.top25, top40: styles.top40, mid: undefined, bottom25: styles.bottom25, bottom10: styles.bottom10,
 };
+
+/** Games left this week, colored as on My team (4+ green down to 0 red). */
+const WEEK_GAMES_CLASS = [styles.games0, styles.games1, styles.games2, styles.games3, styles.games4];
 
 const TIER_LABEL: Record<RankTier, string> = {
   top10: "top 10%", top25: "top 25%", top40: "top 40%", mid: "middle", bottom25: "bottom 25%", bottom10: "bottom 10%",
@@ -123,7 +125,7 @@ export default function PlayersTable({
         <colgroup>
           <col className={styles.cRank} />
           <col />
-          <col className={styles.cGp} />
+          <col className={styles.cWeek} />
           <col className={styles.cMin} />
           <col className={styles.cPct} />
           <col className={styles.cPct} />
@@ -139,6 +141,9 @@ export default function PlayersTable({
           <tr>
             <th scope="col" title="9CAT rank">#</th>
             <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} copy={copy} />
+            <th scope="col" className={styles.week}>
+              <abbr className={styles.abbr} title="Games remaining / total in this matchup week">Gms</abbr>
+            </th>
             {COLUMNS.map((c) => (
               <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} copy={copy} />
             ))}
@@ -154,7 +159,7 @@ export default function PlayersTable({
       <tbody>
         {message ? (
           <tr className={styles.messageRow}>
-            <td colSpan={COLUMNS.length + (onAddPlayer ? 3 : 2)}>
+            <td colSpan={COLUMNS.length + (onAddPlayer ? 4 : 3)}>
               <div className={styles.message} role={status === "error" ? "alert" : "status"}>
                 {message}
               </div>
@@ -219,7 +224,18 @@ function Row({
           </span>
         </span>
       </td>
-      <td className={styles.n}>{fmtInt(p.gp)}</td>
+      <td className={styles.week}>
+        {p.weekGames ? (
+          <span
+            className={`${styles.weekGames} ${WEEK_GAMES_CLASS[Math.min(p.weekGames.remaining, 4)]}`}
+            title={`${p.weekGames.remaining} game${p.weekGames.remaining === 1 ? "" : "s"} left of ${p.weekGames.total} this week`}
+          >
+            {p.weekGames.remaining}/{p.weekGames.total}
+          </span>
+        ) : (
+          <span className={styles.none}>–</span>
+        )}
+      </td>
       <td className={styles.n}>{mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
       <Shaded mode={mode} k="fgPct" tier={t.fgPct}>
         <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} />

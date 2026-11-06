@@ -1,5 +1,5 @@
-/* Players table: matches docs/design/players-table.mockup.html
-   (columns 40px · minmax(200px,1fr) · 44px · 52px · 9 × 66px, 16px row padding). */
+/* Players table: docs/design/players-table.mockup.html, tightened to fit the
+   1200px page without scrolling sideways (GP gave way to this week's games). */
 
 .card {
   background: var(--surface);
@@ -12,7 +12,7 @@
 
 .table {
   width: 100%;
-  min-width: 1238px;
+  min-width: 1154px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -21,7 +21,7 @@
 
 /* Signed out there's no Owner column: take its width off, or Player (sticky on phones) soaks it up and covers the stats. */
 .table.noOwner {
-  min-width: calc(1238px - 184px);
+  min-width: calc(1154px - 168px);
 }
 
 .stale {
@@ -30,26 +30,27 @@
 
 /* Column widths include the 16px row padding on the first and last columns. */
 .cRank {
-  width: 56px;
+  width: 48px;
 }
-.cGp {
-  width: 44px;
+.cWeek {
+  width: 60px;
 }
 .cMin {
-  width: 52px;
+  width: 50px;
 }
 .cStat {
-  width: 66px;
+  width: 56px;
 }
 .cPct {
-  width: 80px;
+  /* Fits totals' "1,004/1,937" under the percentage. */
+  width: 84px;
 }
 .cValue {
-  width: 82px;
+  width: 72px;
 }
 .cOwner {
   /* Fits "Claim (Wed, Oct 28)" with a stat-column gap before it. */
-  width: 184px;
+  width: 168px;
 }
 
 .table th,
@@ -182,6 +183,37 @@
   font-weight: 500;
   color: var(--accent-ink);
   font-variant-numeric: tabular-nums;
+}
+
+/* This week's games: remaining/total, colored as on My team (MyTeam.module.css). */
+.week {
+  text-align: center !important;
+}
+
+.abbr {
+  text-decoration: none;
+  cursor: help;
+}
+
+.weekGames {
+  display: inline-block;
+  min-width: 40px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.games4 { background: var(--games-4-bg); color: var(--games-4-ink); }
+.games3 { background: var(--games-3-bg); color: var(--games-3-ink); }
+.games2 { background: var(--games-2-bg); color: var(--games-2-ink); }
+.games1 { background: var(--games-1-bg); color: var(--games-1-ink); }
+.games0 { background: var(--games-0-bg); color: var(--games-0-ink); }
+
+.none {
+  color: var(--ink-subtle);
 }
 
 /* Loading / empty / error */
@@ -388,21 +420,21 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   .table {
-    min-width: 1174px;
+    min-width: 1090px;
   }
 
   .table.noOwner {
-    min-width: calc(1174px - 184px);
+    min-width: calc(1090px - 168px);
   }
 
   /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
      sticky Player column narrows with them, leaving more room for stats. */
   .card[data-scrolled] .table {
-    min-width: 1150px;
+    min-width: 1066px;
   }
 
   .card[data-scrolled] .table.noOwner {
-    min-width: calc(1150px - 184px);
+    min-width: calc(1066px - 168px);
   }
 
   .cRank {
