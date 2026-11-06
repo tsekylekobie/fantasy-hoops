@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Box scores · Fantasy Hoops" };
 export const dynamic = "force-dynamic";
 
 // Server-rendered from our DB. ?date=yyyy-mm-dd picks the date (default today
-// in the league's time zone), ?game=<id> the game to open (e.g. from a player's game log).
+// in Pacific time), ?game=<id> the game to open (e.g. from a player's game log).
 // Values use your saved punt weights. Box scores are public; signed out, players carry no owner or
 // waiver status (league data is private).
 export default async function BoxScoresPage({ searchParams }: { searchParams: Promise<{ date?: string; game?: string }> }) {
