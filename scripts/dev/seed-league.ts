@@ -176,7 +176,7 @@ async function main() {
     const board: Pick[] = [];
     for (let page = 1; board.length < MANAGERS.length * rosterSize * 2; page++) {
       const res = await getPlayers(db, {
-        season: CURRENT_SEASON - 1, range: "season", sort: "value", dir: "desc",
+        season: CURRENT_SEASON - 1, range: "season", dates: null, sort: "value", dir: "desc",
         mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null,
         weights: EQUAL_WEIGHTS, page, perPage: 100,
       }, null);

@@ -137,9 +137,9 @@ test("position filter matches any letter in a combined position", () => {
 
 test("parsePlayersQuery: defaults and validation", () => {
   const d = parsePlayersQuery(new URLSearchParams(""));
-  assert.deepEqual(d, { season: 2026, range: "season", sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null, weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
+  assert.deepEqual(d, { season: 2026, range: "season", dates: null, sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null, weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
   const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20&plays=tomorrow&waivers=on&team=7&nba=bos"));
-  assert.deepEqual(p, { season: 2025, range: "last14", sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", hideInjured: false, team: 7, nba: "BOS", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
+  assert.deepEqual(p, { season: 2025, range: "last14", dates: null, sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", hideInjured: false, team: 7, nba: "BOS", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
   assert.equal(parsePlayersQuery(new URLSearchParams("scope=watch")).scope, "watch");
   assert.equal(parsePlayersQuery(new URLSearchParams("injured=hide")).hideInjured, true);
   for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5", "team=0", "team=x", "nba=B", "nba=LA-L",
@@ -147,6 +147,19 @@ test("parsePlayersQuery: defaults and validation", () => {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }
   assert.equal(parsePlayersQuery(new URLSearchParams("range=last30")).range, "last30");
+});
+
+test("parsePlayersQuery: custom range needs real from <= to dates", () => {
+  const c = parsePlayersQuery(new URLSearchParams("range=custom&from=2026-11-01&to=2026-11-05"));
+  assert.equal(c.range, "custom");
+  assert.deepEqual(c.dates, { from: "2026-11-01", to: "2026-11-05" });
+  assert.deepEqual(parsePlayersQuery(new URLSearchParams("range=custom&from=2026-11-05&to=2026-11-05")).dates, { from: "2026-11-05", to: "2026-11-05" });
+  // Dates are ignored by the presets.
+  assert.equal(parsePlayersQuery(new URLSearchParams("range=last14&from=2026-11-01&to=2026-11-05")).dates, null);
+  for (const bad of ["range=custom", "range=custom&from=2026-11-01", "range=custom&to=2026-11-01", "range=custom&from=2026-11-06&to=2026-11-05",
+    "range=custom&from=2026-02-30&to=2026-03-05", "range=custom&from=11/01/2026&to=2026-11-05"]) {
+    assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
+  }
 });
 
 test("tiers place each category against the pool: best is top 10%, worst bottom 10%, TO fewer is better", () => {

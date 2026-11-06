@@ -59,7 +59,7 @@ const SEASON_TOTALS_SQL = `
     FROM player_game_stats s
     JOIN games g ON g.id = s.game_id AND g.game_type = 'regular'
     WHERE s.season = $1 AND s.min > 0 AND g.status_state = 'final' AND ($2::date IS NULL OR g.date >= $2::date)
-      AND ($3::int[] IS NULL OR s.player_id = ANY($3::int[]))
+      AND ($4::date IS NULL OR g.date <= $4::date) AND ($3::int[] IS NULL OR s.player_id = ANY($3::int[]))
     GROUP BY s.player_id
   )
   SELECT t.*, p.first_name, p.last_name, nullif(p.position, '') AS position,
@@ -136,6 +136,13 @@ const ROSTERED_SQL = `
   FROM roster_players rp
   JOIN fantasy_teams ft ON ft.id = rp.fantasy_team_id
   WHERE rp.league_id = (SELECT id FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1)`;
+
+// The first and last dates of `season` with a played regular-season game (the custom range picker's bounds).
+const SEASON_BOUNDS_SQL = `
+  SELECT to_char(min(g.date), 'YYYY-MM-DD') AS first, to_char(least(current_date, max(g.date)), 'YYYY-MM-DD') AS last
+  FROM games g
+  WHERE g.season = $1 AND g.game_type = 'regular'
+    AND EXISTS (SELECT 1 FROM player_game_stats s WHERE s.game_id = g.id AND s.min > 0)`;
 
 /** Days in each range's window; null = the whole season. */
 const RANGE_DAYS: Record<StatRange, number | null> = { season: null, last30: 30, last14: 14 };
@@ -225,7 +232,7 @@ export function sortKeyFn(
 
 /** Season totals (finished regular-season games) for every player with a game in `season`. */
 export async function getSeasonTotals(db: Pool, season: number): Promise<SeasonTotals[]> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null, null]);
   return rows.map(toTotals);
 }
 
@@ -234,7 +241,7 @@ export async function getTotalsFor(
   db: Pool, season: number, from: string | null, playerIds: number[],
 ): Promise<Map<number, SeasonTotals>> {
   if (playerIds.length === 0) return new Map();
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, playerIds]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, playerIds, null]);
   return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
 }
 
@@ -250,7 +257,7 @@ export async function getAveragesByRange(
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
     if (days !== null && window === null) return () => null;
-    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null]);
+    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
     const values = valuePlayers(rows.map(toTotals), weights);
     const byId = new Map(rows.map((r) => [r.player_id, r]));
     return (id: number): RangeAverages | null => {
@@ -269,7 +276,7 @@ export async function getLast14Window(db: Pool, season: number): Promise<{ from:
 
 /** Totals (finished regular-season games) for every player with a game in `season` on or after `from`. */
 export async function getTotalsSince(db: Pool, season: number, from: string): Promise<SeasonTotals[]> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, null]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, null, null]);
   return rows.map(toTotals);
 }
 
@@ -278,23 +285,25 @@ export async function getSeasonValues(
   db: Pool,
   season: number,
 ): Promise<Map<number, { totals: TotalsRow; value: number }>> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]);
+  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null, null]);
   const values = valuePlayers(rows.map(toTotals));
   return new Map(rows.map((r) => [r.player_id, { totals: r, value: values.get(r.player_id)!.value }]));
 }
 
 /** `userId`: the signed-in user, for the stars and scope=watch (which lists nothing signed out); null = signed out. */
 export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | null): Promise<PlayersResponse> {
-  const days = RANGE_DAYS[q.range];
-  const window = days === null ? null : await statWindow(db, q.season, days);
+  // A custom range is the dates asked for (inclusive); a preset's window comes from the season's played games.
+  const days = q.range === "custom" ? null : RANGE_DAYS[q.range];
+  const window = q.range === "custom" ? q.dates : days === null ? null : await statWindow(db, q.season, days);
   // No played games yet: a null bound returns no rows for the windows either way.
-  const [{ rows }, owners, waivers, injuries, teamOptions, watched] = await Promise.all([
-    db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null]),
+  const [{ rows }, owners, waivers, injuries, teamOptions, watched, bounds] = await Promise.all([
+    db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null, q.range === "custom" ? window!.to : null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
     getInjuries(db),
     getTeamOptions(db, q.season),
     getWatchedIds(db, userId),
+    db.query<{ first: string | null; last: string | null }>(SEASON_BOUNDS_SQL, [q.season]),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights);
@@ -364,6 +373,8 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     dir: q.dir,
     from: window?.from ?? null,
     to: window?.to ?? null,
+    firstDate: bounds.rows[0]?.first ?? null,
+    lastDate: bounds.rows[0]?.last ?? null,
     mode: q.mode,
     scope: q.scope,
     plays: q.plays,
@@ -392,7 +403,7 @@ async function getRanks(db: Pool, playerId: number, season: number, weights: Cat
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
     if (days !== null && window === null) return null;
-    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null]);
+    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
     return valuePlayers(rows.map(toTotals), weights).get(playerId)?.rank ?? null;
   };
   const [all, last30, last14] = await Promise.all([rank("season"), rank("last30"), rank("last14")]);
@@ -407,7 +418,7 @@ const pastRanksCache = new Map<number, { at: number; ranks: Promise<Map<number, 
 function pastSeasonRanks(db: Pool, season: number): Promise<Map<number, number>> {
   const hit = pastRanksCache.get(season);
   if (hit && Date.now() - hit.at < PAST_RANKS_TTL_MS) return hit.ranks;
-  const ranks = db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null]).then(({ rows }) => {
+  const ranks = db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null, null]).then(({ rows }) => {
     const out = new Map<number, number>();
     for (const [id, v] of valuePlayers(rows.map(toTotals), DEFAULT_WEIGHTS)) out.set(id, v.rank);
     return out;

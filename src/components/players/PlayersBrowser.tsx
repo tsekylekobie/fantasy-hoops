@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
-  CategoryWeights, PlayDay, PlayerScope, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, StatRange, WaiverFilter, WeightsResponse,
+  CategoryWeights, PlayDay, PlayerScope, PlayersRange, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, WaiverFilter, WeightsResponse,
 } from "@/lib/types";
-import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, STAT_RANGES, defaultSortDir } from "@/lib/types";
+import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
 import MultiToggle from "@/components/MultiToggle";
 import SegmentedToggle, { type SegmentedOption } from "@/components/SegmentedToggle";
 import SiteHeader from "@/components/SiteHeader";
 import { useSignedIn } from "@/components/SessionProvider";
 import PlayersTable, { TierKey } from "./PlayersTable";
-import { fetchJson, fmtGameDate } from "./format";
+import { isIsoDate } from "@/lib/queries/params";
+import { fetchJson, fmtGameDate, todayIn } from "./format";
 import PlayerModal from "./PlayerModal";
 import PuntWeights, { isDefaultWeights, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
 import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
@@ -36,13 +37,23 @@ const POSITIONS: SegmentedOption<PositionFilter>[] = [
   { value: "C", label: "C" },
 ];
 
-const RANGES: SegmentedOption<StatRange>[] = [
+const RANGES: SegmentedOption<PlayersRange>[] = [
   { value: "season", label: "Season" },
   { value: "last30", label: "Last 30 days" },
   { value: "last14", label: "Last 14 days" },
+  { value: "custom", label: "Custom" },
 ];
 
-const RANGE_TITLES: Record<StatRange, string> = { season: "Season averages", last30: "Last 30 days", last14: "Last 14 days" };
+const RANGE_TITLES: Record<PlayersRange, string> = {
+  season: "Season averages", last30: "Last 30 days", last14: "Last 14 days", custom: "Custom range",
+};
+
+/** yyyy-mm-dd `days` days after (or before) `iso`. */
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 const MODES: SegmentedOption<StatMode>[] = [
   { value: "avg", label: "Per game" },
@@ -71,7 +82,10 @@ interface UrlState {
   q: string;
   scope: PlayerScope;
   pos: PositionFilter;
-  range: StatRange;
+  range: PlayersRange;
+  /** A custom range's inclusive dates (yyyy-mm-dd); null for the presets. */
+  from: string | null;
+  to: string | null;
   mode: StatMode;
   plays: PlayDay[];
   waivers: WaiverFilter;
@@ -103,11 +117,18 @@ function readUrlState(params: URLSearchParams, signedIn: boolean): UrlState {
   const team = Number(params.get("team"));
   const nba = params.get("nba")?.toUpperCase() ?? "";
   const scope = SCOPES.find((o) => o.value === params.get("scope"))?.value ?? "fa";
+  // A custom range needs both dates, in order; anything else falls back to the season.
+  const from = params.get("from") ?? "";
+  const to = params.get("to") ?? "";
+  const customOk = params.get("range") === "custom" && isIsoDate(from) && isIsoDate(to) && from <= to;
+  const range = customOk ? "custom" : RANGES.find((o) => o.value !== "custom" && o.value === params.get("range"))?.value ?? "season";
   return {
     q: params.get("q") ?? "",
     scope: signedIn ? scope : "all",
     pos: pos === "G" || pos === "F" || pos === "C" ? pos : "all",
-    range: STAT_RANGES.find((r) => r === params.get("range")) ?? "season",
+    range,
+    from: customOk ? from : null,
+    to: customOk ? to : null,
     mode: params.get("mode") === "total" ? "total" : "avg",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers: signedIn && (waivers === "on" || waivers === "clears") ? waivers : "any",
@@ -128,6 +149,10 @@ function toQueryString(s: UrlState, signedIn: boolean): string {
   if (signedIn && s.scope !== "fa") p.set("scope", s.scope);
   if (s.pos !== "all") p.set("pos", s.pos);
   if (s.range !== "season") p.set("range", s.range);
+  if (s.range === "custom" && s.from && s.to) {
+    p.set("from", s.from);
+    p.set("to", s.to);
+  }
   if (s.mode !== "avg") p.set("mode", s.mode);
   if (s.plays.length > 0) p.set("plays", s.plays.join(","));
   if (s.waivers !== "any") p.set("waivers", s.waivers);
@@ -180,7 +205,7 @@ export default function PlayersBrowser() {
   const searchParams = useSearchParams();
   const signedIn = useSignedIn();
   const state = readUrlState(new URLSearchParams(searchParams.toString()), signedIn);
-  const { q, scope, pos, range, mode, plays, waivers, hideInjured, team, nba, sort, dir, page, player } = state;
+  const { q, scope, pos, range, from, to, mode, plays, waivers, hideInjured, team, nba, sort, dir, page, player } = state;
   const playsKey = plays.join(",");
 
   const navigate = useCallback(
@@ -295,6 +320,7 @@ export default function PlayersBrowser() {
     const params = new URLSearchParams({
       season: String(CURRENT_SEASON),
       range,
+      ...(range === "custom" && from && to && { from, to }),
       mode,
       sort,
       dir,
@@ -321,7 +347,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, mode, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
+  }, [q, scope, pos, range, from, to, mode, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -368,6 +394,14 @@ export default function PlayersBrowser() {
     else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${SCOPE_NOUNS[scope]}`;
   }
 
+  // Custom starts from the dates on screen: the preset's window, else the season so far, else the last 30 days.
+  const pickRange = (v: PlayersRange) => {
+    if (v !== "custom") return navigate({ range: v, from: null, to: null, page: 1 });
+    const end = data?.to ?? data?.lastDate ?? todayIn(data?.timeZone);
+    const start = data?.from ?? data?.firstDate ?? addDays(end, -29);
+    navigate({ range: "custom", from: start <= end ? start : end, to: end, page: 1 });
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -381,7 +415,39 @@ export default function PlayersBrowser() {
         )}
 
         <div className={styles.bar}>
-          <SegmentedToggle label="Games" options={RANGES} value={range} onChange={(v) => navigate({ range: v, page: 1 })} />
+          <SegmentedToggle label="Games" options={RANGES} value={range} onChange={pickRange} />
+          {range === "custom" && from && to && (
+            <span className={styles.dates} role="group" aria-label="Custom dates">
+              <label className={styles.date}>
+                <span className={styles.filterLabel}>From</span>
+                <input
+                  type="date"
+                  value={from}
+                  min={data?.firstDate ?? undefined}
+                  max={data?.lastDate ?? undefined}
+                  required
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (isIsoDate(v)) navigate({ from: v, to: v > to ? v : to, page: 1 }, "replace");
+                  }}
+                />
+              </label>
+              <label className={styles.date}>
+                <span className={styles.filterLabel}>To</span>
+                <input
+                  type="date"
+                  value={to}
+                  min={data?.firstDate ?? undefined}
+                  max={data?.lastDate ?? undefined}
+                  required
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (isIsoDate(v)) navigate({ from: v < from ? v : from, to: v, page: 1 }, "replace");
+                  }}
+                />
+              </label>
+            </span>
+          )}
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
           <input
             type="search"

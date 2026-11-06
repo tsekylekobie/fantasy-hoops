@@ -63,7 +63,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   toss-ups (35–65%) are shaded loudest, 90%+ either way fades. Hidden once the week is final.
 - Players page filters: Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
   `injured=hide` defaults to showing them).
-- Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`); the player modal shows
+- Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`), or Custom
+  (`range=custom&from=&to=`, inclusive dates, picked between the season's first and last played dates); the player modal shows
   his rank in each (`PlayerDetailResponse.ranks`, the signed-in user's punt weights).
   Past seasons show his rank each season at `DEFAULT_WEIGHTS` (`pastSeasonRanks`, cached in memory).
   Stat cells and Value are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game

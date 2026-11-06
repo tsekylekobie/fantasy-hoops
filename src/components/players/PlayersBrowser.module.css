@@ -34,6 +34,36 @@
   align-items: center;
 }
 
+/* Custom range: From and To date inputs beside the Games toggle. */
+.dates {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date input {
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.date input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Folded filters: a summary button, and the panel it opens. */
 .filters {
   margin: -6px 0 16px;
@@ -273,6 +303,19 @@
 
   .search {
     width: 100%;
+  }
+
+  .dates {
+    width: 100%;
+  }
+
+  .date {
+    flex: 1 1 140px;
+  }
+
+  .date input {
+    flex: 1;
+    min-width: 0;
   }
 
   /* The summary drops under the Filters title so its phrases get the full width. */

@@ -18,6 +18,8 @@ export function defaultSortDir(key: SortKey): SortDir {
 /** Which games count: the whole season, or the 30 or 14 days ending at the season's latest game (or today). */
 export type StatRange = "season" | "last30" | "last14";
 export const STAT_RANGES: readonly StatRange[] = ["season", "last30", "last14"];
+/** The Players page's range: a preset, or `custom` dates (`from`/`to` in the query). */
+export type PlayersRange = StatRange | "custom";
 
 /**
  * Which players GET /api/players?scope= lists: free agents (on no team in the season's league), everyone, or the
@@ -142,6 +144,7 @@ export interface PlayerUpcomingGame {
 /**
  * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&plays=&waivers=any&page=1&perPage=50
  *   &weights=1,1,1,1,1,1,1,1,0.3  (one per CATEGORIES entry, in order; omitted = DEFAULT_WEIGHTS)
+ *   range=custom takes &from=yyyy-mm-dd&to=yyyy-mm-dd (inclusive, both required, from <= to).
  * GP, stats, value and rank all cover `range`; value and rank use `weights`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
  */
@@ -154,12 +157,15 @@ export interface PlayersTeamOption {
 
 export interface PlayersResponse {
   season: number;
-  range: StatRange;
+  range: PlayersRange;
   sort: SortKey;
   dir: SortDir;
-  /** Inclusive ISO dates (yyyy-mm-dd) of the last-30 or last-14 days window; null for the whole season. */
+  /** Inclusive ISO dates (yyyy-mm-dd) of the last-30, last-14 or custom window; null for the whole season. */
   from: string | null;
   to: string | null;
+  /** The season's first and last dates with a played game (the custom range picker's bounds); null before any. */
+  firstDate: string | null;
+  lastDate: string | null;
   mode: StatMode;
   scope: PlayerScope;
   /** Days filtered on (empty = any day), and the league-time date each stands for. */

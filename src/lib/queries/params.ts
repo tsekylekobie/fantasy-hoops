@@ -16,6 +16,7 @@ import {
   type SortDir,
   type SortKey,
   type StatMode,
+  type PlayersRange,
   type StatRange,
   type WaiverFilter,
 } from "../types";
@@ -24,7 +25,9 @@ export class BadRequest extends Error {}
 
 export interface PlayersQuery {
   season: number;
-  range: StatRange;
+  range: PlayersRange;
+  /** The inclusive dates (yyyy-mm-dd) of a custom range; null for the presets. */
+  dates: { from: string; to: string } | null;
   sort: SortKey;
   dir: SortDir;
   mode: StatMode;
@@ -94,11 +97,28 @@ export function parseSeason(params: URLSearchParams): number {
   return intParam(params, "season", CURRENT_SEASON, 1946, 2100);
 }
 
+/** A real calendar date written yyyy-mm-dd. */
+export function isIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   const mode = params.get("mode")?.trim() || "avg";
   if (mode !== "avg" && mode !== "total") throw new BadRequest("mode must be avg or total");
-  const range = (params.get("range")?.trim() || "season") as StatRange;
-  if (!STAT_RANGES.includes(range)) throw new BadRequest(`range must be ${STAT_RANGES.join(", ")}`);
+  const range = (params.get("range")?.trim() || "season") as PlayersRange;
+  if (range !== "custom" && !STAT_RANGES.includes(range)) {
+    throw new BadRequest(`range must be ${STAT_RANGES.join(", ")} or custom`);
+  }
+  let dates: PlayersQuery["dates"] = null;
+  if (range === "custom") {
+    const from = params.get("from")?.trim() ?? "";
+    const to = params.get("to")?.trim() ?? "";
+    if (!isIsoDate(from) || !isIsoDate(to)) throw new BadRequest("range=custom needs from and to as yyyy-mm-dd");
+    if (from > to) throw new BadRequest("from must be on or before to");
+    dates = { from, to };
+  }
   const sort = (params.get("sort")?.trim() || "value") as SortKey;
   if (!SORT_KEYS.includes(sort)) throw new BadRequest(`sort must be one of ${SORT_KEYS.join(", ")}`);
   const dir = params.get("dir")?.trim() || defaultSortDir(sort);
@@ -120,6 +140,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
   return {
     season: parseSeason(params),
     range,
+    dates,
     sort,
     dir,
     mode,
