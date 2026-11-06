@@ -674,19 +674,40 @@
 }
 
 @media (max-width: 640px) {
+  /* Phones: a full-screen sheet rather than a floating card. */
   .dialog {
-    margin-top: 16px;
-    max-height: calc(100dvh - 32px);
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
+  /* Avatar and buttons share the first row; the name and details get the full width below. */
   .header {
-    gap: 14px;
-    padding: 18px 16px;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: max(14px, env(safe-area-inset-top)) 16px 16px;
+  }
+
+  .headText {
+    order: 1;
+    flex: 1 0 100%;
   }
 
   .name {
     font-size: 28px;
+  }
+
+  .add {
+    min-width: 0;
+    padding: 0 16px;
+  }
+
+  .injury {
+    max-width: none;
   }
 
   .tiles {
@@ -740,12 +761,17 @@
     width: 72px;
   }
 
+  /* The tabs stay in reach while a long game log scrolls. */
   .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     padding: 0 8px;
+    background: var(--surface);
   }
 
   .tabPanel {
-    padding-bottom: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   .state {
