@@ -19,7 +19,12 @@ test("falls back to the bare status", () => {
   assert.equal(fmtInjuryStatus(inj("Out", null), today), "Out");
   assert.equal(fmtInjuryStatus(inj("Out", "2026-11-03"), today), "Out");
   assert.equal(fmtInjuryStatus(inj("Out", "2026-10-30"), today), "Out");
-  assert.equal(fmtInjuryStatus(inj("Day-To-Day", "2026-11-10"), today), "Day-To-Day");
+  assert.equal(fmtInjuryStatus(inj("Questionable", null), today), "Questionable");
+});
+
+test("Day-To-Day shortens to DTD", () => {
+  assert.equal(fmtInjuryStatus(inj("Day-To-Day", "2026-11-10"), today), "DTD");
+  assert.equal(fmtInjuryStatus(inj("Day-to-day", null), today), "DTD");
 });
 
 test("todayIn uses the league's time zone", () => {
