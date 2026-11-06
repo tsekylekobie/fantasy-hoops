@@ -20,6 +20,9 @@
 //    doesn't change the scale. 0 is the pool's average player. Players outside
 //    the pool are scored with the pool's means and stdevs. A category with zero
 //    spread has z = 0.
+// 6. Totals (the Players page's Totals mode): the same, over season totals
+//    instead of per-game averages (FG%/FT%: total impact, makes - poolPct *
+//    attempts), z-scored over the same pool. Fewer games means a lower value.
 import type { Category, CategoryWeights, RankTier } from "../types";
 
 export const POOL_SIZE = 156;
@@ -58,10 +61,14 @@ export interface Valuation {
   z: Record<Category, number>;
   /** Total FG/FT impact over all games: makes - poolPct * attempts. */
   impact: { fgPct: number; ftPct: number };
+  /** Value over season totals (step 6): what Totals mode shows. */
+  totalValue: number;
+  /** 1-based rank by `totalValue` among all players passed in. */
+  totalRank: number;
   /**
    * The same, for Totals mode: each category's season total (FG%/FT%: total impact, makes - the pool's
    * percentage * attempts; fewer TO is better) placed among the pool's totals, so fewer games pulls a player
-   * down. `value` is the per-game tier, matching the Value number (which is per game in both modes).
+   * down; `value` is `totalValue` among the pool's total values.
    */
   totalTiers: Partial<Record<Category | "value", RankTier>>;
 }
@@ -199,20 +206,34 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
   const poolTotals = Object.fromEntries(CATS.map((c) => [c, desc(pool.map((p) => totals(p)[c]))])) as Record<Cat, number[]>;
   const poolValues = desc(pool.map((p) => weightedValue(zs.get(p.playerId)!, weights)));
 
+  // Step 6: the totals z-scored over the pool's totals (already higher-is-better, TO included), valued and ranked.
+  const totalStats = Object.fromEntries(CATS.map((c) => [c, meanSd(poolTotals[c])])) as Record<Cat, { mean: number; sd: number }>;
+  const totalZ = (p: SeasonTotals): Record<Cat, number> => {
+    const t = totals(p);
+    const zt = {} as Record<Cat, number>;
+    for (const c of CATS) zt[c] = totalStats[c].sd === 0 ? 0 : (t[c] - totalStats[c].mean) / totalStats[c].sd;
+    return zt;
+  };
+  const totalValues = new Map(played.map((p) => [p.playerId, weightedValue(totalZ(p), weights)]));
+  const totalRanks = new Map(
+    byValue(played.map((p) => ({ p, value: totalValues.get(p.playerId)! }))).map((s, i) => [s.p.playerId, i + 1]),
+  );
+  const poolTotalValues = desc(pool.map((p) => totalValues.get(p.playerId)!));
+
   const out = new Map<number, Valuation>();
   scored.forEach((s, i) => {
     const pz = zs.get(s.p.playerId)!;
     const pt = totals(s.p);
-    const value = tierOf(placeIn(poolValues, s.value));
-    const tiers: Valuation["tiers"] = { value };
-    const totalTiers: Valuation["totalTiers"] = { value };
+    const totalValue = totalValues.get(s.p.playerId)!;
+    const tiers: Valuation["tiers"] = { value: tierOf(placeIn(poolValues, s.value)) };
+    const totalTiers: Valuation["totalTiers"] = { value: tierOf(placeIn(poolTotalValues, totalValue)) };
     for (const c of CATS) {
       if ((c === "fgImpact" && s.p.fga === 0) || (c === "ftImpact" && s.p.fta === 0)) continue;
       tiers[CATEGORY[c]] = tierOf(placeIn(poolZ[c], pz[c]));
       totalTiers[CATEGORY[c]] = tierOf(placeIn(poolTotals[c], pt[c]));
     }
     out.set(s.p.playerId, {
-      value: s.value, rank: i + 1, tiers, totalTiers, z: byCategory(pz),
+      value: s.value, rank: i + 1, totalValue, totalRank: totalRanks.get(s.p.playerId)!, tiers, totalTiers, z: byCategory(pz),
       impact: { fgPct: pt.fgImpact, ftPct: pt.ftImpact },
     });
   });

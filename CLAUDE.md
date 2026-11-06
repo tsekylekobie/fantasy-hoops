@@ -72,7 +72,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   The nine category cells (not Value) are shaded with Box scores' tiers (`tierOf`), placed among the valuation pool's per-game
   z-scores (`Valuation.tiers` in `value.ts`, `PlayerRow.tiers`), so green/red means better/worse than a rostered player.
   In Totals mode the stats are placed among the pool's season totals instead (`totalTiers`; FG%/FT% by total impact),
-  so fewer games ranks lower.
+  so fewer games ranks lower; Value and the # rank switch to the totals valuation too (`totalValue`/`totalRank`).
 - NBA trades: `players.team_id` is only the current team; each stat line keeps the team he played for. Anything that
   finds a player's game on a past date uses `player_team_on(player, date)` (migration 0020), not `players.team_id`.
 - The "today" pages show (Box scores, Matchup, My team and team lineups: default day, "Today" labels) is the Pacific

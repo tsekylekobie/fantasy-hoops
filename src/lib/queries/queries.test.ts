@@ -180,7 +180,7 @@ test("no FG%/FT% tier without attempts", () => {
   assert.ok(v.get(1)!.tiers.fgPct);
 });
 
-test("total tiers: the same per-game line over fewer games ranks lower; Value stays per game", () => {
+test("totals: the same per-game line over fewer games ranks lower, Value and rank included", () => {
   const base = Array.from({ length: 19 }, (_, i) => player(i + 10, { pts: 100 + i * 5 }));
   const star = player(1, { pts: 300 }); // 30 a game over 10 games: best per game and in totals
   const short = player(2, { gp: 2, min: 60, fgm: 10, fga: 20, ftm: 4, fta: 5, fg3m: 3, pts: 60, reb: 10, ast: 6, stl: 2, blk: 1, tov: 4 });
@@ -189,5 +189,17 @@ test("total tiers: the same per-game line over fewer games ranks lower; Value st
   assert.equal(v.get(2)!.tiers.pts, "top10"); // 30 a game
   assert.equal(v.get(2)!.totalTiers.pts, "bottom10"); // 60 in total
   assert.equal(v.get(2)!.totalTiers.tov, "top10"); // fewest turnovers in total
-  assert.equal(v.get(2)!.totalTiers.value, v.get(2)!.tiers.value);
+  // Per game he's the best (he matches the star's 30 a game and is otherwise average); in totals he's far behind.
+  assert.ok(v.get(2)!.value > v.get(10)!.value);
+  assert.ok(v.get(2)!.totalValue < v.get(10)!.totalValue);
+  assert.ok(v.get(2)!.totalRank > v.get(10)!.totalRank);
+  assert.equal(v.get(1)!.totalRank, 1);
+  assert.equal(v.get(2)!.totalTiers.value, "bottom10");
+});
+
+test("totals: identical totals value 0; ranks are a permutation", () => {
+  const same = valuePlayers([player(1), player(2), player(3)]);
+  for (const id of [1, 2, 3]) assert.equal(same.get(id)!.totalValue, 0);
+  const v = valuePlayers(Array.from({ length: 30 }, (_, i) => player(i + 1, { gp: 5 + i, pts: 100 + i * 7 })));
+  assert.deepEqual([...v.values()].map((x) => x.totalRank).sort((a, b) => a - b), Array.from({ length: 30 }, (_, i) => i + 1));
 });

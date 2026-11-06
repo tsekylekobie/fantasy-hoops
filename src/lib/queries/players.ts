@@ -322,6 +322,10 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
 
   const key = q.sort === "value" ? null : sortKeyFn(q.sort, q.mode, values);
   const sign = q.dir === "asc" ? 1 : -1;
+  // Value and rank follow the mode: per game, or over the range's totals (fewer games ranks lower).
+  const total = q.mode === "total";
+  const valueOf = (v: Valuation) => (total ? v.totalValue : v.value);
+  const rankOf = (v: Valuation) => (total ? v.totalRank : v.rank);
   const matching = rows
     .filter((r) => q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
     .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
@@ -335,13 +339,14 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       : onWaivers(r.player_id) && clearsByTomorrow(waivers.players.get(r.player_id)!.clearsAt, waivers.timeZone, now))
     .map((r) => {
       const v = values.get(r.player_id)!;
-      return { r, v, k: key ? key(r) : v.value };
+      return { r, v, k: key ? key(r) : valueOf(v) };
     })
     .sort((a, b) => {
+      const byRank = rankOf(a.v) - rankOf(b.v);
       // Missing values (FG%/FT% with no attempts) go last in either direction.
-      if (a.k === null || b.k === null) return a.k === null ? (b.k === null ? a.v.rank - b.v.rank : 1) : -1;
-      if (typeof a.k === "string") return sign * a.k.localeCompare(b.k as string) || a.v.rank - b.v.rank;
-      return sign * (a.k - (b.k as number)) || a.v.rank - b.v.rank;
+      if (a.k === null || b.k === null) return a.k === null ? (b.k === null ? byRank : 1) : -1;
+      if (typeof a.k === "string") return sign * a.k.localeCompare(b.k as string) || byRank;
+      return sign * (a.k - (b.k as number)) || byRank;
     });
 
   const start = (q.page - 1) * q.perPage;
@@ -359,12 +364,12 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       teamAbbr: r.team_abbr,
       position: r.position,
       nbaPersonId: r.nba_person_id,
-      rank: v.rank,
+      rank: rankOf(v),
       gp: r.gp,
       min,
       stats,
-      value: Math.round(v.value * 100) / 100,
-      tiers: q.mode === "total" ? v.totalTiers : v.tiers,
+      value: Math.round(valueOf(v) * 100) / 100,
+      tiers: total ? v.totalTiers : v.tiers,
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],
