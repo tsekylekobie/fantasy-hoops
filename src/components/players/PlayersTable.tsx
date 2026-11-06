@@ -35,19 +35,19 @@ const TIER_LABEL: Record<RankTier, string> = {
   top10: "top 10%", top25: "top 25%", top40: "top 40%", mid: "middle", bottom25: "bottom 25%", bottom10: "bottom 10%",
 };
 
-const CELL_LABEL: Record<Category | "value", string> = {
-  fgPct: "FG%", ftPct: "FT%", fg3m: "3PM", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", tov: "TO", value: "Value",
+const CELL_LABEL: Record<Category, string> = {
+  fgPct: "FG%", ftPct: "FT%", fg3m: "3PM", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", tov: "TO",
 };
 
-/** A stat cell shaded by its tier among rostered-calibre players (as on Box scores). */
+/** A category cell shaded by its tier among rostered-calibre players (as on Box scores). Value isn't shaded. */
 function Shaded({
   k, tier, mode, className, children,
-}: { k: Category | "value"; tier: RankTier | undefined; mode: StatMode; className?: string; children: ReactNode }) {
+}: { k: Category; tier: RankTier | undefined; mode: StatMode; className?: string; children: ReactNode }) {
   return (
     <td className={`${styles.n} ${className ?? ""}`}>
       <span
         className={`${styles.c} ${tier ? TIER_CLASS[tier] ?? "" : ""}`}
-        title={tier ? `${CELL_LABEL[k]}: ${TIER_LABEL[tier]} of rostered players, ${mode === "total" && k !== "value" ? "season total" : "per game"}` : undefined}
+        title={tier ? `${CELL_LABEL[k]}: ${TIER_LABEL[tier]} of rostered players, ${mode === "total" ? "season total" : "per game"}` : undefined}
       >
         {children}
       </span>
@@ -59,7 +59,7 @@ function Shaded({
 export function TierKey({ mode }: { mode: StatMode }) {
   return (
     <div className={styles.key9} aria-label="Shading key">
-      <span>Shaded against the ~156 players worth rostering, {mode === "total" ? "season totals (Value per game)" : "per game"}:</span>
+      <span>Shaded against the ~156 players worth rostering, {mode === "total" ? "season totals" : "per game"}:</span>
       {(["top10", "top25", "top40", "mid", "bottom25", "bottom10"] as RankTier[]).map((t) => (
         <i key={t} className={TIER_CLASS[t]}>{TIER_LABEL[t][0].toUpperCase() + TIER_LABEL[t].slice(1)}</i>
       ))}
@@ -244,7 +244,7 @@ function Row({
       <Shaded mode={mode} k="stl" tier={t.stl}>{num(s.stl)}</Shaded>
       <Shaded mode={mode} k="blk" tier={t.blk}>{num(s.blk)}</Shaded>
       <Shaded mode={mode} k="tov" tier={t.tov}>{num(s.tov)}</Shaded>
-      <Shaded mode={mode} k="value" tier={t.value} className={styles.value}>{fmtValue(p.value)}</Shaded>
+      <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
       {onAdd && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
           <span className={styles.claimWrap}>
