@@ -12,6 +12,7 @@
 // except weeks imported from Yahoo (week_results), which keep Yahoo's totals.
 // Projections (the page's Projected view) follow queries/projections.ts.
 import type { Pool } from "pg";
+import { GAME_DAY_TZ } from "../gameDay";
 import { countStarts, gameLimitUsage, parseGameLimits, type Start } from "../lineup/gameLimits";
 import type {
   CategoryKey,
@@ -543,9 +544,9 @@ export async function getMatchupWeek(
     playoff_teams: number; toilet_bowl: boolean; toilet_bowl_teams: number;
   }>(
     `SELECT id::int, time_zone, roster_slots, playoff_teams, toilet_bowl, toilet_bowl_teams,
-            to_char((now() AT TIME ZONE time_zone)::date, 'YYYY-MM-DD') AS today
+            to_char((now() AT TIME ZONE $2)::date, 'YYYY-MM-DD') AS today
      FROM leagues WHERE season = $1 ORDER BY id LIMIT 1`,
-    [season],
+    [season, GAME_DAY_TZ],
   );
   if (!league) return null;
   const { today } = league;
