@@ -473,9 +473,8 @@ export interface LeagueOverview {
   playoffTeams: number;
   /** Ranked; ties keep the same rank. */
   standings: StandingsRow[];
-  /** Weeks in the standings: finished ones, plus this week's live score while it's being played. */
+  /** Weeks in the standings: finished regular-season weeks only (not this week's live score). */
   weeksCounted: number;
-  includesLiveWeek: boolean;
   /** The scoreboard's week: the one asked for (?week=N), else `currentWeek`; null with no schedule. */
   week: { week: number; startsOn: string; endsOn: string; isPlayoffs: boolean; status: MatchupWeek["status"] } | null;
   /** The week containing today (clamped to the season); null with no schedule. */

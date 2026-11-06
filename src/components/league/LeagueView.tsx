@@ -95,9 +95,7 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
 }
 
 function Standings({ data }: { data: LeagueOverview }) {
-  const counted = data.includesLiveWeek
-    ? `${data.weeksCounted - 1} finished week${data.weeksCounted === 2 ? "" : "s"} plus this week’s live score`
-    : `${data.weeksCounted} week${data.weeksCounted === 1 ? "" : "s"}`;
+  const counted = `${data.weeksCounted} finished week${data.weeksCounted === 1 ? "" : "s"}`;
   const bottom = data.toiletBowlTeams ? data.teamCount - data.toiletBowlTeams : -1;
   return (
     <>
@@ -129,7 +127,7 @@ function Standings({ data }: { data: LeagueOverview }) {
         ))}
       </div>
       <p className={styles.foot}>
-        Category record across {data.weeksCounted === 0 ? "every week (none played yet)" : counted}.
+        Category record across {data.weeksCounted === 0 ? "finished weeks (none yet)" : counted}.
         {" "}Top {data.playoffTeams} make the playoffs
         {data.toiletBowlTeams ? `; the bottom ${data.toiletBowlTeams} play the toilet bowl` : ""}
         {bottom >= 0 && bottom !== data.playoffTeams ? " (dashed lines)" : " (dashed line)"}.

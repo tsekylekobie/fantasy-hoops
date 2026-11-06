@@ -65,10 +65,10 @@ export async function getLeagueOverview(
   const cfg = configOf({ ...league, team_count: teams.length });
   const start = playoffStart(weeks, league.playoff_start_week);
 
-  // Every week that has started: finished ones and the live one. Standings
-  // count only the regular season's.
+  // Every week that has started (the scoreboard shows the live one too).
+  // Standings count only finished regular-season weeks.
   const linesByWeek = await startedWeekLines(db, league.id, weeks, today);
-  const played = weeks.filter((w) => linesByWeek.has(w.week) && isRegularWeek(w, start));
+  const played = weeks.filter((w) => w.ends_on < today && linesByWeek.has(w.week) && isRegularWeek(w, start));
   const regularLines = new Map(played.map((w) => [w.week, linesByWeek.get(w.week)!]));
   const records = recordsFrom(teams.map((t) => t.id), pairs.filter((p) => p.bracket === null), regularLines);
 
@@ -123,7 +123,6 @@ export async function getLeagueOverview(
     playoffTeams: league.playoff_teams,
     standings,
     weeksCounted: played.length,
-    includesLiveWeek: !!current && statusOf(current) === "live" && played.some((x) => x.week === current.week),
     week: w ? { week: w.week, startsOn: w.starts_on, endsOn: w.ends_on, isPlayoffs: w.is_playoffs, status: statusOf(w) } : null,
     currentWeek: current?.week ?? null,
     weekCount: weeks.length,
