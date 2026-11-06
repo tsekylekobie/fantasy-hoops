@@ -132,7 +132,7 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
         )}
         <p className={styles.foot}>
           {isWeek
-            ? `Ranked by categories won against all ${others} other teams this week (ties count half). GP is starters’ games played this week. Cells are shaded by this week’s category rank: darkest green is the top quarter of the league, grey the bottom.`
+            ? `Ranked by categories won against all ${others} other teams this week (ties count half). GP is starters’ games played this week. Cells are shaded by this week’s category rank: green is the top of the league, red the bottom, a shade per quarter.`
             : "Ranked by categories won against every other team, all weeks added up. GP and categories are season totals (FG% and FT% from total makes ÷ attempts), shaded by season rank."}
         </p>
       </section>

@@ -308,7 +308,7 @@ thead .pos {
   color: var(--ink-subtle);
 }
 
-/* Green like Box scores' tiers: darkest is the top quarter. */
+/* Red to green like Box scores' tiers, by league quarter: t1 top (green) … t4 bottom (red). */
 .t1 {
   background: var(--tier-top25-bg);
   color: var(--ink);
@@ -328,9 +328,12 @@ thead .pos {
   font-variant-numeric: tabular-nums;
 }
 
+.t3 {
+  background: var(--tier-bottom25-bg);
+}
+
 .t4 {
-  background: var(--rank-4-bg);
-  color: var(--ink-muted);
+  background: var(--tier-bottom10-bg);
 }
 
 /* Versus the league */
