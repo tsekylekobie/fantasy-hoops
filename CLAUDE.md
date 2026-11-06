@@ -73,9 +73,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   so fewer games ranks lower; Value stays per game.
 - NBA trades: `players.team_id` is only the current team; each stat line keeps the team he played for. Anything that
   finds a player's game on a past date uses `player_team_on(player, date)` (migration 0020), not `players.team_id`.
-- Game-day "today" (Box scores, Matchup, My team and team lineups, incl. lineup locks and `freezeLineups`) is the
-  Pacific date (`GAME_DAY_TZ` in `src/lib/gameDay.ts`), so a night stays today until West Coast games end; waivers,
-  trades and settings use the league's time zone.
+- The "today" pages show (Box scores, Matchup, My team and team lineups: default day, "Today" labels) is the Pacific
+  date (`GAME_DAY_TZ` / `gameDayToday` in `src/lib/gameDay.ts`), so a night stays today until West Coast games end.
+  Display only: lineup locks (`TeamLineupResponse.lockedBefore`), adds/drops, waivers and trades use the league's date.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier. Every game stays listed:

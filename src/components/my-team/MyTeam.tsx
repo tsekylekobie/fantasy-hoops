@@ -266,7 +266,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
     );
   }
 
-  const editable = !readOnly && data.date >= data.today;
+  const editable = !readOnly && data.date >= data.lockedBefore;
   // The selected spot's key is stable whether or not the open bench spot is shown.
   const selPlayer = selected ? buildSpots(data, false).find((s) => s.key === selected)?.player ?? null : null;
   const spots = buildSpots(data, selPlayer !== null && selPlayer.slot !== "BN");
