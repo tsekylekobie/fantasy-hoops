@@ -174,6 +174,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* FAAB leagues: each team's budget left, last. */
+.s.withFaab {
+  grid-template-columns: 36px minmax(200px, 1fr) 96px 64px 48px 64px 56px;
+  min-width: 660px;
+}
+
 .s.h {
   height: 36px;
   font-size: 11px;
@@ -432,6 +438,11 @@ a.pageBtn:focus-visible {
     grid-template-columns: 24px minmax(0, 1fr) 64px 40px;
     min-width: 0;
     padding: 0 14px;
+  }
+
+  .s.withFaab {
+    grid-template-columns: 24px minmax(0, 1fr) 64px 40px 44px;
+    min-width: 0;
   }
 
   .opt {

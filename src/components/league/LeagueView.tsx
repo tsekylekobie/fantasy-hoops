@@ -1,7 +1,7 @@
 // The /league page: docs/design/league.mockup.html (standings), plus a
 // scoreboard that pages through the season's weeks (?week=N, default this
 // week). Team names open that team's roster (yours is /my-team); a score
-// opens that matchup. Trades in review (and yours) sit below. The
+// opens that matchup. Open trades sit below (hidden when there are none). The
 // Standings card switches to the Playoffs view (PlayoffsBracket): projected
 // from today's standings, or the real bracket once it exists (and then first).
 import Link from "next/link";
@@ -33,15 +33,16 @@ function fmtRange(from: string, to: string): string {
 /**
  * `children` render below standings and the scoreboard (Recent transactions).
  * `isCommissioner` shows the link to /league/settings.
+ * `faab` (FAAB leagues): each team's budget left, by team id, shown as a Standings column.
  */
 export default function LeagueView({
-  data, isCommissioner = false, children,
-}: { data: LeagueOverview | null; isCommissioner?: boolean; children?: ReactNode }) {
+  data, isCommissioner = false, faab = null, children,
+}: { data: LeagueOverview | null; isCommissioner?: boolean; faab?: Map<number, number> | null; children?: ReactNode }) {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {data ? <><Overview data={data} isCommissioner={isCommissioner} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
+        {data ? <><Overview data={data} isCommissioner={isCommissioner} faab={faab} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
       </div>
     </div>
   );
@@ -70,7 +71,7 @@ export function SignedOutLeague() {
   );
 }
 
-function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommissioner: boolean }) {
+function Overview({ data, isCommissioner, faab }: { data: LeagueOverview; isCommissioner: boolean; faab: Map<number, number> | null }) {
   const season = `${data.season}–${String(data.season + 1).slice(2)}`;
   return (
     <>
@@ -83,7 +84,7 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
       </p>
       <div className={styles.cols}>
         <StandingsCard
-          standings={<Standings data={data} />}
+          standings={<Standings data={data} faab={faab} />}
           playoffs={data.playoffs ? <PlayoffsBracket data={data.playoffs} myTeam={data.myTeam} /> : null}
           initial={data.playoffs && !data.playoffs.projected ? "playoffs" : "standings"}
         />
@@ -94,7 +95,7 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
   );
 }
 
-function Standings({ data }: { data: LeagueOverview }) {
+function Standings({ data, faab }: { data: LeagueOverview; faab: Map<number, number> | null }) {
   const counted = data.includesLiveWeek
     ? `${data.weeksCounted - 1} finished week${data.weeksCounted === 2 ? "" : "s"} plus this week’s live score`
     : `${data.weeksCounted} week${data.weeksCounted === 1 ? "" : "s"}`;
@@ -102,19 +103,20 @@ function Standings({ data }: { data: LeagueOverview }) {
   return (
     <>
       <div role="table" aria-label="Standings">
-        <div className={`${styles.s} ${styles.h}`} role="row">
+        <div className={[styles.s, styles.h, faab && styles.withFaab].filter(Boolean).join(" ")} role="row">
           <span role="columnheader">#</span>
           <span role="columnheader">Team</span>
           <span role="columnheader" className={styles.n}>W–L–T</span>
           <span role="columnheader" className={styles.n}>Pct</span>
           <span role="columnheader" className={`${styles.n} ${styles.opt}`}>GB</span>
           <span role="columnheader" className={`${styles.n} ${styles.opt}`}>Moves</span>
+          {faab && <span role="columnheader" className={styles.n}>FAAB</span>}
         </div>
         {data.standings.map((t, i) => (
           <div
             key={t.id}
             role="row"
-            className={[styles.s, t.isMine && styles.mine, (i === data.playoffTeams || i === bottom) && styles.cut].filter(Boolean).join(" ")}
+            className={[styles.s, faab && styles.withFaab, t.isMine && styles.mine, (i === data.playoffTeams || i === bottom) && styles.cut].filter(Boolean).join(" ")}
           >
             <span role="cell">{t.rank}</span>
             <span role="cell" className={styles.tn}>
@@ -125,6 +127,7 @@ function Standings({ data }: { data: LeagueOverview }) {
             <span role="cell" className={styles.n}>{fmtPct(t.pct)}</span>
             <span role="cell" className={`${styles.n} ${styles.opt}`}>{t.gamesBack === 0 ? "–" : t.gamesBack.toFixed(1)}</span>
             <span role="cell" className={`${styles.n} ${styles.opt}`}>{t.moves}</span>
+            {faab && <span role="cell" className={styles.n}>${faab.get(t.id) ?? 0}</span>}
           </div>
         ))}
       </div>

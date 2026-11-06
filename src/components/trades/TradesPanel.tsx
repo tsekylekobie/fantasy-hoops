@@ -4,7 +4,8 @@
 // actions the signed-in manager can take: accept or reject an offer, cancel
 // their own, vote to veto (league vote) or veto (commissioner) during review.
 // "mine" (on /my-team) shows open trades plus your recent ones, and hides
-// itself when there's nothing; "league" (on /league) shows everything visible.
+// itself when there's nothing; "league" (on /league) shows everything visible,
+// and hides itself when no trade is open.
 // Each open trade can show the trade analyzer (TradeAnalysis), open by default
 // on an offer you received; there you pick your drops before accepting when
 // the trade would put you over the active limit.
@@ -108,17 +109,19 @@ export default function TradesPanel({ scope }: { scope: "mine" | "league" }) {
   }
 
   if (!data) {
-    if (scope === "mine") return null;
+    if (scope === "mine" || !error) return null;
     return (
       <section className={`${styles.card} ${styles.panel}`}>
         <h3>Trades</h3>
-        <p className={styles.empty}>{error ?? "Loading trades…"}</p>
+        <p className={styles.empty}>{error}</p>
       </section>
     );
   }
 
   const recent = scope === "mine" ? data.recent.filter((t) => t.role === "proposer" || t.role === "partner") : data.recent;
   if (scope === "mine" && (!data.myTeam || (data.open.length === 0 && recent.length === 0))) return null;
+  // The league's card is for open trades; a note (e.g. "Offer rejected.") keeps it up after the last one goes.
+  if (scope === "league" && data.open.length === 0 && !note) return null;
 
   return (
     <section className={`${styles.card} ${styles.panel}`} id="trades" aria-label="Trades">

@@ -19,7 +19,7 @@ const positiveInt = (raw: string | undefined) => {
 };
 
 // Server-rendered from our DB: standings, a week's scoreboard (?week=N, default this week), recent transactions
-// and the waiver order.
+// and the waiver order (in FAAB leagues, each team's budget left is a Standings column instead).
 // The commissioner also gets links to /league/settings (header, and Edit on the waiver rules).
 // League data is private: signed out, the page only asks to sign in.
 export default async function LeaguePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
@@ -34,12 +34,17 @@ export default async function LeaguePage({ searchParams }: { searchParams: Promi
     getLeagueSettings(pool, CURRENT_SEASON, userId),
   ]);
   const myTeamId = data?.myTeam?.id ?? null;
+  const faab = waivers?.type === "faab" ? new Map(waivers.teams.map((t) => [t.id, t.faabBalance ?? 0])) : null;
   return (
-    <LeagueView data={data} isCommissioner={settings?.isCommissioner ?? false}>
-      <div className={waiverStyles.below}>
+    <LeagueView data={data} isCommissioner={settings?.isCommissioner ?? false} faab={faab}>
+      {faab ? (
         <RecentTransactions data={transactions} myTeamId={myTeamId} />
-        <WaiverOrder data={waivers} myTeamId={myTeamId} canEdit={settings?.isCommissioner ?? false} />
-      </div>
+      ) : (
+        <div className={waiverStyles.below}>
+          <RecentTransactions data={transactions} myTeamId={myTeamId} />
+          <WaiverOrder data={waivers} myTeamId={myTeamId} canEdit={settings?.isCommissioner ?? false} />
+        </div>
+      )}
     </LeagueView>
   );
 }
