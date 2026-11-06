@@ -90,9 +90,11 @@ export function teamPos(team: string | null, pos: string | null): string {
 /**
  * A waiver run time in the league's time zone: "Sun 3:00 AM" (short),
  * "Sun, Oct 27 · 3:00 AM ET" (long), "Sunday at 3:00 AM ET" (sentence),
- * or "Sun, Oct 27" (date, for Claim buttons).
+ * "Sun, Oct 27" (date, for Claim buttons), or "Oct 27" (day, the Players table's Claim).
  */
-export function fmtWaiverTime(iso: string, timeZone: string, style: "short" | "long" | "sentence" | "date" = "short"): string {
+export function fmtWaiverTime(
+  iso: string, timeZone: string, style: "short" | "long" | "sentence" | "date" | "day" = "short",
+): string {
   const d = new Date(iso);
   const weekday = d.toLocaleDateString("en-US", { weekday: style === "sentence" ? "long" : "short", timeZone });
   const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone });
@@ -102,6 +104,7 @@ export function fmtWaiverTime(iso: string, timeZone: string, style: "short" | "l
       ?.value ?? "";
   if (style === "short") return `${weekday} ${time}`;
   if (style === "date") return `${weekday}, ${date}`;
+  if (style === "day") return date;
   if (style === "sentence") return `${weekday} at ${time} ${zone}`.trim();
   return `${weekday}, ${date} · ${time} ${zone}`.trim();
 }

@@ -253,18 +253,21 @@ function Row({
       <Shaded mode={mode} k="value" tier={t.value} className={styles.value}>{fmtValue(p.value)}</Shaded>
       {onAdd && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
-          <button
-            type="button"
-            className={`${styles.add} ${styles.claim}`}
-            aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, timeZone)})`}
-            title={waiverTooltip(p.waiver, timeZone)}
-            onClick={() => onAdd(p.id)}
-          >
-            Claim ({fmtWaiverTime(p.waiver.clearsAt, timeZone, "date")})
-          </button>
+          <span className={styles.claimWrap}>
+            <span className={styles.clears}>{fmtWaiverTime(p.waiver.clearsAt, timeZone, "day")}</span>
+            <button
+              type="button"
+              className={`${styles.add} ${styles.claim}`}
+              aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, timeZone)})`}
+              title={`Claim · ${waiverTooltip(p.waiver, timeZone)}`}
+              onClick={() => onAdd(p.id)}
+            >
+              +
+            </button>
+          </span>
         ) : p.owner === null ? (
-          <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} onClick={() => onAdd(p.id)}>
-            Add
+          <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} title="Add" onClick={() => onAdd(p.id)}>
+            +
           </button>
         ) : p.owner.teamId === myTeamId ? (
           <span className={styles.mine}><TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={myTeamId} /></span>

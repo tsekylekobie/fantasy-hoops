@@ -12,7 +12,7 @@
 
 .table {
   width: 100%;
-  min-width: 1170px;
+  min-width: 1106px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -21,7 +21,7 @@
 
 /* Signed out there's no Owner column: take its width off, or Player (sticky on phones) soaks it up and covers the stats. */
 .table.noOwner {
-  min-width: calc(1170px - 184px);
+  min-width: calc(1106px - 120px);
 }
 
 .stale {
@@ -49,8 +49,8 @@
   width: 72px;
 }
 .cOwner {
-  /* Fits "Claim (Wed, Oct 28)" with a stat-column gap before it. */
-  width: 184px;
+  /* Fits "Oct 28 +" (a claim) with a stat-column gap before it. */
+  width: 120px;
 }
 
 .table th,
@@ -382,14 +382,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
-  min-width: 72px;
-  padding: 0 12px;
+  width: 32px;
+  height: 32px;
+  padding: 0 0 2px;
   border: 0;
   border-radius: 8px;
   background: var(--accent);
   color: var(--on-ink);
-  font: 600 13px var(--font-body);
+  font: 600 20px/1 var(--font-body);
   cursor: pointer;
 }
 
@@ -402,7 +402,19 @@
   outline-offset: 2px;
 }
 
-/* Players on waivers: an outlined "Claim (<day he clears>)" button. */
+/* Players on waivers: the day he clears, then an outlined + (a claim). */
+.claimWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clears {
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
 .claim {
   white-space: nowrap;
   background: var(--surface);
@@ -420,21 +432,21 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   .table {
-    min-width: 1106px;
+    min-width: 1042px;
   }
 
   .table.noOwner {
-    min-width: calc(1106px - 184px);
+    min-width: calc(1042px - 120px);
   }
 
   /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
      sticky Player column narrows with them, leaving more room for stats. */
   .card[data-scrolled] .table {
-    min-width: 1082px;
+    min-width: 1018px;
   }
 
   .card[data-scrolled] .table.noOwner {
-    min-width: calc(1082px - 184px);
+    min-width: calc(1018px - 120px);
   }
 
   .cRank {
