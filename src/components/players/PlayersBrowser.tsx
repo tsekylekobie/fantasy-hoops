@@ -368,19 +368,7 @@ export default function PlayersBrowser() {
     }
   }, [navigate, router]);
 
-  // Stars toggled on this page, over what the table last loaded (the modal's too); the next load agrees.
-  const [watchedIds, setWatchedIds] = useState<Map<number, boolean>>(new Map());
-  const onWatch = useCallback((id: number, watched: boolean) => {
-    setWatchedIds((prev) => new Map(prev).set(id, watched));
-  }, []);
-  const data = useMemo(() => {
-    const d = load.data;
-    if (!d || watchedIds.size === 0) return d;
-    return {
-      ...d,
-      players: d.players.map((p) => (p.watched !== null && watchedIds.has(p.id) ? { ...p, watched: watchedIds.get(p.id)! } : p)),
-    };
-  }, [load.data, watchedIds]);
+  const data = load.data;
   const teamOptions = data?.teamOptions ?? null;
   const total = data?.total ?? 0;
   const shown = data?.players.length ?? 0;
@@ -584,7 +572,6 @@ export default function PlayersBrowser() {
           onOpenPlayer={openPlayer}
           onAddPlayer={signedIn ? setAdding : null}
           myTeamId={myTeamId}
-          onWatch={onWatch}
         />
 
         <div className={styles.footer}>
@@ -601,7 +588,7 @@ export default function PlayersBrowser() {
       </div>
 
       <PlayerModal
-        playerId={player} onClose={closePlayer} onAdd={signedIn ? setAdding : undefined} myTeamId={myTeamId} refreshKey={movesKey} onWatch={onWatch}
+        playerId={player} onClose={closePlayer} onAdd={signedIn ? setAdding : undefined} myTeamId={myTeamId} refreshKey={movesKey}
       />
       <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>

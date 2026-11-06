@@ -42,8 +42,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   every week (`?week=N`, default this week; only the scoreboard changes, standings stay current).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
   injury + news blurb. Rows show the status chip ("Out 3W": time to the est. return, `fmtInjuryStatus` in `components/players/format.ts`); the player modal adds injury, est. return and the full news blurb.
-- `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`) on
-  Players rows and in the player modal toggles it via `PUT`/`DELETE /api/players/[id]/watch`; `scope=watch` on
+- `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`), only
+  in the player modal (not on Players rows), toggles it via `PUT`/`DELETE /api/players/[id]/watch`; `scope=watch` on
   `/api/players` lists it. `watched` on rows and player detail is null when signed out (no star).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up; Versus the league shows one team against each other team.
