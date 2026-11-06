@@ -44,6 +44,9 @@
   --tier-top40-bg: #dcfce7;
   --tier-bottom25-bg: #fee2e2;
   --tier-bottom10-bg: #fca5a5;
+  /* Matchup win chance: mixed from lose to win by the chance (MatchupView). */
+  --odds-lose-bg: #fca5a5;
+  --odds-win-bg: #86efac;
   --on-ink: #ffffff;
   --backdrop: rgba(22, 24, 29, 0.55);
   /* A value that just changed in a live update. */
@@ -95,6 +98,8 @@
   --tier-top40-bg: #173a24;
   --tier-bottom25-bg: #3b1a1a;
   --tier-bottom10-bg: #7f1d1d;
+  --odds-lose-bg: #7f1d1d;
+  --odds-win-bg: #166534;
   --on-ink: #121316;
   --backdrop: rgba(0, 0, 0, 0.65);
   --flash: #5b4a12;

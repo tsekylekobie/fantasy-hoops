@@ -269,8 +269,8 @@ const ODDS_LABELS: Record<OddsTier, string> = {
 };
 
 /**
- * The left side's chance of taking each category by week's end, shaded so the
- * toss-ups stand out and the safe and lost ones fade.
+ * The left side's chance of taking each category by week's end, shaded from red
+ * (losing) to green (winning) by the chance itself.
  */
 function OddsRow({ m }: { m: Matchup }) {
   const odds = matchupOdds(m.team.stats, m.team.projected, m.opponent.stats, m.opponent.projected);
@@ -279,7 +279,12 @@ function OddsRow({ m }: { m: Matchup }) {
       <span role="rowheader" className={styles.tn}>Win chance</span>
       {CATEGORY_KEYS.map((k) => (
         <span role="cell" className={styles.n} key={k}>
-          <Flash as="span" className={`${styles.odds} ${styles[`odds-${odds[k].tier}`]}`} value={fmtChance(odds[k])}>
+          <Flash
+            as="span"
+            className={styles.odds}
+            style={{ "--chance": Math.round(odds[k].chance * 100) } as React.CSSProperties}
+            value={fmtChance(odds[k])}
+          >
             {fmtChance(odds[k])}
           </Flash>
           <span className={styles.sr}> ({ODDS_LABELS[odds[k].tier]})</span>
@@ -324,8 +329,7 @@ function Categories({ m, projected, showOdds, myTeamId }: { m: Matchup; projecte
         {showOdds && (
           <>
             Win chance: how likely {m.isMine ? "you take" : `${m.team.name} takes`} each category by the end of the week,
-            from the projected totals and how much is left to play. Orange is a toss-up worth chasing; faded is
-            90%+ either way.{" "}
+            from the projected totals and how much is left to play.{" "}
           </>
         )}
         {projected
