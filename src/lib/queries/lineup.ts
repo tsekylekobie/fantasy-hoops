@@ -16,6 +16,7 @@
 // roster: players who joined after the rows were written show on BN, and
 // rows for players who have left are ignored.
 import type { Pool, PoolClient } from "pg";
+import { GAME_DAY_TZ } from "../gameDay";
 import {
   autoLineup,
   describeIlRule,
@@ -67,7 +68,7 @@ export interface TeamContext {
   /** IL eligibility rule: the injury statuses that qualify, per IL slot. */
   ilStatuses: string[];
   ilPlusStatuses: string[];
-  /** The league's today, yyyy-mm-dd, in its time zone. */
+  /** Today, yyyy-mm-dd, Pacific (GAME_DAY_TZ): the day lineups lock through. */
   today: string;
 }
 
@@ -82,7 +83,7 @@ export async function getUserTeam(db: Db, userId: number, season: number): Promi
     `SELECT ft.id AS team_id, ft.name AS team_name, u.name AS manager_name, ft.abbreviation, ft.logo_updated_at, ft.waiver_priority,
             l.id AS league_id, l.name AS league_name, l.season, l.roster_slots, l.lineup_lock,
             l.il_statuses, l.il_plus_statuses,
-            to_char((now() AT TIME ZONE l.time_zone)::date, 'YYYY-MM-DD') AS today
+            to_char((now() AT TIME ZONE '${GAME_DAY_TZ}')::date, 'YYYY-MM-DD') AS today
        FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
        LEFT JOIN users u ON u.id = ft.owner_user_id
       WHERE ft.owner_user_id = $1 AND l.season = $2
@@ -292,7 +293,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
 }
 
 /**
- * Saves each day from the season's first game through the league's today that
+ * Saves each day from the season's first game through today (Pacific, GAME_DAY_TZ) that
  * has no rows of its own, as the lineup it shows right now: the latest earlier
  * day's rows (or the standing lineup, before any), with the current roster.
  * Same rule as loadDay, so nothing on screen changes; it just stops changing
@@ -301,7 +302,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
 export async function freezeLineups(db: PoolClient, teamId: number): Promise<number> {
   const { rowCount } = await db.query(
     `WITH t AS (
-       SELECT ft.id, ft.league_id, (now() AT TIME ZONE l.time_zone)::date AS today,
+       SELECT ft.id, ft.league_id, (now() AT TIME ZONE '${GAME_DAY_TZ}')::date AS today,
               (SELECT min(g.date) FROM games g WHERE g.season = l.season) AS first_day
          FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
         WHERE ft.id = $1

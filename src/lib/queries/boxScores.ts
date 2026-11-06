@@ -9,6 +9,7 @@
 // attempts: the category z), so 4/5 beats 1/1; no attempts, no rank. Fewer
 // turnovers ranks higher.
 import type { Pool } from "pg";
+import { GAME_DAY_TZ } from "../gameDay";
 import type {
   BoxRank,
   BoxRankKey,
@@ -137,17 +138,13 @@ const STATS_SQL = `
   JOIN players p ON p.id = s.player_id
   WHERE g.date = $1::date`;
 
-// "Today" on Box scores is the Pacific date, so a night's games stay today until the last West Coast
-// game is over (Eastern would roll over mid-game). Tip-off times still show in the league's time zone.
-const BOX_SCORE_TODAY_TZ = "America/Los_Angeles";
-
-// $1 season, $2 user (null = signed out), $3 date. Today (Pacific, BOX_SCORE_TODAY_TZ) and the league's time zone,
+// $1 season, $2 user (null = signed out), $3 date. Today (Pacific, GAME_DAY_TZ) and the league's time zone,
 // the season's date range, the week strip's game counts, your team and its players' NBA teams.
 const CONTEXT_SQL = `
   WITH l AS (SELECT id, time_zone FROM leagues WHERE season = $1 ORDER BY id DESC LIMIT 1),
        my AS (SELECT ft.id FROM fantasy_teams ft JOIN l ON ft.league_id = l.id WHERE ft.owner_user_id = $2)
   SELECT coalesce((SELECT time_zone FROM l), 'America/New_York') AS time_zone,
-         to_char((now() AT TIME ZONE '${BOX_SCORE_TODAY_TZ}')::date, 'YYYY-MM-DD') AS today,
+         to_char((now() AT TIME ZONE '${GAME_DAY_TZ}')::date, 'YYYY-MM-DD') AS today,
          (SELECT to_char(min(date), 'YYYY-MM-DD') FROM games WHERE season = $1) AS first_date,
          (SELECT to_char(max(date), 'YYYY-MM-DD') FROM games WHERE season = $1) AS last_date,
          (SELECT id::int FROM my) AS my_team_id,
@@ -199,7 +196,7 @@ export async function getBoxScores(
 ): Promise<BoxScoresResponse> {
   const { rows: [probe] } = await db.query<{ today: string }>(
     `SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS today`,
-    [BOX_SCORE_TODAY_TZ],
+    [GAME_DAY_TZ],
   );
   const day = date !== null && ISO_DATE.test(date) && !Number.isNaN(Date.parse(date)) ? date : probe.today;
 
