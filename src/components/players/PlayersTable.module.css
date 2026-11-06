@@ -432,13 +432,13 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   /* Compact columns so more stats fit beside the sticky # and Player:
-     30 · Player 104 · Gms 46 · MIN 40 · 2 × 62 · 7 × 44 · Value 54 · Owner 108. */
+     # 36 (fits a three-digit rank) · Player 104 · Gms 46 · MIN 40 · 2 × 62 · 7 × 44 · Value 54 · Owner 108. */
   .table {
-    min-width: 814px;
+    min-width: 820px;
   }
 
   .table.noOwner {
-    min-width: calc(814px - 108px);
+    min-width: calc(820px - 108px);
   }
 
   /* The card runs edge to edge (the my-team phone pattern), past the page's 16px padding. */
@@ -450,7 +450,7 @@
   }
 
   .cRank {
-    width: 30px;
+    width: 36px;
   }
   .cWeek {
     width: 46px;
@@ -546,7 +546,7 @@
 
   .table th:nth-child(2),
   .table td:nth-child(2) {
-    left: 30px;
+    left: 36px;
     padding-right: 8px;
     box-shadow: 1px 0 0 var(--row-divider);
   }
