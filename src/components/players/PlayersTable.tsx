@@ -7,6 +7,7 @@ import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmt
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "./ScrollName";
 import WatchStar from "./WatchStar";
+import TeamLink from "@/components/TeamLink";
 import styles from "./PlayersTable.module.css";
 
 /** Stat columns after # and Player, each sortable by its header. */
@@ -250,9 +251,9 @@ function Row({
             Add
           </button>
         ) : p.owner.teamId === myTeamId ? (
-          <span className={styles.mine}>{p.owner.abbreviation}</span>
+          <span className={styles.mine}><TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={myTeamId} /></span>
         ) : (
-          p.owner.abbreviation
+          <TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={myTeamId} />
         )}
       </td>}
     </tr>

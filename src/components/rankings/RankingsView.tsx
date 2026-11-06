@@ -8,6 +8,7 @@ import type { CategoryKey, CategoryLine, MatchupScore, RankingsPeriod, RankingsV
 import { CATEGORY_KEYS } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import { fmtGameDate, fmtInt, fmtPct } from "@/components/players/format";
 import styles from "./RankingsView.module.css";
 
@@ -190,7 +191,7 @@ function Versus({ data, focus }: { data: View; focus: NonNullable<View["focus"]>
       <div className={styles.focus}>
         <TeamBadge team={focus.team} className={styles.focusBadge} />
         <div>
-          <b>{focus.team.name}</b>
+          <b><TeamLink team={focus.team} myTeamId={data.myTeam?.id} /></b>
           <small>{summary}</small>
         </div>
       </div>
@@ -214,7 +215,7 @@ function Versus({ data, focus }: { data: View; focus: NonNullable<View["focus"]>
                 <span className={styles.opp}>
                   <TeamBadge team={v.opponent} className={styles.oppBadge} />
                   <span>
-                    {v.opponent.name}
+                    <TeamLink team={v.opponent} myTeamId={data.myTeam?.id} />
                     {v.isActual && <em>Actual matchup</em>}
                     {!isWeek && <em className={styles.cats}>{fmtScore(v.score)} categories</em>}
                   </span>

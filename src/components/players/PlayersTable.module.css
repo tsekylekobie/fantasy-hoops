@@ -335,6 +335,10 @@
   color: var(--ink-subtle);
 }
 
+.mine a:hover {
+  color: inherit;
+}
+
 .mine {
   padding: 4px 10px;
   border-radius: 999px;

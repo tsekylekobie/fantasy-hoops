@@ -17,6 +17,7 @@ import LiveRefresh from "@/components/live/LiveRefresh";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
 import { fmtGameDate, fmtPct, fmtValue, fullName, waiverTooltip } from "@/components/players/format";
+import TeamLink from "@/components/TeamLink";
 import styles from "./BoxScoresView.module.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -340,9 +341,9 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
             Add
           </button>
         ) : mine ? (
-          <span className={styles.mp}>{p.owner.abbreviation}</span>
+          <span className={styles.mp}><TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={data.myTeamId} /></span>
         ) : (
-          p.owner.abbreviation
+          <TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={data.myTeamId} />
         )}
       </td>}
       {l ? (

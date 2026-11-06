@@ -3,9 +3,7 @@
 // so types added later (trades, waiver claims, commissioner moves) still read.
 // Each waiver run is one entry among them: the players won, expandable to every
 // claim in the run (bids, drops, and why the others failed).
-import Link from "next/link";
 import type {
-  FantasyTeamSummary,
   LeagueTransaction,
   RecentTransactions as Data,
   TransactionMove,
@@ -13,6 +11,7 @@ import type {
 } from "@/lib/types";
 import { fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import LocalTime from "./LocalTime";
 import styles from "./RecentTransactions.module.css";
 
@@ -26,8 +25,6 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const typeLabel = (type: string) => TYPE_LABELS[type] ?? type.replace(/_/g, " ");
-
-const teamHref = (t: FantasyTeamSummary, myTeamId: number | null) => (t.id === myTeamId ? "/my-team" : `/team/${t.id}`);
 
 /** How one player moved, from the acting team's point of view. */
 function moveText(tx: LeagueTransaction, m: TransactionMove): { sign: "+" | "−" | "→"; verb: string } {
@@ -70,11 +67,11 @@ function Transaction({ tx, timeZone, myTeamId }: { tx: LeagueTransaction; timeZo
             <TeamBadge team={tx.team} />
             <span className={styles.teams}>
               <span>
-                <Link href={teamHref(tx.team, myTeamId)}>{tx.team.name}</Link>
+                <TeamLink team={tx.team} myTeamId={myTeamId} />
                 {tx.tradeTeam && (
                   <>
                     {" ⇄ "}
-                    <Link href={teamHref(tx.tradeTeam, myTeamId)}>{tx.tradeTeam.name}</Link>
+                    <TeamLink team={tx.tradeTeam} myTeamId={myTeamId} />
                   </>
                 )}
               </span>
@@ -148,7 +145,7 @@ function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone:
                 <b className={styles.plus} aria-hidden="true">+</b>
                 <span className={styles.name}>{fullName(player)}</span>
                 <span className={styles.meta}>
-                  {claim.team.abbreviation}
+                  <TeamLink team={claim.team} myTeamId={myTeamId}>{claim.team.abbreviation}</TeamLink>
                   {claim.bid !== null && ` · ${bidText(claim.bid)}`}
                 </span>
               </li>
@@ -172,7 +169,7 @@ function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone:
                     <b className={c.won ? styles.plus : styles.minus} aria-label={c.won ? "Won" : "Failed"}>
                       {c.won ? "✓" : "✕"}
                     </b>
-                    <span className={styles.claimTeam}>{c.team.abbreviation}</span>
+                    <TeamLink className={styles.claimTeam} team={c.team} myTeamId={myTeamId}>{c.team.abbreviation}</TeamLink>
                     {run.faab && <span className={styles.bid}>{bidText(c.bid ?? 0)}</span>}
                     <span className={styles.claimText}>
                       {c.won

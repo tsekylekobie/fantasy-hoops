@@ -18,6 +18,7 @@ import { playerValue, type WeightSet } from "@/lib/trades/analysis";
 import type {
   Trade, TradeAnalysisPlayer, TradeAnalysisResponse, TradeBuilderResponse, TradeProposal, TradeRosterPlayer, TradeWindow,
 } from "@/lib/types";
+import TeamLink from "@/components/TeamLink";
 import styles from "./Trades.module.css";
 
 const MAX_SIDE = 6;
@@ -145,7 +146,7 @@ export default function TradeBuilder({ partnerId }: { partnerId: number }) {
   return (
     <Shell>
       <div className={styles.head}>
-        <h1 className={styles.title}>Trade with {partner.name}</h1>
+        <h1 className={styles.title}>Trade with <TeamLink team={partner} myTeamId={myTeam.id} /></h1>
         <Link className={styles.btn} href={`/team/${partner.id}`}>Back to their team</Link>
       </div>
       <p className={styles.sub}>

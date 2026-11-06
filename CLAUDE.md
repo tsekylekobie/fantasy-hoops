@@ -86,7 +86,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/
   `transactions`. League-only pages call `requireSignedInPage` (`src/lib/auth/viewer.ts`, redirects to /league). The root
   layout reads the session once (`currentSession`) into `SessionProvider` (`useSignedIn` on the client).
-- `src/components/`: UI. `Avatar` must fall back to initials. Wide tables (Players, Box scores) use
+- `src/components/`: UI. `Avatar` must fall back to initials. A team's name (or abbreviation) is a `TeamLink` wherever it
+  appears (its page, or /my-team for yours); in a row that links elsewhere (scoreboard pairings, bracket games), that
+  row's link is a cover over the row and the names sit above it, never nested links. Wide tables (Players, Box scores) use
   `table/StickyHeadTable` (sideways scroll, header pinned to the page via a measured copy, `data-scrolled` once
   scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and

@@ -204,7 +204,7 @@ a.pageBtn:hover {
   color: var(--board-muted);
 }
 
-.side a {
+.side > a {
   color: var(--board-link);
   font-size: 13px;
   font-weight: 600;
@@ -441,7 +441,28 @@ a.pageBtn:hover {
   font-weight: 600;
 }
 
-.otherLink:focus-visible {
+.otherLink {
+  position: relative;
+}
+
+/* The score's link covers the row; team names (TeamLink) sit above it. */
+.otherCover {
+  color: inherit;
+  text-decoration: none;
+  text-align: center;
+}
+
+.otherCover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.otherCover:focus-visible {
+  outline: none;
+}
+
+.otherCover:focus-visible::after {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }

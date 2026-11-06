@@ -1,11 +1,12 @@
 // The Standings card's Playoffs view: the playoff bracket and the toilet bowl,
 // projected from today's standings until the real rounds exist (rules in
 // src/lib/playoffs/bracket.ts). Rounds run left to right and scroll sideways
-// inside the card on narrow screens. A real game opens its matchup.
+// inside the card on narrow screens. A real game opens its matchup; a team name, its team.
 import Link from "next/link";
 import type { Bracket, BracketGame, BracketTeam, FantasyTeamSummary, MatchupScore, PlayoffsView } from "@/lib/types";
 import { fmtGameDate } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
+import TeamLink from "@/components/TeamLink";
 import styles from "./PlayoffsBracket.module.css";
 
 const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}–${s.ties}`;
@@ -89,7 +90,7 @@ function BracketGrid({ b, columns, myTeam }: { b: Bracket; columns: number; myTe
                 {r.games.map((g) => (
                   <div key={g.slot} className={styles.slot}>
                     <Game b={b} round={r.round} g={g} week={r.week?.week ?? null} myTeam={myTeam} />
-                    {last && <Result b={b} />}
+                    {last && <Result b={b} myTeam={myTeam} />}
                   </div>
                 ))}
               </div>
@@ -102,14 +103,14 @@ function BracketGrid({ b, columns, myTeam }: { b: Bracket; columns: number; myTe
 }
 
 /** Champion or last place, under the final. */
-function Result({ b }: { b: Bracket }) {
+function Result({ b, myTeam }: { b: Bracket; myTeam: FantasyTeamSummary | null }) {
   return (
     <div className={`${styles.trophy} ${b.result ? styles.decided : ""} ${b.kind === "toilet_bowl" ? styles.flush : ""}`}>
       <b>{b.kind === "playoffs" ? "Champion" : "Last place"}</b>
       {b.result ? (
         <span className={styles.champ}>
           <TeamBadge team={b.result} />
-          <span>{b.result.name}</span>
+          <span><TeamLink team={b.result} myTeamId={myTeam?.id} /></span>
         </span>
       ) : (
         <span className={styles.tbd}>TBD</span>
@@ -139,7 +140,7 @@ function Game({
         <span className={styles.seed}>{t.seed}</span>
         <TeamBadge team={t} />
         <span className={styles.name}>
-          <span>{t.name}</span>
+          <span><TeamLink team={t} myTeamId={myTeam?.id} /></span>
           <small>{fmtScore(t.record)}{moves ? (round === b.rounds.length ? " · last place" : " · advances") : ""}</small>
         </span>
         {wins !== null && <b className={styles.score}>{wins}</b>}
@@ -157,13 +158,15 @@ function Game({
   if (!g.a || !g.b || week === null) return <div className={`${styles.game} ${mine ? styles.gameMine : ""}`}>{body}</div>;
   // Like the scoreboard: your matchup opens on its own, others by team.
   const href = mine && myTeam ? `/matchup?week=${week}` : `/matchup?week=${week}&team=${g.a.id}`;
+  // The cover link opens the matchup; the team names sit above it.
   return (
-    <Link
-      href={href}
-      className={`${styles.game} ${styles.link} ${mine ? styles.gameMine : ""}`}
-      aria-label={`${g.a.name} vs ${g.b.name}${g.score ? `, ${fmtScore(g.score)}` : ""}`}
-    >
+    <div className={`${styles.game} ${styles.link} ${mine ? styles.gameMine : ""}`}>
       {body}
-    </Link>
+      <Link
+        href={href}
+        className={styles.cover}
+        aria-label={`${g.a.name} vs ${g.b.name}${g.score ? `, ${fmtScore(g.score)}` : ""}`}
+      />
+    </div>
   );
 }
