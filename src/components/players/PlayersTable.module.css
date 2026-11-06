@@ -12,7 +12,7 @@
 
 .table {
   width: 100%;
-  min-width: 1154px;
+  min-width: 1170px;
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
@@ -21,7 +21,7 @@
 
 /* Signed out there's no Owner column: take its width off, or Player (sticky on phones) soaks it up and covers the stats. */
 .table.noOwner {
-  min-width: calc(1154px - 168px);
+  min-width: calc(1170px - 184px);
 }
 
 .stale {
@@ -50,7 +50,7 @@
 }
 .cOwner {
   /* Fits "Claim (Wed, Oct 28)" with a stat-column gap before it. */
-  width: 168px;
+  width: 184px;
 }
 
 .table th,
@@ -420,21 +420,21 @@
    (the my-team phone pattern); headshots drop out to give the stats room. */
 @media (max-width: 640px) {
   .table {
-    min-width: 1090px;
+    min-width: 1106px;
   }
 
   .table.noOwner {
-    min-width: calc(1090px - 168px);
+    min-width: calc(1106px - 184px);
   }
 
   /* Scrolled sideways, names shorten to "S. Gilgeous-Alexander" (ScrollName) and the
      sticky Player column narrows with them, leaving more room for stats. */
   .card[data-scrolled] .table {
-    min-width: 1066px;
+    min-width: 1082px;
   }
 
   .card[data-scrolled] .table.noOwner {
-    min-width: calc(1066px - 168px);
+    min-width: calc(1082px - 184px);
   }
 
   .cRank {
