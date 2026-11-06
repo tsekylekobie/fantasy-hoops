@@ -3,11 +3,14 @@
 // The /box-scores page: the Box scores artboard in the Fantasy Hoops design
 // canvas. A date's scoreboard, then each game's box score. Every stat cell is
 // shaded by where it ranks among all players who played that date (queries/boxScores.ts).
-// Keyed by date and ?game (page.tsx), so the picked game resets when either changes.
+// Clicking a game scrolls to its box score (every game stays listed). Once the
+// scoreboard scrolls off, a compact copy pins to the top of the page and marks the
+// game you're reading; the tables' pinned headers sit just under it.
+// Keyed by date and ?game (page.tsx): ?game jumps to that game on load.
 // Signed out there's no Owner column and no Add/Claim (league data is private).
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BoxRank, BoxRankKey, BoxScoreGame, BoxScorePlayer, BoxScoresResponse, BoxScoreTeam, RankTier } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import { useSignedIn } from "@/components/SessionProvider";
@@ -23,6 +26,58 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()];
 const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const href = (date: string) => `/box-scores?date=${date}`;
+const boxId = (gameId: number) => `game-${gameId}`;
+/** The compact bar's height in px; matches `--gbar-h` in the CSS. */
+const BAR_H = 60;
+
+function jumpTo(gameId: number, smooth = true) {
+  const el = document.getElementById(boxId(gameId));
+  if (!el) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: smooth && !reduce ? "smooth" : "auto", block: "start" });
+}
+
+/** Once the full scoreboard has scrolled off, show the pinned bar and track which game is being read. */
+function usePinnedBar(games: BoxScoreGame[]) {
+  const sbRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const [active, setActive] = useState<number | null>(null);
+
+  useEffect(() => {
+    const sb = sbRef.current;
+    if (!sb) return;
+    const io = new IntersectionObserver(([e]) => setPinned(!e.isIntersecting && e.boundingClientRect.top < 0));
+    io.observe(sb);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let frame = 0;
+    const spy = () => {
+      frame = 0;
+      // The last game whose box starts above the bar's bottom edge (plus some slack).
+      let current: number | null = null;
+      for (const g of games) {
+        const el = document.getElementById(boxId(g.id));
+        if (el && el.getBoundingClientRect().top <= BAR_H + 24) current = g.id;
+      }
+      setActive(current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(spy);
+    };
+    spy();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [games]);
+
+  return { sbRef, pinned, active };
+}
 
 const LABELS: Record<BoxRankKey, string> = {
   pts: "PTS", fg3m: "3PM", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", fgPct: "FG%", ftPct: "FT%", tov: "TO", value: "Value",
@@ -59,10 +114,14 @@ function summary(d: BoxScoresResponse): string {
 
 export default function BoxScoresView({ data, initialGame = null }: { data: BoxScoresResponse; initialGame?: number | null }) {
   const router = useRouter();
-  const [game, setGame] = useState<number | "all">(initialGame ?? "all");
   const [adding, setAdding] = useState<number | null>(null);
   const onAdd = useSignedIn() ? setAdding : null;
-  const shown = game === "all" ? data.games : data.games.filter((g) => g.id === game);
+  const { sbRef, pinned, active } = usePinnedBar(data.games);
+  const pick = useCallback((id: number) => jumpTo(id), []);
+
+  useEffect(() => {
+    if (initialGame !== null) jumpTo(initialGame, false);
+  }, [initialGame]);
   const prev = addDays(data.date, -1);
   const next = addDays(data.date, 1);
   const inSeason = (iso: string) => (!data.firstDate || iso >= data.firstDate) && (!data.lastDate || iso <= data.lastDate);
@@ -109,20 +168,12 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
             <p className={styles.empty}>No NBA games on this date.</p>
           ) : (
             <>
-              <div className={styles.sb}>
-                <button
-                  type="button"
-                  className={`${styles.gm} ${styles.all} ${game === "all" ? styles.gmOn : ""}`}
-                  aria-pressed={game === "all"}
-                  onClick={() => setGame("all")}
-                >
-                  <b>All games</b>
-                  <span>{data.games.length} {data.games.length === 1 ? "game" : "games"}</span>
-                </button>
+              <nav ref={sbRef} className={styles.sb} aria-label="Games">
                 {data.games.map((g) => (
-                  <GameCard key={g.id} g={g} on={game === g.id} timeZone={data.timeZone} onPick={() => setGame(g.id)} />
+                  <GameCard key={g.id} g={g} timeZone={data.timeZone} onPick={() => pick(g.id)} />
                 ))}
-              </div>
+              </nav>
+              <PinnedBar games={data.games} shown={pinned} active={active} timeZone={data.timeZone} onPick={pick} />
 
               <div className={styles.lg} aria-label="Shading key">
                 <span>Each stat is ranked against every player on this date:</span>
@@ -134,7 +185,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
                 <i className={styles.bottom10}>Bottom 10%</i>
               </div>
 
-              {shown.map((g) => (
+              {data.games.map((g) => (
                 <Box key={g.id} g={g} data={data} onAdd={onAdd} />
               ))}
             </>
@@ -171,12 +222,16 @@ function DayLink({ to, disabled, label, arrow }: { to: string; disabled: boolean
   );
 }
 
-function GameCard({ g, on, timeZone, onPick }: { g: BoxScoreGame; on: boolean; timeZone: string; onPick: () => void }) {
-  const started = g.away.score !== null && g.home.score !== null;
-  const winner = g.state === "final" && started ? (g.away.score! > g.home.score! ? "away" : g.home.score! > g.away.score! ? "home" : null) : null;
+function winnerOf(g: BoxScoreGame): "away" | "home" | null {
+  if (g.state !== "final" || g.away.score === null || g.home.score === null) return null;
+  return g.away.score > g.home.score ? "away" : g.home.score > g.away.score ? "home" : null;
+}
+
+function GameCard({ g, timeZone, onPick }: { g: BoxScoreGame; timeZone: string; onPick: () => void }) {
+  const winner = winnerOf(g);
   const dim = (side: "away" | "home") => (winner !== null && winner !== side ? styles.lost : "");
   return (
-    <button type="button" className={`${styles.gm} ${on ? styles.gmOn : ""}`} aria-pressed={on} onClick={onPick}>
+    <button type="button" className={styles.gm} onClick={onPick}>
       <span className={`${styles.st} ${g.state === "live" ? styles.live : ""}`}>
         {g.state === "scheduled" ? tipTime(g, timeZone) : g.statusText}
       </span>
@@ -193,6 +248,68 @@ function GameCard({ g, on, timeZone, onPick }: { g: BoxScoreGame; on: boolean; t
   );
 }
 
+/**
+ * The compact scoreboard pinned to the top of the page once the full one has scrolled
+ * off. A zero-height sticky slot holds it, so showing it never shifts the page.
+ * Hidden (and out of the tab order) while the full scoreboard is on screen.
+ */
+function PinnedBar({ games, shown, active, timeZone, onPick }: {
+  games: BoxScoreGame[]; shown: boolean; active: number | null; timeZone: string; onPick: (id: number) => void;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Keep the game being read in view along the row (sideways only; never scroll the page).
+  useEffect(() => {
+    const row = rowRef.current;
+    const chip = active === null ? null : row?.querySelector<HTMLElement>(`[data-game="${active}"]`);
+    if (!row || !chip) return;
+    const left = chip.offsetLeft - row.offsetLeft;
+    if (left < row.scrollLeft || left + chip.offsetWidth > row.scrollLeft + row.clientWidth) {
+      row.scrollTo({ left: left - 16, behavior: "smooth" });
+    }
+  }, [active, shown]);
+
+  return (
+    <div className={styles.pinSlot} data-shown={shown || undefined}>
+      <nav className={styles.pin} aria-label="Games (pinned)" aria-hidden={!shown}>
+        <div ref={rowRef} className={styles.pinRow}>
+          {games.map((g) => {
+            const winner = winnerOf(g);
+            const dim = (side: "away" | "home") => (winner !== null && winner !== side ? styles.lost : "");
+            const on = g.id === active;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                data-game={g.id}
+                className={`${styles.chip} ${on ? styles.chipOn : ""}`}
+                aria-current={on ? "location" : undefined}
+                tabIndex={shown ? undefined : -1}
+                onClick={() => onPick(g.id)}
+              >
+                <span className={styles.chipTeams}>
+                  <span className={dim("away")}>
+                    <b>{g.away.abbreviation}</b>
+                    <em>{g.away.score ?? ""}</em>
+                  </span>
+                  <span className={dim("home")}>
+                    <b>{g.home.abbreviation}</b>
+                    <em>{g.home.score ?? ""}</em>
+                  </span>
+                </span>
+                <span className={`${styles.chipSt} ${g.state === "live" ? styles.live : ""}`}>
+                  {g.state === "scheduled" ? tipTime(g, timeZone).replace(/ [A-Z]{2,4}$/, "") : g.statusText}
+                  {g.mine.length > 0 && <i>{g.mine.length} of yours</i>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
+
 function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onAdd: ((id: number) => void) | null }) {
   const started = g.away.score !== null && g.home.score !== null;
   const title = started
@@ -200,7 +317,7 @@ function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onA
     : `${g.away.abbreviation} @ ${g.home.abbreviation}`;
   const hasRows = g.away.players.length + g.home.players.length > 0;
   return (
-    <section className={styles.box} aria-label={title}>
+    <section id={boxId(g.id)} className={styles.box} aria-label={title}>
       <div className={styles.bh}>
         <h2>{title}</h2>
         {g.state !== "scheduled" && <span className={`${styles.bst} ${g.state === "live" ? styles.live : ""}`}>{g.statusText}</span>}

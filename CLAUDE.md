@@ -75,7 +75,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   finds a player's game on a past date uses `player_team_on(player, date)` (migration 0020), not `players.team_id`.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
-  every stat against all players who played that date, and the cells are shaded by that tier.
+  every stat against all players who played that date, and the cells are shaded by that tier. Every game stays listed:
+  clicking one in the scoreboard scrolls to it, and once the scoreboard scrolls off a compact copy pins to the top
+  (`--sticky-head-top` drops the tables' pinned headers below it).
 - Yahoo import (README, "Importing a league from Yahoo"): no Yahoo API (sign-in or Fantasy); `scripts/yahoo/import.ts`
   replaces the season's league from a folder of CSVs (dry run unless `--apply`) read by `src/lib/yahoo/csv.ts`
   (pure, tested; README has the formats; the `yahoo-csv-refresh` skill builds them from Yahoo's pages). The snapshot

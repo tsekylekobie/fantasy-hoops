@@ -1,8 +1,12 @@
 /* Box scores page: the Box scores artboard in the design canvas */
 
 .page {
+  /* The pinned game bar's height (BAR_H in BoxScoresView.tsx); tables' headers pin under it. */
+  --gbar-h: 60px;
+  --gutter: 40px;
+  --sticky-head-top: var(--gbar-h);
   min-height: 100vh;
-  padding: 12px 40px 48px;
+  padding: 12px var(--gutter) 48px;
 }
 
 .inner {
@@ -152,10 +156,6 @@ a.arw:hover,
   border-color: var(--border-strong);
 }
 
-.gm.gmOn {
-  border-color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
 
 .st,
 .bst {
@@ -214,21 +214,137 @@ a.arw:hover,
   margin-top: auto;
 }
 
-.gm.all {
-  justify-content: center;
-  gap: 2px;
+/* The compact scoreboard, pinned to the top once the full one scrolls off. The slot is
+   sticky at zero height, so the bar overlays the page instead of pushing it down. */
+
+.pinSlot {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 0;
 }
 
-.gm.all b {
+.pin {
+  position: absolute;
+  top: 0;
+  left: calc(-1 * var(--gutter));
+  right: calc(-1 * var(--gutter));
+  height: var(--gbar-h);
+  box-sizing: border-box;
+  padding: 0 var(--gutter);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 6px 16px -12px rgb(0 0 0 / 0.35);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms;
+}
+
+.pinSlot[data-shown] .pin {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.pinRow {
+  display: flex;
+  gap: 6px;
+  height: 100%;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pinRow::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.chip.chipOn {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.chipTeams {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chipTeams > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 64px;
+}
+
+.chipTeams b,
+.chipTeams em {
   font-family: var(--font-display);
-  font-size: 18px;
-  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.1;
   letter-spacing: 0.04em;
 }
 
-.gm.all span {
-  font-size: 12px;
+.chipTeams .lost {
   color: var(--ink-subtle);
+}
+
+.chipSt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+.chipSt.live {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 5px;
+  max-width: 72px;
+}
+
+.chipSt i {
+  font-style: normal;
+  color: var(--accent-ink);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* Shading by the date's rank: green is good, red is bad, and each step also
@@ -290,6 +406,8 @@ a.arw:hover,
 
 .box {
   margin-bottom: 28px;
+  /* Jumping to a game lands it just under the pinned bar. */
+  scroll-margin-top: calc(var(--gbar-h) + 12px);
 }
 
 .bh {
@@ -577,7 +695,8 @@ tr.out {
 /* Phones: the rank and player columns stay put while the stats scroll. */
 @media (max-width: 640px) {
   .page {
-    padding: 8px 16px 24px;
+    --gutter: 16px;
+    padding: 8px var(--gutter) 24px;
   }
 
   .title {
