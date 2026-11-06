@@ -8,7 +8,8 @@
    the table it is pushed up like a native sticky header. Hidden until measured. */
 .pin {
   position: sticky;
-  top: 0;
+  /* A page with its own pinned bar sets this to the bar's height (Box scores). */
+  top: var(--sticky-head-top, 0px);
   z-index: 3;
   height: 0;
   visibility: hidden;
