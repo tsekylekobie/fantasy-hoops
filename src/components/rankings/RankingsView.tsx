@@ -2,7 +2,7 @@
 // every team by its all-play record (each team against all the others) for one
 // week or the season, showing the nine category totals shaded by their rank.
 // Versus the league shows one team (yours by default) against each other team;
-// picking a team in the stack rank focuses it.
+// picking a team's row in the stack rank focuses it (its name goes to its page).
 import Link from "next/link";
 import type { CategoryKey, CategoryLine, MatchupScore, RankingsPeriod, RankingsView as View } from "@/lib/types";
 import { CATEGORY_KEYS } from "@/lib/types";
@@ -110,10 +110,18 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                   >
                     <td className={styles.pos}>{r.rank}</td>
                     <th scope="row" className={styles.team}>
-                      <Link href={hrefOf({ ...here, team: r.id })} scroll={false} className={styles.teamLink}>
-                        <TeamBadge team={r} className={styles.badge} />
-                        <span>{r.name}</span>
-                      </Link>
+                      <span className={styles.teamCell}>
+                        {/* The badge (and, through its cover, the rest of the row) picks the team for Versus the league. */}
+                        <Link
+                          href={hrefOf({ ...here, team: r.id })}
+                          scroll={false}
+                          className={styles.focusLink}
+                          aria-label={`Show ${r.name} against the league`}
+                        >
+                          <TeamBadge team={r} className={styles.badge} />
+                        </Link>
+                        <TeamLink team={r} myTeamId={data.myTeam?.id} className={styles.teamName} />
+                      </span>
                     </th>
                     <td className={`${styles.num} ${styles.gp}`}>{fmtInt(r.gamesPlayed)}</td>
                     {CATEGORY_KEYS.map((k) => (
@@ -247,7 +255,7 @@ function Versus({ data, focus }: { data: View; focus: NonNullable<View["focus"]>
         <span><i className={styles.loss} />Lost</span>
       </div>
       <p className={`${styles.foot} ${styles.footPlain}`}>
-        Pick any team in the stack rank to see it against everyone. Follows the stack rank’s week or season.
+        Pick any team’s row in the stack rank to see it against everyone (its name opens its page). Follows the stack rank’s week or season.
       </p>
     </section>
   );
