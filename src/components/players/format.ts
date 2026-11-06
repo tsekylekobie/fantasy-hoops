@@ -18,9 +18,9 @@ export function fmtValue(value: number): string {
   return value < 0 ? `\u2212${Math.abs(value).toFixed(2)}` : value.toFixed(2);
 }
 
-/** Whole number, for totals and single games. */
+/** A whole number with no thousands separator ("2145"), so wide totals stay narrow in the stat columns. */
 export function fmtInt(value: number): string {
-  return Math.round(value).toLocaleString("en-US");
+  return String(Math.round(value));
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
