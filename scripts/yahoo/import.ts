@@ -29,7 +29,7 @@ import "dotenv/config";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Pool, type PoolClient } from "pg";
-import { linkMemberships } from "../../src/lib/auth/members";
+import { canonicalEmail, linkMemberships } from "../../src/lib/auth/members";
 import { eligibleSlots, ilEligibility, isStarting, rosterProblems, type IlRules } from "../../src/lib/lineup/rules";
 import { getInjuries } from "../../src/lib/queries/injuries";
 import { getLeagueSettings, parseSettings } from "../../src/lib/queries/settings";
@@ -353,14 +353,20 @@ async function run(db: PoolClient, snap: Snapshot) {
   notes.push(`Rosters: ${rostered} players on ${todaySlots.size} teams; ${rows.team.length} daily lineup rows over ${snap.rosters.size} days.`);
 
   // --- Managers who have signed in before get their teams now ---
+  // Matched by canonicalEmail, so "a.b@gmail.com" signed in finds a team listed as "ab@gmail.com".
+  const { rows: identities } = await db.query<{ id: number; email: string }>(
+    `SELECT u.id::int, i.email FROM user_identities i JOIN users u ON u.id = i.user_id
+      WHERE i.email_verified ORDER BY i.provider = 'mock', u.last_seen_at DESC`,
+  );
+  const userByEmail = new Map<string, number>();
+  for (const i of identities) {
+    const key = canonicalEmail(i.email);
+    if (!userByEmail.has(key)) userByEmail.set(key, i.id);
+  }
   let linked = 0;
   for (const email of emails) {
-    const { rows: [user] } = await db.query<{ id: number }>(
-      `SELECT u.id::int FROM user_identities i JOIN users u ON u.id = i.user_id
-        WHERE i.email_verified AND lower(i.email) = $1
-        ORDER BY i.provider = 'mock', u.last_seen_at DESC LIMIT 1`, [email],
-    );
-    if (user) linked += await linkMemberships(db, user.id, email);
+    const userId = userByEmail.get(canonicalEmail(email));
+    if (userId) linked += await linkMemberships(db, userId, email);
   }
   notes.push(`Managers: ${emails.size} emails for ${snap.teams.length - unclaimed.length} teams; ${linked} already signed in and linked, the rest link on first sign-in.`);
 }
