@@ -16,6 +16,10 @@ export default defineRailway(() => {
     BALLDONTLIE_BASE_URL: "https://api.balldontlie.io/v1",
     BALLDONTLIE_RPM: "60",
     WORKER_TIME_ZONE: "America/New_York",
+    // Injury alerts (Web Push): web saves subscriptions, the worker sends.
+    VAPID_PUBLIC_KEY: preserve(),
+    VAPID_PRIVATE_KEY: preserve(),
+    VAPID_SUBJECT: preserve(),
   };
 
   // Migrates before each deploy; a failed migration stops the deploy.

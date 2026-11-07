@@ -11,6 +11,8 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variabl
 export const metadata: Metadata = {
   title: "Fantasy Hoops",
   description: "Season averages for our 9-category league",
+  // Added to an iPhone's Home Screen, it opens like an app, which iOS requires for injury alerts.
+  appleWebApp: { capable: true, title: "Hoops", statusBarStyle: "default" },
 };
 
 // viewport-fit=cover so the phone tab bar can pad for the home indicator.

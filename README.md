@@ -131,6 +131,33 @@ In dev the same jobs are also at `POST /api/dev/waivers?at=...` and `POST /api/d
 
 Without the worker, `npm run backfill -- --seasons 2026` pulls in everything since the last run.
 
+## Injury alerts (push notifications)
+
+Managers can get a phone or desktop notification when a player on their roster gets a worse injury status
+(e.g. Questionable → Out, or healthy → Day-To-Day), even with the site closed. The worker's `injuries` task sends
+them after each injury sync (`src/lib/push/`); each manager turns them on per browser or device from the account
+menu (**Injury alerts**), which sends a confirmation notification.
+
+Setup, once:
+
+1. Generate a VAPID key pair (it identifies this server to the browsers' push services; no account needed):
+   ```sh
+   npx web-push generate-vapid-keys
+   ```
+2. Put both keys and a contact in `.env` (locally), and on both `web` and `worker` in Railway (Variables):
+   ```
+   VAPID_PUBLIC_KEY=<Public Key>
+   VAPID_PRIVATE_KEY=<Private Key>
+   VAPID_SUBJECT=mailto:you@example.com
+   ```
+   Keep the pair forever: browsers subscribe to the public key, so a new pair breaks every saved subscription
+   (managers would have to turn alerts off and on again). The private key is a secret; never commit it.
+3. Redeploy both services. Until both keys are set, the menu hides the toggle and the worker sends nothing.
+
+Where it works: desktop Chrome, Edge, Firefox and Safari (the browser must be running, not a tab); Android Chrome
+and Firefox. On iPhone and iPad (iOS 16.4+), only from the Home Screen: Share → **Add to Home Screen**, open it from
+there, then turn on **Injury alerts**; in a Safari tab the menu explains this. Push needs https (or localhost).
+
 ## Importing a league from Yahoo
 
 Moves a Yahoo league over mid-season: the import replaces this season's league with the Yahoo league
@@ -192,7 +219,8 @@ redeploy the code.
    ```
    The plan should create `web`, `worker` and `Postgres` (or, for an existing project, change only what you expect).
 3. Secrets aren't in the file (they're `preserve()`): set them in the dashboard under each service's Variables:
-   `BALLDONTLIE_API_KEY` on `web` and `worker`, and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
+   `BALLDONTLIE_API_KEY` and the three `VAPID_*` keys (see "Injury alerts") on `web` and `worker`, and
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
    `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
    domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.

@@ -1,9 +1,10 @@
 "use client";
 
 // Header sign-in control: a "Sign in" button when signed out, and the user's
-// avatar with a small menu (email, Edit team, sign out) when signed in.
+// avatar with a small menu (email, Edit team, injury alerts, sign out) when signed in.
 import { useEffect, useRef, useState } from "react";
 import type { SessionResponse, SessionUser } from "@/lib/types";
+import PushToggle from "./PushToggle";
 import { useSession } from "./SessionProvider";
 import styles from "./UserMenu.module.css";
 
@@ -99,6 +100,7 @@ function SignedIn({ user }: { user: SessionUser }) {
           <a role="menuitem" className={styles.item} href="/my-team?edit=team">
             Edit team
           </a>
+          <PushToggle />
           <button type="button" role="menuitem" className={styles.item} onClick={signOut} disabled={signingOut}>
             {signingOut ? "Signing out…" : "Sign out"}
           </button>

@@ -3,6 +3,7 @@
 // upsert, so any of them can be re-run or interrupted safely.
 import type { Pool, PoolClient } from "pg";
 import type { DataClient, Injury } from "../../src/lib/bdl";
+import type { InjuryChange } from "../../src/lib/push/send";
 import { recordInjuries, upsertGames, upsertPlayers, upsertStatLines, upsertTeams } from "./upsert";
 
 type Db = Pool | PoolClient;
@@ -91,17 +92,22 @@ export async function syncStats(
 /**
  * Pulls the whole injury report and records what changed. The feed is read
  * in full before anything is written, so a failed page never looks like
- * every player recovering.
+ * every player recovering. `changes` is empty on the very first sync (an
+ * empty player_injuries), so a fresh database doesn't alert on everyone.
  */
-export async function syncInjuries(db: Pool, api: DataClient): Promise<{ reported: number; changed: number }> {
+export async function syncInjuries(
+  db: Pool,
+  api: DataClient,
+): Promise<{ reported: number; changed: number; changes: InjuryChange[] }> {
   const report: Injury[] = [];
   for await (const page of api.injuries()) report.push(...page.items);
   const client = await db.connect();
   try {
     await client.query("BEGIN");
-    const changed = await recordInjuries(client, report);
+    const { rows: [h] } = await client.query<{ any: boolean }>(`SELECT EXISTS (SELECT 1 FROM player_injuries) AS any`);
+    const changes = await recordInjuries(client, report);
     await client.query("COMMIT");
-    return { reported: report.length, changed };
+    return { reported: report.length, changed: changes.length, changes: h.any ? changes : [] };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;

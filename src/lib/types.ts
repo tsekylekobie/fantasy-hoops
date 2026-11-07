@@ -687,6 +687,29 @@ export interface SessionResponse {
   mock: boolean;
 }
 
+// Injury alerts (Web Push): /api/me/push. Logic: src/lib/push/send.ts.
+
+/** GET: the key browsers subscribe with; null when the server has no VAPID keys (alerts off). */
+export interface PushConfigResponse {
+  publicKey: string | null;
+}
+
+/** A browser's PushSubscription.toJSON(). */
+export interface PushSubscriptionInput {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+/** PUT: turn alerts on for this browser (a confirmation notification follows). */
+export interface PushSubscribeRequest {
+  subscription: PushSubscriptionInput;
+}
+
+/** DELETE: turn alerts off for this browser. */
+export interface PushUnsubscribeRequest {
+  endpoint: string;
+}
+
 // Team lineup (/my-team)
 
 /** Lineup slots, in display order. BN, IL and IL+ don't score. */
