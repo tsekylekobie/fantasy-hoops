@@ -4,6 +4,7 @@
 
 import type { PoolClient, Pool } from "pg";
 import type { Game, Injury, Player, StatLine, Team } from "../../src/lib/bdl";
+import type { InjuryChange } from "../../src/lib/push/send";
 
 type Db = Pool | PoolClient;
 
@@ -287,10 +288,11 @@ export async function classifyGames(db: Db, season: number): Promise<{ playIn: n
  * current report) only where the report changed. "Available" is stored as a
  * NULL status, the same as leaving the report; players on the last report
  * but missing from this one get a NULL row. An empty report is ignored
- * rather than clearing everyone. Call inside a transaction.
+ * rather than clearing everyone. Call inside a transaction. Returns each
+ * change with the status before it (for injury alerts, src/lib/push/send.ts).
  */
-export async function recordInjuries(db: Db, report: Injury[]): Promise<number> {
-  if (!report.length) return 0;
+export async function recordInjuries(db: Db, report: Injury[]): Promise<InjuryChange[]> {
+  if (!report.length) return [];
   await ensurePlayers(db, report.map((i) => i.player));
   const rows = dedupe(report, (i) => i.playerId).map((i) => ({
     player_id: i.playerId,
@@ -299,7 +301,7 @@ export async function recordInjuries(db: Db, report: Injury[]): Promise<number> 
     description: i.description,
     raw: i.raw,
   }));
-  const res = await db.query(
+  const res = await db.query<InjuryChange>(
     `WITH latest AS (
        SELECT DISTINCT ON (player_id) player_id, status, return_date, description
          FROM player_injuries ORDER BY player_id, observed_at DESC, id DESC
@@ -319,12 +321,18 @@ export async function recordInjuries(db: Db, report: Injury[]): Promise<number> 
        SELECT l.player_id, NULL::text, NULL::date, NULL::text, NULL::jsonb
          FROM latest l
         WHERE l.status IS NOT NULL AND NOT EXISTS (SELECT 1 FROM feed f WHERE f.player_id = l.player_id)
+     ),
+     inserted AS (
+       INSERT INTO player_injuries (player_id, status, return_date, description, raw)
+       SELECT * FROM changed UNION ALL SELECT * FROM dropped
+       RETURNING player_id, status, return_date, description
      )
-     INSERT INTO player_injuries (player_id, status, return_date, description, raw)
-     SELECT * FROM changed UNION ALL SELECT * FROM dropped`,
+     SELECT i.player_id AS "playerId", l.status AS "from", i.status AS "to",
+            to_char(i.return_date, 'YYYY-MM-DD') AS "returnDate", i.description
+       FROM inserted i LEFT JOIN latest l ON l.player_id = i.player_id`,
     [JSON.stringify(rows)],
   );
-  return res.rowCount ?? 0;
+  return res.rows;
 }
 
 function dedupe<T>(items: T[], key: (t: T) => string | number): T[] {

@@ -7,7 +7,9 @@
 // Tasks, each on its own cadence (one log line per pass):
 //   live         While a game is live: games and stat lines every WORKER_LIVE_SECONDS
 //                (default 30). Otherwise every 30 min, or just after the next tip-off.
-//   injuries     Every 15 min on days with games, every 2 h otherwise.
+//   injuries     Every 15 min on days with games, every 2 h otherwise. Then sends injury
+//                alerts (Web Push) to managers whose rostered players got a worse status
+//                or are healthy again (src/lib/push/send.ts; off until the VAPID_* keys are set).
 //   corrections  Once a day after WORKER_CORRECTIONS_HOUR (default 9, league time):
 //                the last 3 days of games and stat lines again, for stat corrections.
 //   rosters      Every 12 h: teams, players, and the season's schedule.
@@ -36,6 +38,7 @@ import { freezeSeasonLineups } from "../src/lib/queries/lineup";
 import { syncPlayoffs } from "../src/lib/queries/playoffs";
 import { processDueTrades } from "../src/lib/queries/trades";
 import { processDueWaivers } from "../src/lib/queries/waivers";
+import { notifyInjuryChanges } from "../src/lib/push/send";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -128,12 +131,19 @@ async function live(): Promise<Result> {
 }
 
 async function injuries(): Promise<Result> {
-  const { reported, changed } = await syncInjuries(db, api);
+  const { reported, changed, changes } = await syncInjuries(db, api);
+  // Recorded already; a push failure only costs the alerts, never the sync.
+  let alerts = 0;
+  try {
+    alerts = await notifyInjuryChanges(db, changes);
+  } catch (err) {
+    log(`injury alerts failed: ${(err as Error).message}`);
+  }
   const { rows: [g] } = await db.query<{ n: number }>(
     `SELECT count(*)::int AS n FROM games WHERE date = $1 AND NOT postponed`,
     [local().date],
   );
-  return { summary: `${reported} on the report, ${changed} changed`, nextInMs: g.n > 0 ? 15 * MIN : 2 * HOUR };
+  return { summary: `${reported} on the report, ${changed} changed, ${alerts} alerts sent`, nextInMs: g.n > 0 ? 15 * MIN : 2 * HOUR };
 }
 
 /** The last three days again, for stat corrections; once a day after CORRECTIONS_HOUR. */
