@@ -32,7 +32,7 @@ function fmtRange(from: string, to: string): string {
 
 /**
  * `children` render below standings and the scoreboard (Recent transactions).
- * `isCommissioner` shows the link to /league/settings.
+ * Links to /league/settings ("League settings" for the commissioner, "League rules", read-only, for everyone else).
  */
 export default function LeagueView({
   data, isCommissioner = false, children,
@@ -76,7 +76,7 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
     <>
       <div className={styles.head}>
         <h1 className={styles.title}>League</h1>
-        {isCommissioner && <Link href="/league/settings" className={styles.settings}>League settings</Link>}
+        <Link href="/league/settings" className={styles.settings}>{isCommissioner ? "League settings" : "League rules"}</Link>
       </div>
       <p className={styles.sub}>
         {data.name} · {data.teamCount} teams · Head-to-head, 9 categories · {season}

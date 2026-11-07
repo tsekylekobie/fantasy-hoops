@@ -5,6 +5,7 @@
 // section's current draft value, one card per section, and a sticky save bar
 // that lists what saving will do (mirroring updateLeagueSettings in
 // src/lib/queries/settings.ts). Saves the whole form with PUT /api/league/settings.
+// `readOnly` (every other manager): the same page with every control disabled and no save bar.
 import { useEffect, useState, type ReactNode } from "react";
 import { fmtGameDate, fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import { bracketRounds } from "@/lib/playoffs/bracket";
@@ -40,10 +41,16 @@ const WAIVER_TYPES: { value: WaiverType; label: string; short: string; help: str
   },
 ];
 
-const TRADE_REVIEWS: { value: TradeReview; label: string; help: string }[] = [
+const TRADE_REVIEWS: { value: TradeReview; label: string; help: string; viewHelp?: string }[] = [
   { value: "none", label: "None", help: "Trades go through as soon as they’re accepted." },
-  { value: "commissioner", label: "Commissioner", help: "You can veto a trade during the review period." },
-  { value: "league_vote", label: "League vote", help: "Other managers can vote to veto during the review period; you can veto too." },
+  {
+    value: "commissioner", label: "Commissioner", help: "You can veto a trade during the review period.",
+    viewHelp: "The commissioner can veto a trade during the review period.",
+  },
+  {
+    value: "league_vote", label: "League vote", help: "Other managers can vote to veto during the review period; you can veto too.",
+    viewHelp: "Other managers can vote to veto during the review period; the commissioner can veto too.",
+  },
 ];
 
 const SECTIONS = [
@@ -252,7 +259,9 @@ function Section({ id, title, lede, children }: { id: string; title: string; led
   );
 }
 
-export default function LeagueSettingsForm({ initial }: { initial: LeagueSettingsResponse }) {
+export default function LeagueSettingsForm({
+  initial, readOnly = false,
+}: { initial: LeagueSettingsResponse; readOnly?: boolean }) {
   const [saved, setSaved] = useState(initial);
   const [draft, setDraft] = useState(() => toDraft(initial.settings));
   const [saving, setSaving] = useState(false);
@@ -288,6 +297,8 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
   const maxVotes = Math.max(1, saved.teamCount - 2);
   const isFaab = draft.waiverType === "faab";
   const toFaab = isFaab && saved.settings.waiverType !== "faab";
+  const review = TRADE_REVIEWS.find((r) => r.value === draft.tradeReview);
+  const reviewHelp = (readOnly && review?.viewHelp) || review?.help;
 
   // Playoffs: one week per round, ending by the schedule's last week.
   const weeks = saved.weeks ?? [];
@@ -321,7 +332,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (noDays) return;
+    if (readOnly || noDays) return;
     setSaving(true);
     setStatus(null);
     try {
@@ -337,7 +348,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
       setDraft(toDraft(body.settings));
       setStatus({
         ok: true,
-        text: "Saved. Managers see the new rules on the League page now." +
+        text: "Saved. Managers see the new rules now." +
           (limitsChanged ? ` ${body.settings.gameLimits ? "New game limits" : "No game limits"}: ${fromWeek(body.gameLimitsFromWeek).toLowerCase()}` : ""),
       });
     } catch (err) {
@@ -370,6 +381,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
       </nav>
 
       <form onSubmit={save} className={styles.main}>
+        <fieldset className={`${styles.fields} ${styles.sections}${readOnly ? ` ${styles.view}` : ""}`} disabled={readOnly}>
         <Section id="waivers" title="Waivers" lede={<>How dropped players and claims are handled. Next run: <b>{nextRun}</b>.</>}>
           <Row label="Waiver type" help="Who wins when two teams claim the same player.">
             <Segmented label="Waiver type" options={WAIVER_TYPES} value={draft.waiverType} onChange={(v) => set("waiverType", v)} />
@@ -573,7 +585,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
         </Section>
 
         <Section id="trades" title="Trades" lede="What happens after the other manager accepts.">
-          <Row label="Review" help={TRADE_REVIEWS.find((r) => r.value === draft.tradeReview)?.help}>
+          <Row label="Review" help={reviewHelp}>
             <Segmented label="Trade review" options={TRADE_REVIEWS} value={draft.tradeReview} onChange={(v) => set("tradeReview", v)} />
           </Row>
           {draft.tradeReview !== "none" && (
@@ -590,7 +602,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
           )}
           <Row label="Trade deadline" help="Blank = no deadline." htmlFor="set-deadline">
             <input id="set-deadline" className={styles.inp} type="date" value={draft.tradeDeadline} onChange={(e) => set("tradeDeadline", e.target.value)} />
-            {draft.tradeDeadline && (
+            {draft.tradeDeadline && !readOnly && (
               <button type="button" className={styles.clear} onClick={() => set("tradeDeadline", "")}>Clear</button>
             )}
           </Row>
@@ -677,8 +689,9 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
               : `Playoff settings lock once week ${draft.playoffStartWeek}’s bracket is made${startsOn ? ` (${fmtGameDate(startsOn)})` : ""}.`}
           </p>
         </Section>
+        </fieldset>
 
-        <div className={styles.save} role="region" aria-label="Save changes">
+        {!readOnly && <div className={styles.save} role="region" aria-label="Save changes">
           <div className={styles.what} aria-live="polite">
             {dirty ? (
               <>
@@ -705,7 +718,7 @@ export default function LeagueSettingsForm({ initial }: { initial: LeagueSetting
           <button type="submit" className={`${styles.bt} ${styles.primary}`} disabled={!dirty || saving || noDays}>
             {saving ? "Saving…" : "Save settings"}
           </button>
-        </div>
+        </div>}
       </form>
     </div>
   );

@@ -578,6 +578,24 @@ select.inp {
   opacity: 0.55;
 }
 
+/* The form's sections, in one fieldset so read-only mode (non-commissioners) can disable them all. */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Read-only: disabled for input, but shown at full strength as the league's rules. */
+.view :is(input, select, button):disabled,
+.view:disabled label {
+  cursor: default;
+}
+
+.view:disabled .ctl,
+.view .fields:disabled .ctl {
+  opacity: 1;
+}
+
 @media (max-width: 900px) {
   .side {
     position: static;

@@ -1,4 +1,4 @@
-// GET /api/league/settings  the league's rules (commissioner only)
+// GET /api/league/settings  the league's rules (any signed-in user; read-only unless commissioner)
 // PUT /api/league/settings  replace them with a whole LeagueSettings (commissioner only)
 // Contract: LeagueSettings and LeagueSettingsResponse in src/lib/types.ts.
 // 401 signed out, 403 not the commissioner, 400 bad input, 409 IL slots in use or playoff
@@ -27,7 +27,6 @@ export async function GET() {
     if (id === null) return errorResponse("Sign in to see league settings.", 401);
     const found = await getLeagueSettings(pool, CURRENT_SEASON, id);
     if (!found) return errorResponse("No league for this season.", 404);
-    if (!found.isCommissioner) return errorResponse("Only the commissioner can change league settings.", 403);
     return NextResponse.json(found.data, { headers: NO_STORE });
   } catch (err) {
     return handleError("GET /api/league/settings", err);

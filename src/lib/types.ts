@@ -1163,7 +1163,7 @@ export interface WaiverOrder {
 export const INJURY_STATUSES = ["Out", "Doubtful", "Questionable", "Day-To-Day", "Probable"] as const;
 
 /**
- * The rules on the leagues row the commissioner can change. GET /api/league/settings
+ * The rules on the leagues row the commissioner can change. GET /api/league/settings (any signed-in user)
  * responds LeagueSettingsResponse; PUT takes a whole LeagueSettings and responds the same.
  * Changes apply from now on: past lineups and processed transactions are untouched,
  * and pending claims and waivers move to the next run on the new schedule.

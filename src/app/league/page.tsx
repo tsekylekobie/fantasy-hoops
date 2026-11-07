@@ -20,7 +20,7 @@ const positiveInt = (raw: string | undefined) => {
 
 // Server-rendered from our DB: standings, a week's scoreboard (?week=N, default this week), recent transactions
 // and the waiver order.
-// The commissioner also gets links to /league/settings (header, and Edit on the waiver rules).
+// The header links to /league/settings (read-only for managers); the commissioner also gets Edit on the waiver rules.
 // League data is private: signed out, the page only asks to sign in.
 export default async function LeaguePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { week } = await searchParams;
