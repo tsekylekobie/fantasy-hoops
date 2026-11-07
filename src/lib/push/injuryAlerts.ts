@@ -25,12 +25,26 @@ export function isDowngrade(from: string | null, to: string | null): boolean {
   return injurySeverity(to) > injurySeverity(from);
 }
 
+/** True when an injured player is healthy again (off the report or "Available"). */
+export function isCleared(from: string | null, to: string | null): boolean {
+  return injurySeverity(from) > 0 && injurySeverity(to) === 0;
+}
+
+/**
+ * Whether a change is worth a notification: any downgrade, or an injured
+ * player cleared. Smaller upgrades (Out to Questionable) aren't.
+ */
+export function shouldAlert(from: string | null, to: string | null): boolean {
+  return isDowngrade(from, to) || isCleared(from, to);
+}
+
 export interface InjuryAlertInput {
   playerId: number;
   playerName: string;
   /** The previous status; null when he wasn't on the report. */
   from: string | null;
-  to: string;
+  /** The new status; null when he left the report. */
+  to: string | null;
   returnDate: string | null;
   description: string | null;
   teamName: string;
@@ -58,12 +72,21 @@ function statusLabel(status: string | null): string {
 }
 
 export function injuryAlert(a: InjuryAlertInput): PushMessage {
+  const tag = `injury-${a.playerId}`;
+  if (injurySeverity(a.to) === 0) {
+    return {
+      title: `${a.playerName}: ${statusLabel(a.from)} → ${statusLabel(a.to)}`,
+      body: `Off the injury report. On ${a.teamName}.`,
+      tag,
+      url: "/my-team",
+    };
+  }
   const { injury } = parseInjuryDescription(a.description);
   const parts = [injury, a.returnDate ? `est. return ${shortDate(a.returnDate)}` : null].filter(Boolean);
   return {
     title: `${a.playerName}: ${statusLabel(a.from)} → ${a.to}`,
     body: `${parts.length ? `${parts.join(", ")}. ` : ""}On ${a.teamName}.`,
-    tag: `injury-${a.playerId}`,
+    tag,
     url: "/my-team",
   };
 }

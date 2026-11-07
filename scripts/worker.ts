@@ -9,7 +9,7 @@
 //                (default 30). Otherwise every 30 min, or just after the next tip-off.
 //   injuries     Every 15 min on days with games, every 2 h otherwise. Then sends injury
 //                alerts (Web Push) to managers whose rostered players got a worse status
-//                (src/lib/push/send.ts; off until the VAPID_* keys are set).
+//                or are healthy again (src/lib/push/send.ts; off until the VAPID_* keys are set).
 //   corrections  Once a day after WORKER_CORRECTIONS_HOUR (default 9, league time):
 //                the last 3 days of games and stat lines again, for stat corrections.
 //   rosters      Every 12 h: teams, players, and the season's schedule.
@@ -38,7 +38,7 @@ import { freezeSeasonLineups } from "../src/lib/queries/lineup";
 import { syncPlayoffs } from "../src/lib/queries/playoffs";
 import { processDueTrades } from "../src/lib/queries/trades";
 import { processDueWaivers } from "../src/lib/queries/waivers";
-import { notifyInjuryDowngrades } from "../src/lib/push/send";
+import { notifyInjuryChanges } from "../src/lib/push/send";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -135,7 +135,7 @@ async function injuries(): Promise<Result> {
   // Recorded already; a push failure only costs the alerts, never the sync.
   let alerts = 0;
   try {
-    alerts = await notifyInjuryDowngrades(db, changes);
+    alerts = await notifyInjuryChanges(db, changes);
   } catch (err) {
     log(`injury alerts failed: ${(err as Error).message}`);
   }

@@ -3,11 +3,11 @@
 //   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY  generated once: npx web-push generate-vapid-keys
 //   VAPID_SUBJECT                        mailto:you@example.com (or the app's https URL)
 // Without both keys, push is off: the menu hides the toggle and nothing is sent.
-// The worker's injuries task calls notifyInjuryDowngrades after each sync.
+// The worker's injuries task calls notifyInjuryChanges after each sync.
 import type { Pool, PoolClient } from "pg";
 import webpush from "web-push";
 import { CURRENT_SEASON } from "../types";
-import { injuryAlert, isDowngrade, type PushMessage } from "./injuryAlerts";
+import { injuryAlert, shouldAlert, type PushMessage } from "./injuryAlerts";
 
 type Db = Pool | PoolClient;
 
@@ -121,12 +121,13 @@ export interface InjuryChange {
 
 /**
  * Notifies the owner of each rostered player (this season's league) whose
- * status got worse. Returns how many notifications were delivered.
+ * status got worse or who is healthy again (shouldAlert). Returns how many
+ * notifications were delivered.
  */
-export async function notifyInjuryDowngrades(db: Db, changes: InjuryChange[]): Promise<number> {
+export async function notifyInjuryChanges(db: Db, changes: InjuryChange[]): Promise<number> {
   if (!configure()) return 0;
-  const worse = changes.filter((c) => c.to !== null && isDowngrade(c.from, c.to));
-  if (!worse.length) return 0;
+  const alerts = changes.filter((c) => shouldAlert(c.from, c.to));
+  if (!alerts.length) return 0;
   const { rows } = await db.query<{
     player_id: number;
     player_name: string;
@@ -144,9 +145,9 @@ export async function notifyInjuryDowngrades(db: Db, changes: InjuryChange[]): P
        JOIN players p ON p.id = rp.player_id
        JOIN push_subscriptions s ON s.user_id = ft.owner_user_id
       WHERE rp.player_id = ANY($1)`,
-    [worse.map((c) => c.playerId), CURRENT_SEASON],
+    [alerts.map((c) => c.playerId), CURRENT_SEASON],
   );
-  const byPlayer = new Map(worse.map((c) => [c.playerId, c]));
+  const byPlayer = new Map(alerts.map((c) => [c.playerId, c]));
   // One message per player and owner, sent to each of the owner's browsers.
   const groups = new Map<string, { message: PushMessage; subs: SubscriptionRow[] }>();
   for (const r of rows) {
@@ -155,7 +156,7 @@ export async function notifyInjuryDowngrades(db: Db, changes: InjuryChange[]): P
     if (!g) {
       const c = byPlayer.get(r.player_id)!;
       g = {
-        message: injuryAlert({ ...c, to: c.to!, playerName: r.player_name, teamName: r.team_name }),
+        message: injuryAlert({ ...c, playerName: r.player_name, teamName: r.team_name }),
         subs: [],
       };
       groups.set(key, g);

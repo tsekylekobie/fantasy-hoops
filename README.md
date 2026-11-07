@@ -134,7 +134,8 @@ Without the worker, `npm run backfill -- --seasons 2026` pulls in everything sin
 ## Injury alerts (push notifications)
 
 Managers can get a phone or desktop notification when a player on their roster gets a worse injury status
-(e.g. Questionable → Out, or healthy → Day-To-Day), even with the site closed. The worker's `injuries` task sends
+(e.g. Questionable → Out, or healthy → Day-To-Day) or is healthy again (off the report), even with the site
+closed. Partial upgrades (Out → Questionable) don't send one. The worker's `injuries` task sends
 them after each injury sync (`src/lib/push/`); each manager turns them on per browser or device from the account
 menu (**Injury alerts**), which sends a confirmation notification.
 

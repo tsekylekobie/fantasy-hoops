@@ -2,7 +2,7 @@
 
 // "Injury alerts" in the user menu: turns Web Push on or off for this browser.
 // The worker notifies a manager when a player on their roster gets a worse
-// injury status (src/lib/push/send.ts); public/sw.js shows the notification,
+// injury status or is healthy again (src/lib/push/send.ts); public/sw.js shows the notification,
 // even with no tab open. Hidden when the server has no VAPID keys.
 // iPhone/iPad: push only works from the Home Screen app (iOS 16.4+), so in a
 // Safari tab this says how to get there instead.

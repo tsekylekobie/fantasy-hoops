@@ -31,7 +31,7 @@ export async function PUT(req: Request) {
     // Best effort: shows the setup works end to end.
     await sendToSubscription(pool, sub.endpoint, {
       title: "Injury alerts are on",
-      body: "You'll get a notification here when a player on your roster gets a worse injury status.",
+      body: "You'll get a notification here when a player on your roster gets a worse injury status or is healthy again.",
       tag: "push-welcome",
       url: "/my-team",
     }).catch((err) => console.error("push confirmation failed", err));

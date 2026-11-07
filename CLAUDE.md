@@ -43,9 +43,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
   injury + news blurb. Rows show the status chip ("Out 3W": time to the est. return, `fmtInjuryStatus` in `components/players/format.ts`); the player modal adds injury, est. return and the full news blurb.
 - Injury alerts (Web Push, README "Injury alerts"): the worker's `injuries` task gets each change from `recordInjuries`
-  (with the status before it; none on the first sync) and `notifyInjuryDowngrades` (`src/lib/push/send.ts`) notifies the
-  owners of rostered players whose status got worse (`isDowngrade` in `push/injuryAlerts.ts`, pure, tested). Not
-  watchlists. Browsers subscribe from the user menu (`components/PushToggle.tsx`, `/api/me/push`, `push_subscriptions`,
+  (with the status before it; none on the first sync) and `notifyInjuryChanges` (`src/lib/push/send.ts`) notifies the
+  owners of rostered players whose status got worse or who are healthy again (`shouldAlert` in `push/injuryAlerts.ts`,
+  pure, tested; not partial upgrades like Out → Questionable). Not watchlists. Browsers subscribe from the user menu (`components/PushToggle.tsx`, `/api/me/push`, `push_subscriptions`,
   migration 0023); `public/sw.js` shows them; `app/manifest.ts` is for iOS, where push needs Add to Home Screen.
   Off while `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` are unset.
 - `src/lib/queries/watchlist.ts`: each user's watchlist (`player_watchlist`, migration 0018). The star (`WatchStar`), only
