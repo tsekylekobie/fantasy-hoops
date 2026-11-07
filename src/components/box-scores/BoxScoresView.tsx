@@ -83,7 +83,7 @@ function usePinnedBar(games: BoxScoreGame[]) {
 const LABELS: Record<BoxRankKey, string> = {
   pts: "PTS", fg3m: "3PM", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", fgPct: "FG%", ftPct: "FT%", tov: "TO", value: "Value",
 };
-const COUNTING = ["pts", "fg3m", "reb", "ast", "stl", "blk"] as const;
+const COUNTING = ["fg3m", "pts", "reb", "ast", "stl", "blk"] as const;
 const TIER_CLASS: Record<RankTier, string | undefined> = {
   top10: styles.top10, top25: styles.top25, top40: styles.top40, mid: undefined, bottom25: styles.bottom25, bottom10: styles.bottom10,
 };
@@ -366,11 +366,11 @@ function TeamTable({ t, other, g, data, onAdd }: {
               <th scope="col" className={styles.pl}>Player</th>
               {onAdd && <th scope="col" className={styles.own}>Owner</th>}
               <th scope="col" className={styles.n}>MIN</th>
+              <th scope="col" className={styles.n}>FG%</th>
+              <th scope="col" className={styles.n}>FT%</th>
               {COUNTING.map((k) => (
                 <th key={k} scope="col" className={styles.n}>{LABELS[k]}</th>
               ))}
-              <th scope="col" className={styles.n}>FG%</th>
-              <th scope="col" className={styles.n}>FT%</th>
               <th scope="col" className={styles.n}>TO</th>
               <th scope="col" className={styles.n} title="Personal fouls">PF</th>
               <th scope="col" className={`${styles.n} ${styles.srt}`} aria-sort="descending">Value</th>
@@ -389,9 +389,6 @@ function TeamTable({ t, other, g, data, onAdd }: {
             <th scope="row" className={styles.pl}>Team totals</th>
             {onAdd && <td />}
             <td className={styles.n}>{t.totals.min}</td>
-            {COUNTING.map((k) => (
-              <td key={k} className={styles.n}>{t.totals[k]}</td>
-            ))}
             <td className={styles.n}>
               {fmtPct(t.totals.fgPct)}
               <small>{t.totals.fgm}/{t.totals.fga}</small>
@@ -400,6 +397,9 @@ function TeamTable({ t, other, g, data, onAdd }: {
               {fmtPct(t.totals.ftPct)}
               <small>{t.totals.ftm}/{t.totals.fta}</small>
             </td>
+            {COUNTING.map((k) => (
+              <td key={k} className={styles.n}>{t.totals[k]}</td>
+            ))}
             <td className={styles.n}>{t.totals.tov}</td>
             <td className={styles.n}>{t.totals.pf}</td>
             <td />
@@ -466,9 +466,6 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
       {l ? (
         <>
           <td className={styles.n}>{l.min}</td>
-          {COUNTING.map((k) => (
-            <Cell key={k} k={k} r={p.ranks[k]} of={of}>{l[k]}</Cell>
-          ))}
           <Cell k="fgPct" r={p.ranks.fgPct} of={of}>
             {fmtPct(l.fgPct)}
             <small>{l.fgm}/{l.fga}</small>
@@ -477,6 +474,9 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
             {fmtPct(l.ftPct)}
             <small>{l.ftm}/{l.fta}</small>
           </Cell>
+          {COUNTING.map((k) => (
+            <Cell key={k} k={k} r={p.ranks[k]} of={of}>{l[k]}</Cell>
+          ))}
           <Cell k="tov" r={p.ranks.tov} of={of}>{l.tov}</Cell>
           <td className={styles.n} title={l.pf >= 6 ? "Fouled out" : undefined}>{l.pf}</td>
           <Cell k="value" r={p.ranks.value} of={of}>
