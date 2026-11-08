@@ -136,4 +136,4 @@ stored game logs), and neither is `/plays` (no play-by-play).
   Node 22 lives in `~/.local/node`; Postgres 16 is Postgres.app, data in
   `~/Library/Application Support/Postgres/var-16`, database `fantasy_hoops` on localhost.
   Start it if needed: `pg_ctl -D "$HOME/Library/Application Support/Postgres/var-16" -l "$HOME/Library/Application Support/Postgres/var-16/server.log" start`.
-- Before pushing: `npm run typecheck` and `npm run build` pass.
+- Before pushing: `npm run typecheck` and `npm run build` pass. `npm run build` runs `prebuild` first, on Railway too, so a failure stops the deploy: `scripts/check-client-imports.ts` (server code can't call a function from a `"use client"` module; it passes typecheck and `next build`, then throws at render) and `npm test` (every `*.test.ts`).

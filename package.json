@@ -7,9 +7,12 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run check:client-imports && npm test",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test": "find src -name '*.test.ts*' -exec tsx --test --test-reporter=spec {} +",
+    "check:client-imports": "tsx scripts/check-client-imports.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:league": "tsx scripts/dev/seed-league.ts",
     "sync:players": "tsx scripts/sync-teams-players.ts",
