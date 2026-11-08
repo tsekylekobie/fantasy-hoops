@@ -84,15 +84,18 @@ test("claims without bids aren't FAAB", () => {
 });
 
 test("the feed mixes transactions, runs and grouped claims newest first", () => {
-  const run: WaiverRunEntry = { id: 7, at: "2026-11-07T08:00:00Z", faab: false, won: 0, failed: 1, players: [] };
+  const run: WaiverRunEntry = { id: 7, at: "2026-11-07T08:00:00Z", faab: false, won: 1, failed: 1, players: [] };
+  const lost: WaiverRunEntry = { id: 8, at: "2026-11-07T09:00:00Z", faab: false, won: 0, failed: 2, players: [] };
   const feed = transactionFeed(
     [
       addDrop("2026-11-08T01:00:00Z", A, player(20, "Add")),
       claim("2026-11-05T08:00:00Z", B, player(21, "Claim"), null),
       addDrop("2026-11-06T01:00:00Z", B, player(22, "Older")),
+      claim("2026-11-04T08:00:00Z", A, player(23, "Lost"), null, null, ""),
     ],
-    [run],
+    [run, lost],
   );
+  // Runs and grouped claims where nothing went through aren't listed.
   assert.deepEqual(
     feed.map((e) => (e.kind === "tx" ? `tx:${e.tx.moves[0].player.lastName}` : `run:${e.run.id}`)),
     ["tx:Add", "run:7", "tx:Older", "run:null"],

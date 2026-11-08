@@ -1,8 +1,9 @@
 // The League page's Recent transactions: every completed roster move, newest
 // first. Rendered by type, with a generic fallback (each player's from -> to)
 // so types added later (trades, waiver claims, commissioner moves) still read.
-// Each waiver report is one entry among them: the players won, expandable to every
-// claim in it (bids, drops, and why the others failed).
+// Each waiver report is one entry among them: only the players won, expandable to
+// every claim in it (bids, drops, and why the others failed). A run where nothing
+// went through isn't listed.
 // The League page shows the latest few with a link to /league/transactions, which
 // pages through all of them.
 import Link from "next/link";
@@ -128,7 +129,7 @@ function Transaction({ tx, timeZone, myTeamId }: { tx: LeagueTransaction; timeZo
 
 const bidText = (bid: number | null) => (bid === null ? "" : `$${bid}`);
 
-/** One waiver report: the players won, and every claim when expanded. */
+/** One waiver report: the players won, and every claim, failed ones too, when expanded. */
 function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone: string; myTeamId: number | null }) {
   const won = run.players.flatMap((p) => p.claims.filter((c) => c.won).map((c) => ({ player: p.player, claim: c })));
   const mine = run.players.some((p) => p.claims.some((c) => c.team.id === myTeamId));
@@ -142,16 +143,11 @@ function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone:
             <span className={styles.teams}>
               <span>Waiver report</span>
               <span className={styles.type}>
-                {run.won} won{(run.id !== null || run.failed > 0) && ` · ${run.failed} failed`}
+                {run.won} won
               </span>
             </span>
           </div>
           <ul className={styles.moves}>
-            {won.length === 0 && (
-              <li>
-                <span className={styles.meta}>No claims went through.</span>
-              </li>
-            )}
             {won.map(({ player, claim }) => (
               <li key={player.id}>
                 <b className={styles.plus} aria-hidden="true">+</b>

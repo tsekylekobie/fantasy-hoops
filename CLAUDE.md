@@ -29,7 +29,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
   one "Waiver report" per run, and groups claims without a run (imported, won and failed) by the minute they were
   decided (`transactionFeed` in `src/lib/transactions/feed.ts`, pure, tested; `finishReport` there words why each
-  claim lost for both). The League page shows the 5 latest
+  claim lost for both). A report's row lists only the claims won (failed ones show when it's expanded), and a run
+  where nothing went through isn't listed. The League page shows the 5 latest
   (`getRecentTransactions` in `queries/league.ts`); `/league/transactions` pages through all of them (`?page=N`).
 - Trades: `src/lib/queries/trades.ts` (propose, accept, review, process; built from another team's page,
   `src/components/trades/`). A team over the active limit after a trade drops players with it

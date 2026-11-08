@@ -78,12 +78,16 @@ export function groupUnrunClaims(txs: LeagueTransaction[]): { transactions: Leag
   return { transactions, reports };
 }
 
-/** Transactions and waiver reports (ours and grouped claims), newest first. */
+/**
+ * Transactions and waiver reports (ours and grouped claims), newest first. A report lists
+ * the claims that went through, so one where none did is left out; its failed claims
+ * only ever show expanded under a winner's report.
+ */
 export function transactionFeed(txs: LeagueTransaction[], runs: WaiverRunEntry[]): TransactionEntry[] {
   const { transactions, reports } = groupUnrunClaims(txs);
   return [
     ...transactions.map((tx): TransactionEntry => ({ kind: "tx", tx })),
-    ...[...runs, ...reports].map((run): TransactionEntry => ({ kind: "run", run })),
+    ...[...runs, ...reports].filter((run) => run.won > 0).map((run): TransactionEntry => ({ kind: "run", run })),
   ].sort((a, b) => atOf(b).localeCompare(atOf(a)));
 }
 
