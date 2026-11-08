@@ -1,0 +1,55 @@
+.cd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ring {
+  flex: none;
+  transform: rotate(-90deg);
+}
+
+.track,
+.fill {
+  fill: none;
+  stroke-width: 2;
+}
+
+.track {
+  stroke: var(--border-strong);
+}
+
+/* Starts full and drains to empty by the next update. */
+.fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  animation: drain linear forwards;
+}
+
+@keyframes drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--c);
+  }
+}
+
+.cd[data-updating] .track {
+  stroke: var(--accent);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cd[data-updating] .track {
+    animation: none;
+  }
+}

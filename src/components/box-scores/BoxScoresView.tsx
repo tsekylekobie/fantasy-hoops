@@ -136,12 +136,16 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        <LiveRefresh active={data.live} />
         <PlayerModalHost>
           <h1 className={styles.title}>Box scores</h1>
           <p className={styles.sub}>
             {summary(data)}
-            {data.live && <b> · Live games update every 30 seconds</b>}
+            {data.live && (
+              <>
+                {" · "}
+                <b><LiveRefresh active countdown /></b>
+              </>
+            )}
           </p>
 
           <nav className={styles.dbar} aria-label="Date">

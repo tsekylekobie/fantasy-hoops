@@ -157,9 +157,19 @@ input {
   animation: flash 1.8s ease-out;
 }
 
+/* A row sliding up past others (components/live/useFlipRows): lifted above
+   them, sticky cells included (z-index 1 on phones), and opaque, so the rows
+   it overtakes don't show through it. */
+tr[data-flip-rising] {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+}
+
 /* The change itself, beside a value that just changed ("+2", "▲3"; Flash's
    `delta`): pops in at the cell's top right corner, then floats up and fades.
-   A rank's badge sits left of the number, so it never covers it. */
+   A rank's badge sits left of the number, so it never covers it. No z-index:
+   it stays under the tables' sticky columns (z-index 1) when scrolled sideways. */
 @keyframes flash-delta {
   0% {
     opacity: 0;
@@ -191,7 +201,6 @@ input {
   position: absolute;
   top: -3px;
   right: -3px;
-  z-index: 1;
   padding: 2px 4px;
   border-radius: 5px;
   font: 700 10px/1 var(--font-body);
