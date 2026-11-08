@@ -177,13 +177,13 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
             <Roster side={m.team} data={data} />
             <Roster side={m.opponent} data={data} />
           </div>
-          <p className={styles.note}>
-            {data.projected
-              ? "Projected: the week so far plus each starter’s remaining games at his last-30-day average (season average with fewer than 5 games in that span), on the lineups as set. Benched days and players listed Out add nothing. Slots are today’s lineup."
-              : data.statsDate
-                ? "Bench and IL rows are greyed out: their games don’t count."
+          {(data.projected || !data.statsDate) && (
+            <p className={styles.note}>
+              {data.projected
+                ? "Projected: the week so far plus each starter’s remaining games at his last-30-day average (season average with fewer than 5 games in that span), on the lineups as set. Benched days and players listed Out add nothing. Slots are today’s lineup."
                 : "Week totals count only the days each player started. Slots are today’s lineup."}
-          </p>
+            </p>
+          )}
         </>
       )}
     </>
@@ -325,18 +325,6 @@ function Categories({ m, projected, showOdds, myTeamId }: { m: Matchup; projecte
         ))}
         {showOdds && <OddsRow m={m} />}
       </div>
-      <p className={styles.foot}>
-        {showOdds && (
-          <>
-            Win chance: how likely {m.isMine ? "you take" : `${m.team.name} takes`} each category by the end of the week,
-            from the projected totals and how much is left to play.{" "}
-          </>
-        )}
-        {projected
-          ? "Projected week totals: games so far plus starters’ remaining games at their recent averages. "
-          : "Week totals from starters. "}
-        FG% and FT% are total makes over total attempts. Fewer turnovers wins TO.
-      </p>
     </section>
   );
 }

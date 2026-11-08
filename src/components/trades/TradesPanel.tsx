@@ -144,11 +144,6 @@ export default function TradesPanel({ scope }: { scope: "mine" | "league" }) {
           {recent.map((t) => <RecentRow key={t.id} t={t} myTeam={data.myTeam} />)}
         </>
       )}
-      <p className={styles.foot}>
-        Offers are private to the two teams until accepted. Players move to the bench of their new team when a trade
-        processes; a trade waits for tomorrow if any of its players has already tipped off today.
-        {scope === "league" && data.myTeam && " Start a trade from another team's page."}
-      </p>
     </section>
   );
 }

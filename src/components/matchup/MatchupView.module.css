@@ -381,13 +381,6 @@ a.pageBtn:hover {
   background: color-mix(in oklch, var(--odds-win-bg) calc(var(--chance, 50) * 1%), var(--odds-lose-bg));
 }
 
-.foot {
-  font-size: 13px;
-  color: var(--ink-muted);
-  padding: 12px 20px 18px;
-  margin: 0;
-}
-
 .note {
   font-size: 13px;
   color: var(--ink-muted);
@@ -758,7 +751,6 @@ a.pageBtn:hover {
   }
 
   .card h3,
-  .card > .foot,
   .notice p {
     position: sticky;
     left: 0;
@@ -766,10 +758,6 @@ a.pageBtn:hover {
 
   .card h3 {
     padding: 14px 16px 8px;
-  }
-
-  .card > .foot {
-    padding: 12px 16px 16px;
   }
 
   .other {

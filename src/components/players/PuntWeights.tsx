@@ -52,13 +52,12 @@ interface Props {
   weights: CategoryWeights;
   onChange: (weights: CategoryWeights) => void;
   /** Signed out: changes apply but aren't saved. */
-  signedIn: boolean;
   /** Last save failed. */
   saveError: string | null;
 }
 
 /** One slider per category: 0 ignores it (a punt), 1 counts it fully. Feeds the Value column and rank. */
-export default function PuntWeights({ weights, onChange, signedIn, saveError }: Props) {
+export default function PuntWeights({ weights, onChange, saveError }: Props) {
   return (
     <section className={styles.panel} aria-label="Category weights">
       <div className={styles.grid}>
@@ -91,9 +90,7 @@ export default function PuntWeights({ weights, onChange, signedIn, saveError }: 
       </div>
       <div className={styles.footer}>
         <span className={saveError ? styles.error : undefined} aria-live="polite">
-          {saveError
-            ? `Couldn’t save: ${saveError}`
-            : `0 ignores a category, 1 is the default (TO counts 0.3). ${signedIn ? "Saved to your account and this browser." : "Saved in this browser; sign in to keep them on every device."}`}
+          {saveError && `Couldn’t save: ${saveError}`}
         </span>
         <button
           type="button"

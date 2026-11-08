@@ -242,16 +242,14 @@ function DetailHead({
             {injury.note && <InjuryNote key={player.id} note={injury.note} />}
           </div>
         )}
-        {owner === null && waiver && (
+        {owner === null && waiver && waiver.reason !== "all_adds" && (
           <p className={styles.subline}>
             {waiver.reason === "game_started"
               ? "His game has started, so he's on waivers"
-              : waiver.reason === "all_adds"
-                ? "Free agent, adds go by claim"
-                : waiver.droppedBy
-                  ? <>Dropped by <TeamLink team={waiver.droppedBy} myTeamId={myTeamId} /></>
-                  : "Recently dropped"}{" "}
-            · {waiver.reason === "all_adds" ? "Next run" : "Clears"} {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
+              : waiver.droppedBy
+                ? <>Dropped by <TeamLink team={waiver.droppedBy} myTeamId={myTeamId} /></>
+                : "Recently dropped"}{" "}
+            · Clears {fmtWaiverTime(waiver.clearsAt, data.timeZone, "long")}
           </p>
         )}
       </div>

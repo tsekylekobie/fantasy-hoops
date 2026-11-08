@@ -79,7 +79,7 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
         <Link href="/league/settings" className={styles.settings}>{isCommissioner ? "League settings" : "League rules"}</Link>
       </div>
       <p className={styles.sub}>
-        {data.name} · {data.teamCount} teams · Head-to-head, 9 categories · {season}
+        {data.name} · {data.teamCount} teams · H2H 9CAT · {season}
       </p>
       <div className={styles.cols}>
         <StandingsCard
@@ -95,7 +95,6 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
 }
 
 function Standings({ data }: { data: LeagueOverview }) {
-  const counted = `${data.weeksCounted} finished week${data.weeksCounted === 1 ? "" : "s"}`;
   const bottom = data.toiletBowlTeams ? data.teamCount - data.toiletBowlTeams : -1;
   return (
     <>
@@ -126,13 +125,6 @@ function Standings({ data }: { data: LeagueOverview }) {
           </div>
         ))}
       </div>
-      <p className={styles.foot}>
-        Category record across {data.weeksCounted === 0 ? "finished weeks (none yet)" : counted}.
-        {" "}Top {data.playoffTeams} make the playoffs
-        {data.toiletBowlTeams ? `; the bottom ${data.toiletBowlTeams} play the toilet bowl` : ""}
-        {bottom >= 0 && bottom !== data.playoffTeams ? " (dashed lines)" : " (dashed line)"}.
-        {" "}Team names open that team’s roster.
-      </p>
     </>
   );
 }
