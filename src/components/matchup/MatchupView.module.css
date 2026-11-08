@@ -26,6 +26,15 @@
   margin: 28px 0 16px;
 }
 
+/* The title, with the countdown to the next live update beside it (wraps under it on phones). */
+.wkHead {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
 .wk h1 {
   font-family: var(--font-display);
   font-weight: 700;

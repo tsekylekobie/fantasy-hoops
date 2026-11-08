@@ -127,6 +127,16 @@
   align-items: center;
 }
 
+/* The countdown to the next live update, after the week label (components/live/LiveCountdown). */
+.countdown {
+  margin-left: 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  vertical-align: 2px;
+}
+
 .daysLabel {
   font-family: var(--font-display);
   font-weight: 700;

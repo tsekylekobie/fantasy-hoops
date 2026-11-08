@@ -166,10 +166,12 @@ tr[data-flip-rising] {
   background: var(--surface);
 }
 
-/* The change itself, beside a value that just changed ("+2", "▲3"; Flash's
-   `delta`): pops in at the cell's top right corner, then floats up and fades.
-   A rank's badge sits left of the number, so it never covers it. No z-index:
-   it stays under the tables' sticky columns (z-index 1) when scrolled sideways. */
+/* The change itself, beside a value that just changed ("+2", "▲3"): the badge
+   Flash's `delta` adds inside its [data-delta] cell. Pops in just above the
+   number at its right edge (cells are right-aligned or centered, so the corner
+   would cover it), then floats up and fades. A rank's badge sits left of the
+   number, so it never covers it. No z-index: it stays under the tables' sticky
+   columns (z-index 1) when scrolled sideways. */
 @keyframes flash-delta {
   0% {
     opacity: 0;
@@ -196,11 +198,10 @@ tr[data-flip-rising] {
   position: relative;
 }
 
-[data-delta]::after {
-  content: attr(data-delta);
+.flash-delta {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  bottom: calc(100% - 4px);
+  right: -2px;
   padding: 2px 4px;
   border-radius: 5px;
   font: 700 10px/1 var(--font-body);
@@ -212,11 +213,12 @@ tr[data-flip-rising] {
   animation: flash-delta 2.2s ease-out forwards;
 }
 
-[data-delta][data-delta-good="false"]::after {
+.flash-delta[data-good="false"] {
   background: var(--delta-bad-bg);
 }
 
-[data-delta][data-delta-kind="rank"]::after {
+.flash-delta[data-kind="rank"] {
+  bottom: auto;
   top: 50%;
   right: calc(100% + 4px);
   margin-top: -7px;
@@ -233,7 +235,7 @@ tr[data-flip-rising] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-delta]::after {
+  .flash-delta {
     animation-name: flash-delta-still;
   }
 }

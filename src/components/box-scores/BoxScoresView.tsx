@@ -20,7 +20,7 @@ import { useSignedIn } from "@/components/SessionProvider";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import LiveRefresh from "@/components/live/LiveRefresh";
-import Flash, { type FlashDelta } from "@/components/live/Flash";
+import Flash, { countDelta as count, type FlashDelta } from "@/components/live/Flash";
 import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
@@ -442,9 +442,6 @@ function rankTitle(k: BoxRankKey, r: BoxRank | undefined, of: number): string {
   if (!r) return `${LABELS[k]}: no attempts`;
   return `${LABELS[k]}: ${r.tied ? "T-" : ""}${ordinal(r.rank)} of ${of} players on this date`;
 }
-
-/** A count's change, for Flash's badge ("+1"); TO and PF are lower-is-better (red when they go up). */
-const count = (n: number, lowerIsBetter = false): FlashDelta => ({ n, kind: "count", lowerIsBetter });
 
 /**
  * A stat cell, shaded by its rank tier. `value` is what flashes when it changes (live
