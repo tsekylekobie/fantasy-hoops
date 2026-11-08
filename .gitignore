@@ -27,3 +27,4 @@ yahoo-export/
 
 # Claude Code worktrees
 .claude/worktrees/
+.pre-push.*/
