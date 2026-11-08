@@ -8,7 +8,8 @@
 // game you're reading; the tables' pinned headers sit just under it.
 // Keyed by date and ?game (page.tsx): ?game jumps to that game on load.
 // Signed out there's no Owner column and no Add/Claim (league data is private).
-// While games are live the page refreshes every 30s (LiveRefresh): changed stats,
+// While games are live the page refreshes every 30s (useLiveRefresh; the countdown
+// floats at the top once scrolled off, then sits in the pinned bar): changed stats,
 // scores and statuses flash, counts show the change ("+1") and ranks the move
 // ("▲3") for a moment (Flash), and rows reordered by Value slide into place (useFlipRows).
 import Link from "next/link";
@@ -19,7 +20,8 @@ import SiteHeader from "@/components/SiteHeader";
 import { useSignedIn } from "@/components/SessionProvider";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import AddDropSheet from "@/components/transactions/AddDropSheet";
-import LiveRefresh from "@/components/live/LiveRefresh";
+import { useLiveRefresh } from "@/components/live/LiveRefresh";
+import LiveCountdown from "@/components/live/LiveCountdown";
 import Flash, { countDelta as count, type FlashDelta } from "@/components/live/Flash";
 import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
@@ -109,6 +111,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
   const [adding, setAdding] = useState<number | null>(null);
   const onAdd = useSignedIn() ? setAdding : null;
   const { sbRef, pinned, active } = usePinnedBar(data.games);
+  const live = useLiveRefresh(data.live);
   const pick = useCallback((id: number) => jumpTo(id), []);
 
   useEffect(() => {
@@ -126,7 +129,8 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
           <h1 className={styles.title}>Box scores</h1>
           {data.live && (
             <p className={styles.sub}>
-              <b><LiveRefresh active countdown /></b>
+              {/* Floats at the top once scrolled off, until the pinned bar (with its own) shows. */}
+              <b><LiveCountdown nextAt={live.nextAt} pending={live.pending} pin={!pinned} /></b>
             </p>
           )}
 
@@ -165,7 +169,7 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
                   <GameCard key={g.id} g={g} timeZone={data.timeZone} onPick={() => pick(g.id)} />
                 ))}
               </nav>
-              <PinnedBar games={data.games} shown={pinned} active={active} timeZone={data.timeZone} onPick={pick} />
+              <PinnedBar games={data.games} shown={pinned} active={active} timeZone={data.timeZone} onPick={pick} live={data.live ? live : null} />
 
               <div className={styles.lg} aria-label="Shading key">
                 <span>Each stat is ranked against every player on this date:</span>
@@ -238,8 +242,10 @@ function GameCard({ g, timeZone, onPick }: { g: BoxScoreGame; timeZone: string; 
  * off. A zero-height sticky slot holds it, so showing it never shifts the page.
  * Hidden (and out of the tab order) while the full scoreboard is on screen.
  */
-function PinnedBar({ games, shown, active, timeZone, onPick }: {
+function PinnedBar({ games, shown, active, timeZone, onPick, live }: {
   games: BoxScoreGame[]; shown: boolean; active: number | null; timeZone: string; onPick: (id: number) => void;
+  /** While games are live: the countdown to the next update, shown at the bar's end. */
+  live: { nextAt: number | null; pending: boolean } | null;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -290,6 +296,11 @@ function PinnedBar({ games, shown, active, timeZone, onPick }: {
             );
           })}
         </div>
+        {live && (
+          <span className={styles.pinLive}>
+            <LiveCountdown nextAt={live.nextAt} pending={live.pending} compact />
+          </span>
+        )}
       </nav>
     </div>
   );

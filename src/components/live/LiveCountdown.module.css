@@ -55,3 +55,39 @@
     animation: none;
   }
 }
+
+/* The copy that floats at the top of the screen once the countdown has scrolled
+   off (`pin`). Above page content and sticky table parts, below the site's
+   header menus (z-index 30); taps go through it. */
+.pinned {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
+  z-index: 20;
+  padding: 5px 11px 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px -6px rgb(0 0 0 / 0.3);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+  animation: pin-in 160ms ease-out;
+}
+
+@keyframes pin-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinned {
+    animation: none;
+  }
+}

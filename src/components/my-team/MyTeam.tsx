@@ -13,7 +13,8 @@
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 // While today's games are live, today's lineup refetches every 30s and changed
 // stats flash, counts show the change ("+1") and game statuses flash
-// (components/live); a countdown by the week label shows the next update.
+// (components/live); a countdown by the week label shows the next update (pinned
+// to the top of the screen once scrolled off).
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
 // Edit team (EditTeamSheet) renames the team and sets its logo: your own team,
@@ -494,7 +495,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
       <div className={styles.days} role="group" aria-label="Lineup day">
         <span className={styles.daysLabel}>
           {data.week ? `${data.week.isPlayoffs ? "Playoffs · " : ""}Week ${data.week.week}` : "Off week"}
-          {polling && <span className={styles.countdown}><LiveCountdown nextAt={nextPoll} pending={refreshing} /></span>}
+          {polling && <span className={styles.countdown}><LiveCountdown nextAt={nextPoll} pending={refreshing} pin /></span>}
         </span>
         <button type="button" className={styles.weekNav} aria-label="Previous week" onClick={() => pickDay(addDays(data.days[0].date, -1), data.today)}>
           ‹

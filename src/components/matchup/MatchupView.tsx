@@ -1,6 +1,7 @@
 // The /matchup page: docs/design/matchup.mockup.html.
 // While games are live and the page shows today or the live week's totals, it
-// re-renders with fresh stats (LiveRefresh, with a countdown to the next update),
+// re-renders with fresh stats (LiveRefresh, with a countdown to the next update that
+// stays pinned to the top of the screen while scrolling),
 // changed numbers flash and counts show the change ("+1") (Flash), as do game statuses.
 // Projected (?view=projected) swaps every score and line for the projected week.
 import Link from "next/link";
@@ -143,7 +144,7 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
       <div className={styles.wk}>
         <div className={styles.wkHead}>
           <h1>{weekTitle(data)}</h1>
-          <LiveRefresh active={live} countdown />
+          <LiveRefresh active={live} countdown pin />
         </div>
         <div className={styles.wkTools}>
           <ProjectionToggle view={view} />

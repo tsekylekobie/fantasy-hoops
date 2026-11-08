@@ -108,7 +108,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled); My team's roster sets `data-scrolled` itself and also hides headshots then).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek`,
   `TeamLineupResponse` and `BoxScoresResponse`), Matchup and Box scores (`LiveRefresh`, `router.refresh`) and My team
-  (refetch) poll every 30s, each with a countdown to the next update (`LiveCountdown`, from `useLivePoll`'s `nextAt`).
+  (refetch) poll every 30s, each with a countdown to the next update (`LiveCountdown`, from `useLivePoll`'s `nextAt`; `pin` floats a copy at the
+  top of the screen once it scrolls off; Box scores shows a compact one in its pinned bar instead, `useLiveRefresh`).
   `Flash` highlights a value that changed (not on first render, from null, or when its `scope`, e.g. the player in the
   row, changed); its `delta` adds a badge with the change (`countDelta`: "+1", red when TO goes up; a rank's "▲3").
   All three pages flash stats, totals and game statuses and badge counting stats; Box scores also badges the rank
