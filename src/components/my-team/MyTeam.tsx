@@ -128,11 +128,16 @@ function fmtTipoff(iso: string | null): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+/** The provider's quarter shortened for the roster: "2nd Qtr" → "2Q". */
+function shortStatus(status: string): string {
+  return status.replace(/^(\d)(?:st|nd|rd|th) Qtr$/i, "$1Q");
+}
+
 function gameText(g: LineupGame): string {
   const opp = `${g.home ? "vs" : "@"} ${g.opponentAbbr}`;
   const score = g.teamScore !== null && g.opponentScore !== null ? `${g.teamScore}–${g.opponentScore}` : "";
   if (g.state === "scheduled") return `${opp} · ${fmtTipoff(g.tipoff)}`;
-  if (g.state === "live") return `${opp} · ${g.statusText ?? "Live"}${score ? ` · ${score}` : ""}`;
+  if (g.state === "live") return `${opp} · ${g.statusText ? shortStatus(g.statusText) : "Live"}${score ? ` · ${score}` : ""}`;
   const result = g.teamScore !== null && g.opponentScore !== null && g.teamScore !== g.opponentScore
     ? (g.teamScore > g.opponentScore ? "W " : "L ") : "";
   return `${opp} · ${result}${score || "Final"}`;
