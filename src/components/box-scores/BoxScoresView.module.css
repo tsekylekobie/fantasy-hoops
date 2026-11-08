@@ -452,7 +452,7 @@ a.arw:hover,
   padding: 14px 16px 10px;
 }
 
-.card h3 span {
+.card h3 .result {
   font-family: var(--font-body);
   font-weight: 500;
   font-size: 12px;

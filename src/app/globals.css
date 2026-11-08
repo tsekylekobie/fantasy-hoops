@@ -51,6 +51,9 @@
   --backdrop: rgba(22, 24, 29, 0.55);
   /* A value that just changed in a live update. */
   --flash: #fde68a;
+  --delta-good-bg: #16a34a;
+  --delta-bad-bg: #dc2626;
+  --delta-ink: #ffffff;
   /* A starter whose NBA game is in progress (matchup and my team rows). */
   --live-row: #fff4ea;
   /* The arrow on styled <select>s. A data URI can't read tokens, so its colour
@@ -152,4 +155,76 @@ input {
 
 [data-flash] {
   animation: flash 1.8s ease-out;
+}
+
+/* The change itself, beside a value that just changed ("+2", "▲3"; Flash's
+   `delta`): pops in at the cell's top right corner, then floats up and fades.
+   A rank's badge sits left of the number, so it never covers it. */
+@keyframes flash-delta {
+  0% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  20% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+[data-delta] {
+  position: relative;
+}
+
+[data-delta]::after {
+  content: attr(data-delta);
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  z-index: 1;
+  padding: 2px 4px;
+  border-radius: 5px;
+  font: 700 10px/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--delta-ink);
+  background: var(--delta-good-bg);
+  pointer-events: none;
+  animation: flash-delta 2.2s ease-out forwards;
+}
+
+[data-delta][data-delta-good="false"]::after {
+  background: var(--delta-bad-bg);
+}
+
+[data-delta][data-delta-kind="rank"]::after {
+  top: 50%;
+  right: calc(100% + 4px);
+  margin-top: -7px;
+}
+
+@keyframes flash-delta-still {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-delta]::after {
+    animation-name: flash-delta-still;
+  }
 }
