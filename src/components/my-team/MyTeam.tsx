@@ -12,7 +12,8 @@
 // capped slot, warning before starts that won't count (GameLimits.tsx).
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
 // While today's games are live, today's lineup refetches every 30s and changed
-// stats flash (components/live).
+// stats flash, counts show the change ("+1") and game statuses flash
+// (components/live); a countdown by the week label shows the next update.
 // /team/[id] shows another manager's team with the same layout, read-only,
 // with a link to propose a trade; your own trades show under your lineup.
 // Edit team (EditTeamSheet) renames the team and sets its logo: your own team,
@@ -28,7 +29,8 @@ import ScrollName from "@/components/players/ScrollName";
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
-import Flash from "@/components/live/Flash";
+import Flash, { countDelta } from "@/components/live/Flash";
+import LiveCountdown from "@/components/live/LiveCountdown";
 import { useLivePoll } from "@/components/live/useLivePoll";
 import { fetchJson, fmtInjuryStatus, fmtPct, fullName, todayIn } from "@/components/players/format";
 import { activeRosterLimit, isIlSlot } from "@/lib/lineup/rules";
@@ -170,7 +172,8 @@ function statCells(line: CategoryLine | null, min: number | null, dnp: boolean, 
     shooting(line.fgPct, line.fgm, line.fga, "fg"),
     shooting(line.ftPct, line.ftm, line.fta, "ft"),
     ...([line.fg3m, line.pts, line.reb, line.ast, line.stl, line.blk, line.tov] as number[]).map((v, i) => (
-      <Flash key={i} className={styles.num} value={v} scope={scope}>{v}</Flash>
+      // The last one is TO: lower is better.
+      <Flash key={i} className={styles.num} value={v} scope={scope} delta={countDelta(v, i === 6)}>{v}</Flash>
     )),
   ];
 }
@@ -223,15 +226,19 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
   // Live stats: refetch today's lineup quietly. A save bumps `edits`, so a poll
   // that started before it can't overwrite the saved lineup.
   const edits = useRef(0);
-  useLivePoll(!!data && data.live && data.date === data.today, () => {
+  const [refreshing, setRefreshing] = useState(false);
+  const polling = !!data && data.live && data.date === data.today;
+  const nextPoll = useLivePoll(polling, () => {
     if (saving) return;
     const started = edits.current;
     const base = readOnly ? `/api/teams/${teamId}/lineup` : "/api/team/lineup";
+    setRefreshing(true);
     fetchJson<TeamLineupResponse>(`${base}${urlDate ? `?date=${encodeURIComponent(urlDate)}` : ""}`)
       .then((next) => {
         if (edits.current === started) setData((d) => (d && d.date === next.date ? next : d));
       })
-      .catch(() => {}); // the next poll tries again
+      .catch(() => {}) // the next poll tries again
+      .finally(() => setRefreshing(false));
   });
 
   const pickDay = useCallback(
@@ -421,7 +428,9 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
                 </span>
                 <span className={styles.meta}>
                   {[p.teamAbbr, p.position?.replace(/-/g, "/")].filter(Boolean).join(" · ") || "Free agent"}
-                  <span className={`${styles.gameInline} ${gameCls}`}> · {p.game ? gameText(p.game) : "No game"}</span>
+                  <Flash className={`${styles.gameInline} ${gameCls}`} value={p.game ? gameText(p.game) : null} scope={`${date}:${p.id}`}>
+                    {" · "}{p.game ? gameText(p.game) : "No game"}
+                  </Flash>
                 </span>
               </span>
             </PlayerButton>
@@ -432,7 +441,9 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
             </>
           )}
         </span>
-        <span className={`${styles.game} ${gameCls}`}>{p ? (p.game ? gameText(p.game) : "No game") : ""}</span>
+        <Flash className={`${styles.game} ${gameCls}`} value={p?.game ? gameText(p.game) : null} scope={p ? `${date}:${p.id}` : ""}>
+          {p ? (p.game ? gameText(p.game) : "No game") : ""}
+        </Flash>
         <span className={styles.weekCell}>
           {p && (
             <span
@@ -483,6 +494,7 @@ export default function MyTeam({ teamId, canEditProfile = false }: { teamId?: nu
       <div className={styles.days} role="group" aria-label="Lineup day">
         <span className={styles.daysLabel}>
           {data.week ? `${data.week.isPlayoffs ? "Playoffs · " : ""}Week ${data.week.week}` : "Off week"}
+          {polling && <span className={styles.countdown}><LiveCountdown nextAt={nextPoll} pending={refreshing} /></span>}
         </span>
         <button type="button" className={styles.weekNav} aria-label="Previous week" onClick={() => pickDay(addDays(data.days[0].date, -1), data.today)}>
           ‹

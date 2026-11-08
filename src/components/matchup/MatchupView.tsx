@@ -1,6 +1,7 @@
 // The /matchup page: docs/design/matchup.mockup.html.
 // While games are live and the page shows today or the live week's totals, it
-// re-renders with fresh stats (LiveRefresh) and changed numbers flash (Flash).
+// re-renders with fresh stats (LiveRefresh, with a countdown to the next update),
+// changed numbers flash and counts show the change ("+1") (Flash), as do game statuses.
 // Projected (?view=projected) swaps every score and line for the projected week.
 import Link from "next/link";
 import type {
@@ -22,7 +23,7 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
 import TeamLink from "@/components/TeamLink";
-import Flash from "@/components/live/Flash";
+import Flash, { countDelta } from "@/components/live/Flash";
 import LiveRefresh from "@/components/live/LiveRefresh";
 import { fmtChance, matchupOdds, type OddsTier } from "./categoryOdds";
 import styles from "./MatchupView.module.css";
@@ -139,9 +140,11 @@ function Week({ data, signedIn }: { data: MatchupWeek; signedIn: boolean }) {
   const live = data.live && data.status === "live" && (data.statsDate === null || data.statsDate === data.today);
   return (
     <>
-      <LiveRefresh active={live} />
       <div className={styles.wk}>
-        <h1>{weekTitle(data)}</h1>
+        <div className={styles.wkHead}>
+          <h1>{weekTitle(data)}</h1>
+          <LiveRefresh active={live} countdown />
+        </div>
         <div className={styles.wkTools}>
           <ProjectionToggle view={view} />
           <nav className={styles.pager} aria-label="Weeks">
@@ -258,6 +261,11 @@ function Stat({ k, line }: { k: CategoryKey; line: CategoryLine }) {
   return <>{fmtInt(line[k])}</>;
 }
 
+/** A count's change for Flash's badge ("+1"); none for FG%/FT% or without a line. */
+function statDelta(k: CategoryKey, line: CategoryLine | null) {
+  return line && k !== "fgPct" && k !== "ftPct" ? countDelta(line[k], k === "tov") : undefined;
+}
+
 /** What a Stat cell shows, for spotting changes. */
 function statValue(k: CategoryKey, line: CategoryLine): string {
   return k === "fgPct" ? `${line.fgm}/${line.fga}` : k === "ftPct" ? `${line.ftm}/${line.fta}` : String(line[k]);
@@ -316,7 +324,13 @@ function Categories({ m, projected, showOdds, myTeamId }: { m: Matchup; projecte
           <div className={`${styles.cs} ${styles.csRow}`} role="row" key={side.id}>
             <span role="rowheader" className={styles.tn}><TeamLink team={side} myTeamId={myTeamId} /></span>
             {CATEGORY_KEYS.map((k) => (
-              <Flash role="cell" key={k} className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`} value={statValue(k, line)}>
+              <Flash
+                role="cell"
+                key={k}
+                className={`${styles.n} ${results[k] === "win" ? styles.lead : ""}`}
+                value={statValue(k, line)}
+                delta={statDelta(k, line)}
+              >
                 <Stat k={k} line={line} />
                 {results[k] === "win" && <span className={styles.sr}> (leads)</span>}
               </Flash>
@@ -418,7 +432,9 @@ function Roster({ side, data }: { side: MatchupSide; data: MatchupWeek }) {
           <span role="cell" />
           <span role="rowheader">{data.projected ? "Projected" : day ? "Starters" : "Week"}</span>
           {CATEGORY_KEYS.map((k) => (
-            <Flash role="cell" className={styles.n} key={k} value={statValue(k, total)}><Stat k={k} line={total} /></Flash>
+            <Flash role="cell" className={styles.n} key={k} value={statValue(k, total)} delta={statDelta(k, total)}>
+              <Stat k={k} line={total} />
+            </Flash>
           ))}
         </div>
       </div>
@@ -477,7 +493,7 @@ function PlayerRow({ p, day, projected, timeZone }: { p: MatchupPlayer; day: boo
           <Avatar player={p} size={28} />
           <span className={styles.plText}>
             <b data-player-name>{fullName(p)}</b>
-            <span className={idle ? styles.idle : undefined}>{teamPos(p.teamAbbr, p.position)} · {sub}</span>
+            <Flash className={idle ? styles.idle : undefined} value={sub} scope={p.id}>{teamPos(p.teamAbbr, p.position)} · {sub}</Flash>
           </span>
         </PlayerButton>
       </span>
@@ -485,7 +501,7 @@ function PlayerRow({ p, day, projected, timeZone }: { p: MatchupPlayer; day: boo
         <span role="cell" className={styles.dnp}>DNP</span>
       ) : (
         CATEGORY_KEYS.map((k) => (
-          <Flash role="cell" className={styles.n} key={k} value={line && statValue(k, line)}>
+          <Flash role="cell" className={styles.n} key={k} value={line && statValue(k, line)} delta={statDelta(k, line)}>
             {line && <Stat k={k} line={line} />}
           </Flash>
         ))
