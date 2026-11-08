@@ -22,7 +22,7 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import { useLiveRefresh } from "@/components/live/LiveRefresh";
 import LiveCountdown from "@/components/live/LiveCountdown";
-import Flash, { countDelta as count, type FlashDelta } from "@/components/live/Flash";
+import Flash, { countDelta as count, shotsDelta, type FlashDelta } from "@/components/live/Flash";
 import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
@@ -394,13 +394,13 @@ function TeamTable({ t, other, g, data, onAdd }: {
             {onAdd && <td />}
             <td className={styles.n}>{tot.min}</td>
             <td className={styles.n}>
-              <Flash className={styles.c} value={`${tot.fgm}/${tot.fga}`} scope={t.id}>
+              <Flash className={styles.c} value={`${tot.fgm}/${tot.fga}`} scope={t.id} delta={shotsDelta(tot.fgm, tot.fga)}>
                 {fmtPct(tot.fgPct)}
                 <small>{tot.fgm}/{tot.fga}</small>
               </Flash>
             </td>
             <td className={styles.n}>
-              <Flash className={styles.c} value={`${tot.ftm}/${tot.fta}`} scope={t.id}>
+              <Flash className={styles.c} value={`${tot.ftm}/${tot.fta}`} scope={t.id} delta={shotsDelta(tot.ftm, tot.fta)}>
                 {fmtPct(tot.ftPct)}
                 <small>{tot.ftm}/{tot.fta}</small>
               </Flash>
@@ -489,11 +489,11 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
       {l ? (
         <>
           <td className={styles.n}>{l.min}</td>
-          <Cell k="fgPct" r={p.ranks.fgPct} of={of} value={`${l.fgm}/${l.fga}`} scope={p.id}>
+          <Cell k="fgPct" r={p.ranks.fgPct} of={of} value={`${l.fgm}/${l.fga}`} scope={p.id} delta={shotsDelta(l.fgm, l.fga)}>
             {fmtPct(l.fgPct)}
             <small>{l.fgm}/{l.fga}</small>
           </Cell>
-          <Cell k="ftPct" r={p.ranks.ftPct} of={of} value={`${l.ftm}/${l.fta}`} scope={p.id}>
+          <Cell k="ftPct" r={p.ranks.ftPct} of={of} value={`${l.ftm}/${l.fta}`} scope={p.id} delta={shotsDelta(l.ftm, l.fta)}>
             {fmtPct(l.ftPct)}
             <small>{l.ftm}/{l.fta}</small>
           </Cell>

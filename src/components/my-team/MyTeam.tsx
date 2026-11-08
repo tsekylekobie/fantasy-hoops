@@ -30,7 +30,7 @@ import ScrollName from "@/components/players/ScrollName";
 import TradesPanel from "@/components/trades/TradesPanel";
 import EditTeamSheet from "./EditTeamSheet";
 import GameLimits from "./GameLimits";
-import Flash, { countDelta } from "@/components/live/Flash";
+import Flash, { countDelta, shotsDelta } from "@/components/live/Flash";
 import LiveCountdown from "@/components/live/LiveCountdown";
 import { useLivePoll } from "@/components/live/useLivePoll";
 import { fetchJson, fmtInjuryStatus, fmtPct, fullName, todayIn } from "@/components/players/format";
@@ -162,7 +162,7 @@ function statCells(line: CategoryLine | null, min: number | null, dnp: boolean, 
   if (dnp) return [<span key="min" className={`${styles.num} ${styles.dnp}`}>DNP</span>, ...blankCells(9)];
   if (!line) return blankCells(10);
   const shooting = (p: number | null, m: number, a: number, k: string) => (
-    <Flash key={k} className={styles.num} value={`${m}/${a}`} scope={scope}>
+    <Flash key={k} className={styles.num} value={`${m}/${a}`} scope={scope} delta={shotsDelta(m, a)}>
       {fmtPct(p)}
       <small className={styles.shots}>{m}/{a}</small>
     </Flash>

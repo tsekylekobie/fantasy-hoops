@@ -14,54 +14,87 @@
 // cell (.flash-delta in globals.css; a real element, so it never collides with
 // a page's own ::before/::after, and hidden from screen readers): "+2" for a
 // count (green when it's good, red when it isn't, so TO is lower-is-better),
-// "▲3" for a rank (a smaller number is better). The difference is taken over
-// `delta.n`, which can differ from `value`: a rank cell passes the player's
-// Value as `value`, so it only lights up when his own line changed, not when
-// others' lines moved him. With a delta, nothing flashes unless `delta.n`
-// changed too.
+// "▲3" for a rank (a smaller number is better), "+2/3" for shooting (green or
+// red by what it did to the percentage, grey when unchanged). The difference is
+// taken over the delta, which can differ from `value`: a rank cell passes the
+// player's Value as `value`, so it only lights up when his own line changed,
+// not when others' lines moved him. With a delta, nothing flashes unless the
+// delta changed too.
 import { useEffect, useRef, useState } from "react";
 
 type Value = string | number | null;
-export type FlashDelta = { n: number | null; kind: "count" | "rank"; lowerIsBetter?: boolean };
+/**
+ * What the badge describes. A count or rank compares `n`; shooting compares
+ * makes/attempts ("+2/3"), colored by what the shots did to the percentage.
+ */
+export type FlashDelta =
+  | { kind: "count" | "rank"; n: number | null; lowerIsBetter?: boolean }
+  | { kind: "shots"; made: number; att: number };
 type Props = React.HTMLAttributes<HTMLElement> & {
   value: Value;
   scope?: Value;
   delta?: FlashDelta;
   as?: "span" | "b" | "div" | "em";
 };
-type Badge = { id: number; text: string; good: boolean; kind: FlashDelta["kind"] };
+/** `good` null: neither (grey). */
+type Shown = { text: string; good: boolean | null };
+type Badge = Shown & { id: number; kind: FlashDelta["kind"] };
 
 /** A count's change for the badge ("+1"); TO and fouls are lower-is-better (red when they go up). */
 export const countDelta = (n: number, lowerIsBetter = false): FlashDelta => ({ n, kind: "count", lowerIsBetter });
 
-function deltaText(d: number, delta: FlashDelta): { text: string; good: boolean } {
-  if (delta.kind === "rank") return { text: d < 0 ? `▲${-d}` : `▼${d}`, good: d < 0 };
-  return { text: d > 0 ? `+${d}` : `−${-d}`, good: (d > 0) !== !!delta.lowerIsBetter };
+/** Shooting's change for the badge ("+2/3"). */
+export const shotsDelta = (made: number, att: number): FlashDelta => ({ kind: "shots", made, att });
+
+/** What's compared between renders: the badge only shows when this moved. */
+function deltaKey(d: FlashDelta | undefined): string | number | null {
+  if (!d) return null;
+  return d.kind === "shots" ? `${d.made}/${d.att}` : d.n;
+}
+
+function badgeFor(was: FlashDelta, now: FlashDelta): Shown | null {
+  if (now.kind === "shots" && was.kind === "shots") {
+    const dm = now.made - was.made;
+    const da = now.att - was.att;
+    if (da <= 0 || dm < 0 || dm > da) return null; // a stat correction, not new shots
+    const text = `+${dm}/${da}`;
+    // Green when the percentage went up, red when down, grey when unchanged (1/2 → 2/4).
+    // With no earlier attempts there's no percentage to move: all in green, all missed red.
+    if (was.att === 0) return { text, good: dm === da ? true : dm === 0 ? false : null };
+    const diff = now.made * was.att - was.made * now.att; // sign of now% − was%
+    return { text, good: diff > 0 ? true : diff < 0 ? false : null };
+  }
+  if (now.kind === "shots" || was.kind === "shots" || now.n === null || was.n === null) return null;
+  const d = now.n - was.n;
+  if (d === 0) return null;
+  if (now.kind === "rank") return { text: d < 0 ? `▲${-d}` : `▼${d}`, good: d < 0 };
+  return { text: d > 0 ? `+${d}` : `−${-d}`, good: (d > 0) !== !!now.lowerIsBetter };
 }
 
 export default function Flash({ value, scope = null, delta, as: Tag = "span", children, ...rest }: Props) {
   const ref = useRef<HTMLElement>(null);
-  const n = delta?.n ?? null;
-  const prev = useRef({ value, scope, n });
+  const key = deltaKey(delta);
+  const prev = useRef({ value, scope, key, delta });
   const [badge, setBadge] = useState<Badge | null>(null);
   useEffect(() => {
     const was = prev.current;
-    if (was.value === value && was.scope === scope && was.n === n) return;
-    prev.current = { value, scope, n };
+    if (was.value === value && was.scope === scope && was.key === key) return;
+    prev.current = { value, scope, key, delta };
     const el = ref.current;
     if (!el || was.value === null || was.value === value || was.scope !== scope) return;
     if (delta) {
-      if (n === null || was.n === null || n === was.n) return;
-      const shown = deltaText(n - was.n, delta);
-      // A new id remounts the badge, restarting its animation.
-      setBadge((b) => ({ id: (b?.id ?? 0) + 1, kind: delta.kind, ...shown }));
+      if (key === null || was.key === null || key === was.key || !was.delta) return;
+      const shown = badgeFor(was.delta, delta);
+      // A new id remounts the badge, restarting its animation. No badge (a
+      // correction): the cell still flashes.
+      if (shown) setBadge((b) => ({ id: (b?.id ?? 0) + 1, kind: delta.kind, ...shown }));
     }
     el.removeAttribute("data-flash");
     void el.offsetWidth; // restart the animation if it's still running
     el.setAttribute("data-flash", "");
-    // `delta` is read only alongside `n`, which is in the deps.
+    // `delta` is read only alongside `key`, which is in the deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, scope, n]);
+  }, [value, scope, key]);
   return (
     <Tag
       ref={ref as React.RefObject<never>}
@@ -74,7 +107,7 @@ export default function Flash({ value, scope = null, delta, as: Tag = "span", ch
         <span
           key={badge.id}
           className="flash-delta"
-          data-good={badge.good}
+          data-good={badge.good === null ? "neutral" : badge.good}
           data-kind={badge.kind}
           aria-hidden="true"
           onAnimationEnd={(e) => {

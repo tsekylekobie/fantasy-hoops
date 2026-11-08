@@ -24,7 +24,7 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
 import TeamLink from "@/components/TeamLink";
-import Flash, { countDelta } from "@/components/live/Flash";
+import Flash, { countDelta, shotsDelta } from "@/components/live/Flash";
 import LiveRefresh from "@/components/live/LiveRefresh";
 import { fmtChance, matchupOdds, type OddsTier } from "./categoryOdds";
 import styles from "./MatchupView.module.css";
@@ -262,9 +262,12 @@ function Stat({ k, line }: { k: CategoryKey; line: CategoryLine }) {
   return <>{fmtInt(line[k])}</>;
 }
 
-/** A count's change for Flash's badge ("+1"); none for FG%/FT% or without a line. */
+/** The change for Flash's badge: "+1" for a count, "+2/3" for FG%/FT%; none without a line. */
 function statDelta(k: CategoryKey, line: CategoryLine | null) {
-  return line && k !== "fgPct" && k !== "ftPct" ? countDelta(line[k], k === "tov") : undefined;
+  if (!line) return undefined;
+  if (k === "fgPct") return shotsDelta(line.fgm, line.fga);
+  if (k === "ftPct") return shotsDelta(line.ftm, line.fta);
+  return countDelta(line[k], k === "tov");
 }
 
 /** What a Stat cell shows, for spotting changes. */

@@ -53,6 +53,7 @@
   --flash: #fde68a;
   --delta-good-bg: #16a34a;
   --delta-bad-bg: #dc2626;
+  --delta-neutral-bg: #6b7280;
   --delta-ink: #ffffff;
   /* A starter whose NBA game is in progress (matchup and my team rows). */
   --live-row: #fff4ea;
@@ -215,6 +216,11 @@ tr[data-flip-rising] {
 
 .flash-delta[data-good="false"] {
   background: var(--delta-bad-bg);
+}
+
+/* Shooting that left the percentage where it was (1/2 → 2/4). */
+.flash-delta[data-good="neutral"] {
+  background: var(--delta-neutral-bg);
 }
 
 .flash-delta[data-kind="rank"] {
