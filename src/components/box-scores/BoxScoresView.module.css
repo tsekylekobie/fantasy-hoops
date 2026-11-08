@@ -688,14 +688,6 @@ tr.out {
   color: var(--ink);
 }
 
-.ft {
-  font-size: 13px;
-  color: var(--ink-muted);
-  margin: 8px 0 0;
-  max-width: 820px;
-  line-height: 1.5;
-}
-
 /* Phones: the rank and player columns stay put while the stats scroll. */
 @media (max-width: 640px) {
   .page {

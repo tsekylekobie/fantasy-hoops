@@ -62,9 +62,6 @@ export default function RankingsView({ data, teamParam }: { data: View | null; t
       <div className={styles.inner}>
         <SiteHeader />
         <h1 className={styles.title}>Power rankings</h1>
-        <p className={styles.sub}>
-          Every team’s week against all the others, nine categories each. Ranked by the share of categories you’d have won.
-        </p>
         {data ? <Rankings data={data} teamParam={teamParam} /> : <p className={styles.empty}>No league schedule for this season yet.</p>}
       </div>
     </div>
@@ -75,7 +72,6 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
   const here: Where = { period: data.period, week: data.week?.week ?? null, team: teamParam };
   const teams = data.rows.length;
   const isWeek = data.period === "week";
-  const others = Math.max(teams - 1, 0);
   return (
     <>
       <section className={styles.card} aria-labelledby="stack-rank">
@@ -138,11 +134,6 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
             </table>
           </div>
         )}
-        <p className={styles.foot}>
-          {isWeek
-            ? `Ranked by categories won against all ${others} other teams this week (ties count half). GP is starters’ games played this week. Cells are shaded by this week’s category rank: green is the top of the league, red the bottom, a shade per quarter.`
-            : "Ranked by categories won against every other team, all weeks added up. GP and categories are season totals (FG% and FT% from total makes ÷ attempts), shaded by season rank."}
-        </p>
       </section>
 
       {data.focus && <Versus data={data} focus={data.focus} />}
@@ -254,9 +245,6 @@ function Versus({ data, focus }: { data: View; focus: NonNullable<View["focus"]>
         <span><i className={styles.tie} />Tied</span>
         <span><i className={styles.loss} />Lost</span>
       </div>
-      <p className={`${styles.foot} ${styles.footPlain}`}>
-        Pick any team’s row in the stack rank to see it against everyone (its name opens its page). Follows the stack rank’s week or season.
-      </p>
     </section>
   );
 }

@@ -456,7 +456,7 @@ export default function PlayersBrowser() {
         </div>
 
         {showWeights && (
-          <PuntWeights weights={weights} onChange={changeWeights} signedIn={signedIn} saveError={saveError} />
+          <PuntWeights weights={weights} onChange={changeWeights} saveError={saveError} />
         )}
 
         {/* The rest of the filters fold away; closed, the button sums up what's selected. */}

@@ -104,20 +104,6 @@ function tipTime(g: BoxScoreGame, timeZone: string): string {
   return new Date(g.tipoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" });
 }
 
-/** "Sun, Oct 25 · 7 games · 3 final, 3 in progress, 1 later" */
-function summary(d: BoxScoresResponse): string {
-  const label = `${weekday(d.date)}, ${fmtGameDate(d.date)}`;
-  if (d.games.length === 0) return `${label} · No games`;
-  const n = (s: BoxScoreGame["state"]) => d.games.filter((g) => g.state === s).length;
-  const parts = [
-    n("final") && `${n("final")} final`,
-    n("live") && `${n("live")} in progress`,
-    n("scheduled") && `${n("scheduled")} ${d.date === d.today ? "later today" : "scheduled"}`,
-    n("postponed") && `${n("postponed")} postponed`,
-  ].filter(Boolean);
-  return `${label} · ${d.games.length} ${d.games.length === 1 ? "game" : "games"} · ${parts.join(", ")}`;
-}
-
 export default function BoxScoresView({ data, initialGame = null }: { data: BoxScoresResponse; initialGame?: number | null }) {
   const router = useRouter();
   const [adding, setAdding] = useState<number | null>(null);
@@ -138,15 +124,11 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
         <SiteHeader />
         <PlayerModalHost>
           <h1 className={styles.title}>Box scores</h1>
-          <p className={styles.sub}>
-            {summary(data)}
-            {data.live && (
-              <>
-                {" · "}
-                <b><LiveRefresh active countdown /></b>
-              </>
-            )}
-          </p>
+          {data.live && (
+            <p className={styles.sub}>
+              <b><LiveRefresh active countdown /></b>
+            </p>
+          )}
 
           <nav className={styles.dbar} aria-label="Date">
             <DayLink to={prev} disabled={!inSeason(prev)} label="Previous day" arrow="M15 18l-6-6 6-6" />
@@ -201,13 +183,6 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
             </>
           )}
 
-          <p className={styles.ft}>
-            Shading ranks each stat against every player who played on this date, across all games. FG% and FT% rank by
-            how much a line moves a team’s percentage (makes above the league rate, so volume counts: 8/10 beats 1/1); no
-            attempts, no shading. Fewer turnovers ranks higher. Value is this game’s weighted average of category
-            z-scores, on the same per-game scale and category weights as Players. In-progress games count with their stats so
-            far. Hover a cell for its rank.
-          </p>
         </PlayerModalHost>
         {onAdd && <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => router.refresh()} />}
       </div>

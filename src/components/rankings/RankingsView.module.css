@@ -17,14 +17,7 @@
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.01em;
-  margin: 32px 0 8px;
-}
-
-.sub {
-  color: var(--ink-muted);
-  font-size: 15px;
-  margin: 0 0 20px;
-  max-width: 720px;
+  margin: 32px 0 20px;
 }
 
 .empty {
@@ -164,19 +157,6 @@ a.pageBtn:hover {
 
 .scroll {
   overflow-x: auto;
-}
-
-.foot {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-muted);
-  padding: 12px 20px 16px;
-  margin: 0;
-  border-top: 1px solid var(--row-divider);
-}
-
-.footPlain {
-  border-top: 0;
 }
 
 /* Stack rank */
