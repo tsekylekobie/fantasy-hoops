@@ -93,6 +93,29 @@ test("snapshotFromCsv: transactions grouped by id, oldest first", () => {
   assert.equal(snapshotFromCsv(files()).snapshot.transactions.length, 0);
 });
 
+test("snapshotFromCsv: failed waiver claims", () => {
+  const T = "id,at,type,player,nba_team,positions,from_team,to_team,faab_bid,status,reason\n";
+  const { snapshot: s, errors } = snapshotFromCsv(files({
+    transactions: T +
+      "1,2026-11-03 03:00,waiver_claim,Gui Santos,GS,F,,1,4,,\n" +
+      "2,2026-11-03 03:00,waiver_claim,Gui Santos,GS,F,,2,3,failed,\n2,2026-11-03 03:00,waiver_claim,A B,MEM,F,2,,,failed,\n" +
+      "3,2026-11-03 03:00,waiver_claim,C D,MEM,F,,1,1,failed,Roster was full\n",
+  }));
+  assert.deepEqual(errors, []);
+  assert.deepEqual(s.transactions.map((t) => [t.id, t.faabBid, t.failureReason, t.moves.length]), [
+    ["1", 4, null, 1], ["2", 3, "", 2], ["3", 1, "Roster was full", 1],
+  ]);
+  const bad = snapshotFromCsv(files({
+    transactions: T +
+      "1,2026-11-03 03:00,add,A B,MEM,F,,1,,failed,\n" +
+      "2,2026-11-03 03:00,waiver_claim,A B,MEM,F,,1,,lost,\n" +
+      "3,2026-11-03 03:00,waiver_claim,A B,MEM,F,,1,,failed,\n3,2026-11-03 03:00,waiver_claim,C D,MEM,F,,1,,,\n",
+  })).errors;
+  assert.ok(bad.some((e) => e.includes("row 2: only a waiver_claim can have failed")));
+  assert.ok(bad.some((e) => e.includes('row 3: status "lost"')));
+  assert.ok(bad.some((e) => e.includes("row 5: transaction 3 has a different at, type or status")));
+});
+
 test("snapshotFromCsv: reports what's wrong with transactions", () => {
   const { errors } = snapshotFromCsv(files({
     transactions: TX +

@@ -48,7 +48,7 @@ If `<folder>/league.json` exists, this is a refresh:
 | `league.json` | Set `today` |
 | `teams.csv` | Update `waiver_priority` and `faab_balance`: step 2 |
 | `results.csv` | Add weeks finished since last time: step 4 |
-| `transactions.csv` | Rebuild: step 5 |
+| `transactions.csv` | Rebuild, failed claims included: step 5 |
 | `rosters.csv`, `lineups.csv` | Rebuild: step 6 |
 | `schedule.csv`, `league-settings.json`, `player-overrides.csv` | Keep. The import adds to `player-overrides.csv` |
 
@@ -264,6 +264,41 @@ travelling. The script reports that zone as `timeZone`: set it in `league.json` 
 refresh (drop the field only if it equals the league's `timeZone`). It decides which day, and so which matchup week, an
 add counts in. Check: the daily waiver claims should land at the same local time each day in the league's time zone.
 
+### Failed claims
+
+The League page's waiver reports list every claim of a night, the ones that lost too ("Outbid by ABC at $12"), so
+bring over Yahoo's failed claims as well. They're rows of `transactions.csv` with two more columns, `status` and
+`reason`: write the header as `id,at,type,player,nba_team,positions,from_team,to_team,faab_bid,status,reason` and leave
+both blank on the completed rows above.
+
+Yahoo's league Transactions page above lists only completed moves. Find where it shows the claims that lost before
+writing a script. Start on the Transactions page and run:
+
+```js
+const opts = [...document.querySelectorAll("select option, a")].map((e) => e.textContent.trim().replace(/\s+/g, " "))
+  .filter((t) => /fail|unsuccess|waiver|claim|bid/i.test(t));
+JSON.stringify([...new Set(opts)].slice(0, 40));
+```
+
+Then check, in order, until one lists claims that lost: a Transactions filter it reports (fetch it like step 5, with
+`transactionsfilter=` set to that option's value), the waiver results on a manager's team page, and Yahoo's
+notifications or messages after a waiver run. Look at one row with `innerText` and write a script like step 5's from
+what you find. Don't click anything to get there. Yahoo may show a manager only their own failed claims; if it does,
+bring over what the signed-in manager can see and tell the user that the other teams' failed claims aren't on Yahoo.
+If no page shows failed claims at all, skip this and say so.
+
+Write one failed claim like a completed one, with `status` `failed`:
+
+- `type` is `waiver_claim`. One row for the player claimed (`to_team` is the claiming team, `faab_bid` its bid) and,
+  if the claim would have dropped someone, one row for him (`from_team` the same team), sharing an `id`. Number them
+  after the completed transactions.
+- `at` is when that night's waivers ran: the same minute as that night's completed claims, so they show in one report.
+  With no completed claim that night, the run's time in the league's waiver time.
+- `reason` is Yahoo's wording if it gives one other than losing to another team (e.g. a full roster). Leave it blank when
+  the claim lost to another team's: the League page says who won and at what bid.
+
+Count the failed rows per night against what Yahoo shows. The dry run's `Transactions:` line reports how many it read.
+
 ## 6. Rosters and lineups
 
 Every day of the current week, not only up to today: managers often use Yahoo's "Set lineups for the entire week", so
@@ -403,6 +438,7 @@ nothing. Delete any scratch file holding the URL.
 - **Row counts look wrong, or `nba_team` is blank:** Yahoo changed its markup. Look at one row with
   `document.querySelector("table tbody tr").innerText` and update the selectors here.
 - **`noId` is above 0 or the team count looks wrong:** check the Managers table's columns against step 2.
+- **Failed claims don't line up with a night's report:** their `at` isn't the minute of that night's completed claims.
 - **Transactions `problems` aren't empty:** look at one row's cells with
   `[...document.querySelector("table tbody tr").children].map((c) => c.innerText)` on the Transactions page and update
   step 5's selectors. A trade is one row per team that received players, the first with the trade icon.

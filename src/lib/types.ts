@@ -632,8 +632,13 @@ export interface LeagueTransaction {
   tradeTeam: FantasyTeamSummary | null;
   /** Adds first, then moves between teams, then drops. */
   moves: TransactionMove[];
-  /** A waiver claim won in a FAAB league: what it cost, in whole dollars. Null otherwise. */
+  /** A waiver claim's FAAB bid, in whole dollars (what it cost if won). Null otherwise. */
   faabBid: number | null;
+  /**
+   * A waiver claim that lost and has no waiver run (imported from Yahoo): why, or "" when not
+   * known. Null for everything that went through. Such claims only show inside waiver reports.
+   */
+  failureReason: string | null;
 }
 
 /** One claim in a waiver run summary. */
@@ -654,7 +659,7 @@ export interface WaiverRunClaim {
  * again as separate transactions.
  */
 export interface WaiverRunEntry {
-  /** The waiver run; null for imported claims grouped by time (all won, no failures known). */
+  /** The waiver run; null for imported claims grouped by time (failures only if the import had them). */
   id: number | null;
   /** When the run finished, ISO timestamp. */
   at: string;

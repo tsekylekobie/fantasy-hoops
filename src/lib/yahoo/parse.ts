@@ -91,7 +91,7 @@ export interface YahooMove {
   to: string | null;
 }
 
-/** A completed Yahoo transaction (transactions.csv); team keys as in `teams`. */
+/** A completed Yahoo transaction, or a failed waiver claim (transactions.csv); team keys as in `teams`. */
 export interface YahooTransaction {
   id: string;
   /** Local time, "yyyy-mm-dd HH:MM", in `ImportSnapshot.transactionsTimeZone` (or the league's). */
@@ -102,6 +102,8 @@ export interface YahooTransaction {
   tradeTeam: string | null;
   faabBid: number | null;
   moves: YahooMove[];
+  /** A waiver claim that lost: why ("" when Yahoo didn't say). Null for a completed transaction. */
+  failureReason: string | null;
 }
 
 /** Everything the import reads, built from a folder of CSVs (csv.ts). */
@@ -113,7 +115,7 @@ export interface ImportSnapshot {
   matchups: YahooMatchup[];
   /** date -> team key -> that day's roster. */
   rosters: Map<string, Map<string, YahooRosterEntry[]>>;
-  /** Completed transactions, oldest first (none without transactions.csv). */
+  /** Completed transactions and failed waiver claims, oldest first (none without transactions.csv). */
   transactions: YahooTransaction[];
   /** The IANA time zone transactions.csv's times are in; null = the league's. */
   transactionsTimeZone: string | null;

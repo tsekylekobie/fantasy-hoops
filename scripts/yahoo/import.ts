@@ -385,6 +385,8 @@ async function run(db: PoolClient, snap: Snapshot) {
  * Yahoo's completed transactions, as if made here: the League page's history and
  * each player's, adds counted against the limits (countAdds), and roster_players.acquired_at.
  * A player dropped within the waiver period and not picked up since goes on waivers.
+ * Failed waiver claims are saved as failed claims without a waiver run: they only show in
+ * the League page's waiver reports and change nothing else.
  */
 async function importTransactions(
   db: PoolClient, snap: Snapshot, leagueId: number, teamId: (key: string | null) => number | null,
@@ -401,6 +403,7 @@ async function importTransactions(
     return;
   }
   let saved = 0;
+  let failed = 0;
   let moves = 0;
   for (const tx of snap.transactions) {
     const players = new Map<number, { from: number | null; to: number | null }>();
@@ -410,11 +413,13 @@ async function importTransactions(
     }
     if (players.size === 0) continue;
     const { rows: [row] } = await db.query<{ id: number; day: string }>(
-      `INSERT INTO transactions (league_id, type, status, team_id, trade_team_id, faab_bid, created_at, processed_at, accepted_at)
-       SELECT $1, $2, 'completed', $3, $4, $5, x.at, x.at, CASE WHEN $2 = 'trade' THEN x.at END
+      `INSERT INTO transactions (league_id, type, status, team_id, trade_team_id, faab_bid, created_at, processed_at, accepted_at, failure_reason)
+       SELECT $1, $2, CASE WHEN $9::text IS NULL THEN 'completed' ELSE 'failed' END, $3, $4, $5, x.at, x.at,
+              CASE WHEN $2 = 'trade' THEN x.at END, nullif($9, '')
          FROM (SELECT ($6::timestamp AT TIME ZONE $7) AS at) x
        RETURNING id::int, to_char((created_at AT TIME ZONE $8)::date, 'YYYY-MM-DD') AS day`,
-      [leagueId, tx.type, teamId(tx.team), teamId(tx.tradeTeam), tx.type === "waiver_claim" ? tx.faabBid : null, tx.at, tz, leagueTz],
+      [leagueId, tx.type, teamId(tx.team), teamId(tx.tradeTeam), tx.type === "waiver_claim" ? tx.faabBid : null, tx.at, tz, leagueTz,
+        tx.failureReason],
     );
     if (row.day > today) errors.push(`transactions.csv: transaction ${tx.id} (${tx.at}, ${tz}) is after today (${today}); rebuild the CSVs.`);
     for (const [player, { from, to }] of players) {
@@ -422,9 +427,10 @@ async function importTransactions(
         `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id) VALUES ($1, $2, $3, $4)`,
         [row.id, player, from, to],
       );
-      moves++;
+      if (tx.failureReason === null) moves++;
     }
-    saved++;
+    if (tx.failureReason === null) saved++;
+    else failed++;
   }
 
   // Rostered players were acquired by their latest move to that team (else the season start, as set above).
@@ -432,7 +438,7 @@ async function importTransactions(
     `UPDATE roster_players rp SET acquired_at = x.at
        FROM (SELECT DISTINCT ON (tp.player_id, tp.to_team_id) tp.player_id, tp.to_team_id, t.created_at AS at
                FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
-              WHERE t.league_id = $1 AND tp.to_team_id IS NOT NULL
+              WHERE t.league_id = $1 AND t.status = 'completed' AND tp.to_team_id IS NOT NULL
               ORDER BY tp.player_id, tp.to_team_id, t.created_at DESC, t.id DESC) x
       WHERE rp.league_id = $1 AND rp.player_id = x.player_id AND rp.fantasy_team_id = x.to_team_id`,
     [leagueId],
@@ -442,7 +448,7 @@ async function importTransactions(
     `WITH last AS (
        SELECT DISTINCT ON (tp.player_id) tp.player_id, tp.from_team_id, tp.to_team_id, t.created_at AS at
          FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
-        WHERE t.league_id = $1
+        WHERE t.league_id = $1 AND t.status = 'completed'
         ORDER BY tp.player_id, t.created_at DESC, t.id DESC
      ), w AS (
        INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
@@ -463,7 +469,7 @@ async function importTransactions(
     `SELECT p.first_name || ' ' || p.last_name AS name
        FROM roster_players rp JOIN players p ON p.id = rp.player_id
        JOIN LATERAL (SELECT tp.to_team_id FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
-                      WHERE t.league_id = $1 AND tp.player_id = rp.player_id
+                      WHERE t.league_id = $1 AND t.status = 'completed' AND tp.player_id = rp.player_id
                       ORDER BY t.created_at DESC, t.id DESC LIMIT 1) last ON true
       WHERE rp.league_id = $1 AND last.to_team_id IS DISTINCT FROM rp.fantasy_team_id
       ORDER BY p.last_name`,
@@ -472,7 +478,7 @@ async function importTransactions(
   if (mismatched.length > 0) {
     warnings.push(`transactions.csv doesn't end with ${mismatched.map((m) => m.name).join(", ")} on the team rosters.csv has; check both are from today.`);
   }
-  notes.push(`Transactions: ${saved} (${moves} player moves, times in ${tz}); ${acquired} rostered players' acquired dates; ` +
+  notes.push(`Transactions: ${saved} (${moves} player moves, times in ${tz}), ${failed} failed waiver claims; ${acquired} rostered players' acquired dates; ` +
     `${onWaivers.length} on waivers${onWaivers.length > 0 ? ` (${onWaivers.map((w) => `${w.name} until ${w.clears}`).join(", ")})` : ""}.`);
 }
 

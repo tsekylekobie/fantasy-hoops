@@ -27,8 +27,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `POST /api/dev/waivers?at=...` (dev only). FAAB (`waiver_type = 'faab'`): `resolveClaims` there (pure, tested) orders
   claims by bid, breaks ties on priority and charges `fantasy_teams.faab_balance`; bids are checked by `faabBidProblem`
   in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
-  one "Waiver report" per run, and groups claims without a run (imported) by the minute they went through
-  (`transactionFeed` in `src/lib/transactions/feed.ts`, pure, tested). The League page shows the 5 latest
+  one "Waiver report" per run, and groups claims without a run (imported, won and failed) by the minute they were
+  decided (`transactionFeed` in `src/lib/transactions/feed.ts`, pure, tested; `finishReport` there words why each
+  claim lost for both). The League page shows the 5 latest
   (`getRecentTransactions` in `queries/league.ts`); `/league/transactions` pages through all of them (`?page=N`).
 - Trades: `src/lib/queries/trades.ts` (propose, accept, review, process; built from another team's page,
   `src/components/trades/`). A team over the active limit after a trade drops players with it
@@ -100,6 +101,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
   Yahoo's completed transactions (`transactions.csv`) become ordinary `transactions` rows (no `waiver_run_id`), so
   they show in history and count toward add limits; players dropped within the waiver period go back on waivers.
+  Its failed claims (`status` `failed`) become failed claims without a run, shown only in waiver reports.
 - Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is
   signed-in only. Signed out, the header shows League (a sign-in prompt), Players and Box scores; Players hides the
   league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/

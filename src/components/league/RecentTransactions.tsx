@@ -142,7 +142,7 @@ function WaiverRun({ run, timeZone, myTeamId }: { run: WaiverRunEntry; timeZone:
             <span className={styles.teams}>
               <span>Waiver report</span>
               <span className={styles.type}>
-                {run.won} won{run.id !== null && ` · ${run.failed} failed`}
+                {run.won} won{(run.id !== null || run.failed > 0) && ` · ${run.failed} failed`}
               </span>
             </span>
           </div>

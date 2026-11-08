@@ -10,12 +10,15 @@
 //   rosters.csv    team,player,nba_team,positions,slot   (today)
 //   lineups.csv    date,team,player,nba_team,positions,slot   (optional: this week's other days,
 //                  earlier ones and any set ahead through the week's end)
-//   transactions.csv  id,at,type,player,nba_team,positions,from_team,to_team,faab_bid
+//   transactions.csv  id,at,type,player,nba_team,positions,from_team,to_team,faab_bid[,status,reason]
 //                  (optional: completed moves, one row per player moved; rows with the same id
 //                  are one transaction. at: "yyyy-mm-dd HH:MM" in league.json's
 //                  transactionsTimeZone, else the league's. type: add, drop, add_drop,
 //                  waiver_claim or trade. from_team blank = free agents or waivers; to_team
-//                  blank = dropped. faab_bid: on a claim's added player.)
+//                  blank = dropped. faab_bid: on a claim's added player. status: blank or
+//                  "completed", or "failed" for a waiver claim that lost, with the players it
+//                  would have moved and at = when the waivers it lost in ran; reason: why, if
+//                  Yahoo says, else blank and the League page says who won the player.)
 // `team` is any short id used across the files (e.g. 1-12). `slot` is a Yahoo
 // position (PG ... Util, BN, IL, IL+); `positions` is the player's eligible
 // positions, separated by "/" (optional, only used in messages).
@@ -211,6 +214,10 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
     if (!DATE_TIME.test(r.at ?? "")) { errors.push(`${F} row ${row}: at "${r.at ?? ""}" isn't "yyyy-mm-dd HH:MM".`); continue; }
     if (!TX_TYPES.has(type)) { errors.push(`${F} row ${row}: type "${r.type ?? ""}" isn't add, drop, add_drop, waiver_claim or trade.`); continue; }
     if (!r.player) { errors.push(`${F} row ${row}: player is missing.`); continue; }
+    const status = (r.status ?? "").trim() || "completed";
+    if (status !== "completed" && status !== "failed") { errors.push(`${F} row ${row}: status "${r.status}" isn't blank, completed or failed.`); continue; }
+    if (status === "failed" && type !== "waiver_claim") { errors.push(`${F} row ${row}: only a waiver_claim can have failed.`); continue; }
+    const failureReason = status === "failed" ? (r.reason ?? "").trim() : null;
     const from = r.from_team ? key(F, row, r.from_team) : null;
     const to = r.to_team ? key(F, row, r.to_team) : null;
     if (!r.from_team && !r.to_team) { errors.push(`${F} row ${row}: from_team and to_team are both blank.`); continue; }
@@ -219,10 +226,10 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
     const bid = num(F, row, "faab_bid", r.faab_bid, null);
     let tx = txs.get(r.id);
     if (!tx) {
-      tx = { id: r.id, at: r.at, type, team: "", tradeTeam: null, faabBid: null, moves: [] };
+      tx = { id: r.id, at: r.at, type, team: "", tradeTeam: null, faabBid: null, moves: [], failureReason };
       txs.set(r.id, tx);
-    } else if (tx.at !== r.at || tx.type !== type) {
-      errors.push(`${F} row ${row}: transaction ${r.id} has a different at or type than an earlier row.`);
+    } else if (tx.at !== r.at || tx.type !== type || (tx.failureReason === null) !== (failureReason === null)) {
+      errors.push(`${F} row ${row}: transaction ${r.id} has a different at, type or status than an earlier row.`);
       continue;
     }
     if (bid !== null && to) tx.faabBid = bid;
@@ -238,6 +245,9 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
       if (teams_.length !== 1) errors.push(`transactions.csv: transaction ${tx.id} moves players for ${teams_.length} teams; only a trade can.`);
       if (tx.moves.some((m) => m.from && m.to)) errors.push(`transactions.csv: transaction ${tx.id} moves a player between teams but isn't a trade.`);
       tx.team = teams_[0];
+      if (tx.failureReason !== null && tx.moves.filter((m) => m.to).length !== 1) {
+        errors.push(`transactions.csv: failed claim ${tx.id} must add exactly one player.`);
+      }
     }
   }
   const transactions = [...txs.values()].sort((a, b) => a.at.localeCompare(b.at));

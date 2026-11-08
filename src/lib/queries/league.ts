@@ -23,7 +23,7 @@ import { standingsOrder, winPct } from "../playoffs/bracket";
 import { MATCHUP_ROWS_SQL, bracketTag, buildPlayoffsView, configOf, type BracketRow } from "./playoffs";
 import { WEEKS_SQL, isRegularWeek, playoffStart, recordsFrom, scoreIn, startedWeekLines, type WeekRow } from "./standings";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
-import { transactionFeed } from "../transactions/feed";
+import { finishReport, transactionFeed } from "../transactions/feed";
 
 /**
  * The season's league for `userId` (null = signed out); null when there is no league.
@@ -149,19 +149,22 @@ export async function getRecentTransactions(
   );
   if (!league) return null;
   const { rows } = await db.query<{
-    id: number; type: LeagueTransaction["type"]; at: string; faab_bid: number | null;
+    id: number; type: LeagueTransaction["type"]; at: string; faab_bid: number | null; failure_reason: string | null;
     team_id: number | null; trade_team_id: number | null;
     player_id: number | null; first_name: string | null; last_name: string | null; position: string | null;
     nba_person_id: number | null; team_abbr: string | null; from_team_id: number | null; to_team_id: number | null;
   }>(
     `WITH t AS (
-       SELECT id, type, team_id, trade_team_id, faab_bid, coalesce(processed_at, created_at) AS at
+       SELECT id, type, team_id, trade_team_id, faab_bid, coalesce(processed_at, created_at) AS at,
+              CASE WHEN status = 'failed' THEN coalesce(failure_reason, '') END AS failure_reason
        FROM transactions
-       -- Claims a waiver run decided show in that run's summary instead.
-       WHERE league_id = $1 AND status = 'completed' AND NOT (type = 'waiver_claim' AND waiver_run_id IS NOT NULL)
+       -- Claims a waiver run decided show in that run's summary instead. Failed claims
+       -- without a run (imported) join the claims decided the same minute.
+       WHERE league_id = $1 AND waiver_run_id IS NULL
+         AND (status = 'completed' OR (status = 'failed' AND type = 'waiver_claim'))
      )
      SELECT t.id::int, t.type, to_char(t.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
-            t.team_id::int, t.trade_team_id::int, t.faab_bid,
+            t.team_id::int, t.trade_team_id::int, t.faab_bid, t.failure_reason,
             tp.player_id, p.first_name, p.last_name, nullif(p.position, '') AS position, p.nba_person_id,
             nt.abbreviation AS team_abbr, tp.from_team_id::int, tp.to_team_id::int
      FROM t
@@ -183,7 +186,7 @@ export async function getRecentTransactions(
     let tx = byId.get(r.id);
     if (!tx) {
       tx = { id: r.id, type: r.type, at: r.at, team: team(r.team_id), tradeTeam: team(r.trade_team_id), moves: [],
-        faabBid: r.type === "waiver_claim" ? r.faab_bid : null,
+        faabBid: r.type === "waiver_claim" ? r.faab_bid : null, failureReason: r.failure_reason,
       };
       byId.set(r.id, tx);
     }
@@ -296,27 +299,8 @@ async function getWaiverRunEntries(
       if (!byPlayer.has(add.id)) byPlayer.set(add.id, { player: add, claims: [] });
       byPlayer.get(add.id)!.claims.push(c);
     }
-    const players = [...byPlayer.values()];
     const faab = claims.some((c) => c.bid !== null);
-    for (const p of players) {
-      p.claims.sort((a, b) => Number(b.won) - Number(a.won) || (b.bid ?? -1) - (a.bid ?? -1) || a.team.name.localeCompare(b.team.name));
-      // Losing to the winner is worded for the manager ("ahead of you", resolveClaims);
-      // say it for the whole league here.
-      const w = p.claims.find((c) => c.won);
-      if (!w) continue;
-      for (const c of p.claims) {
-        if (c.won || !c.reason?.includes(` went to ${w.team.abbreviation}`)) continue;
-        const abbr = w.team.abbreviation;
-        c.reason = !faab
-          ? `${abbr} was ahead in the waiver order.`
-          : c.bid === w.bid
-            ? `Tied at $${w.bid}; ${abbr} had priority.`
-            : `Outbid by ${abbr} at $${w.bid}.`;
-      }
-    }
-    const wonAny = (p: (typeof players)[number]) => Number(p.claims[0]?.won ?? false);
-    players.sort((a, b) => wonAny(b) - wonAny(a) || (b.claims[0].bid ?? -1) - (a.claims[0].bid ?? -1)
-      || a.player.lastName.localeCompare(b.player.lastName));
+    const players = finishReport([...byPlayer.values()], faab);
     return {
       id, at: run.at,
       faab,
