@@ -137,10 +137,14 @@ export function waiverTooltip(waiver: PlayerWaiver, timeZone: string): string {
   return waiver.reason === "all_adds" ? `Free agent. Claims process ${when}` : `On waivers until ${when}`;
 }
 
-/** A live game's status, short: "2nd Qtr" -> "2Q", "Q4 5:06" -> "4Q 5:06", "Halftime" -> "Half"; anything else as is. */
+/**
+ * A game's status, short: "2nd Qtr" -> "2Q", "Q4 5:06" -> "4Q 5:06", "Halftime" -> "Half",
+ * overtime numbered from 1 ("OT 2:10" -> "1OT 2:10", "OT2"/"2nd OT" -> "2OT", "Final/OT" -> "Final/1OT"); anything else as is.
+ */
 export function fmtGameStatus(status: string): string {
   if (/^half/i.test(status)) return "Half";
   return status
+    .replace(/(^|\/)(?:OT(\d)?|(\d)(?:st|nd|rd|th)? ?OT)\b/i, (_m, pre: string, a?: string, b?: string) => `${pre}${a ?? b ?? "1"}OT`)
     .replace(/^(\d)(?:st|nd|rd|th) Qtr\b/i, "$1Q")
     .replace(/^Q(\d)\b/, "$1Q");
 }

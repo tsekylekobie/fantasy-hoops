@@ -1341,7 +1341,7 @@ export interface BoxScoreTeam {
 export interface BoxScoreGame {
   id: number;
   state: "scheduled" | "live" | "final" | "postponed";
-  /** "Final", "Final/OT", "Q4 5:06", "Halftime"; null when scheduled (show tipoff). */
+  /** "Final", "Final/1OT", "Q4 5:06", "Halftime"; null when scheduled (show tipoff). */
   statusText: string | null;
   tipoff: string | null;
   away: BoxScoreTeam;

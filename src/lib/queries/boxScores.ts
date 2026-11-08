@@ -160,11 +160,11 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
-/** "Final", "Final/OT", "Final/2OT"; live: the clock ("Q4 5:06") or "Halftime". */
+/** "Final", "Final/1OT", "Final/2OT"; live: the clock ("Q4 5:06") or "Halftime". */
 function statusText(g: GameRow): string | null {
   if (g.status_state === "final") {
     const ot = (g.period ?? 4) - 4;
-    return ot <= 0 ? "Final" : ot === 1 ? "Final/OT" : `Final/${ot}OT`;
+    return ot <= 0 ? "Final" : `Final/${ot}OT`;
   }
   if (!g.started) return null;
   const clock = g.time?.trim();
