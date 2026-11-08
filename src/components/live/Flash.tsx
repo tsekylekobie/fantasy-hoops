@@ -21,15 +21,9 @@
 // not when others' lines moved him. With a delta, nothing flashes unless the
 // delta changed too.
 import { useEffect, useRef, useState } from "react";
+import type { FlashDelta } from "./flashDelta";
 
 type Value = string | number | null;
-/**
- * What the badge describes. A count or rank compares `n`; shooting compares
- * makes/attempts ("+2/3"), colored by what the shots did to the percentage.
- */
-export type FlashDelta =
-  | { kind: "count" | "rank"; n: number | null; lowerIsBetter?: boolean }
-  | { kind: "shots"; made: number; att: number };
 type Props = React.HTMLAttributes<HTMLElement> & {
   value: Value;
   scope?: Value;
@@ -39,12 +33,6 @@ type Props = React.HTMLAttributes<HTMLElement> & {
 /** `good` null: neither (grey). */
 type Shown = { text: string; good: boolean | null };
 type Badge = Shown & { id: number; kind: FlashDelta["kind"] };
-
-/** A count's change for the badge ("+1"); TO and fouls are lower-is-better (red when they go up). */
-export const countDelta = (n: number, lowerIsBetter = false): FlashDelta => ({ n, kind: "count", lowerIsBetter });
-
-/** Shooting's change for the badge ("+2/3"). */
-export const shotsDelta = (made: number, att: number): FlashDelta => ({ kind: "shots", made, att });
 
 /** What's compared between renders: the badge only shows when this moved. */
 function deltaKey(d: FlashDelta | undefined): string | number | null {

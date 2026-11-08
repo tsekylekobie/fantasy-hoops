@@ -24,7 +24,8 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import { fmtGameDate, fmtGameStatus, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
 import TeamLink from "@/components/TeamLink";
-import Flash, { countDelta, shotsDelta } from "@/components/live/Flash";
+import Flash from "@/components/live/Flash";
+import { countDelta, shotsDelta } from "@/components/live/flashDelta";
 import LiveRefresh from "@/components/live/LiveRefresh";
 import { fmtChance, matchupOdds, type OddsTier } from "./categoryOdds";
 import styles from "./MatchupView.module.css";

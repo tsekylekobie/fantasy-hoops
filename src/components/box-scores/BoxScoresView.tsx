@@ -22,7 +22,8 @@ import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalH
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import { useLiveRefresh } from "@/components/live/LiveRefresh";
 import LiveCountdown from "@/components/live/LiveCountdown";
-import Flash, { countDelta as count, shotsDelta, type FlashDelta } from "@/components/live/Flash";
+import Flash from "@/components/live/Flash";
+import { countDelta as count, shotsDelta, type FlashDelta } from "@/components/live/flashDelta";
 import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
