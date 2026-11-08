@@ -23,6 +23,7 @@ import { standingsOrder, winPct } from "../playoffs/bracket";
 import { MATCHUP_ROWS_SQL, bracketTag, buildPlayoffsView, configOf, type BracketRow } from "./playoffs";
 import { WEEKS_SQL, isRegularWeek, playoffStart, recordsFrom, scoreIn, startedWeekLines, type WeekRow } from "./standings";
 import { toTeamSummary, type TeamRow } from "./teamLogo";
+import { transactionFeed } from "../transactions/feed";
 
 /**
  * The season's league for `userId` (null = signed out); null when there is no league.
@@ -134,10 +135,14 @@ export async function getLeagueOverview(
 }
 
 /**
- * The season league's latest completed transactions, newest first, any type
- * (add/drop, waiver claims, trades, commissioner moves). Null when there is no league.
+ * The season league's completed transactions, newest first, any type (add/drop, trades,
+ * commissioner moves), with waiver claims as one report per run (transactionFeed).
+ * `limit`/`offset` page through the feed; `total` counts all of it. Null when there is no league.
  */
-export async function getRecentTransactions(db: Pool, season: number, limit = 25): Promise<RecentTransactions | null> {
+export async function getRecentTransactions(
+  db: Pool, season: number,
+  { limit, offset = 0, userId = null }: { limit?: number; offset?: number; userId?: number | null } = {},
+): Promise<RecentTransactions | null> {
   const { rows: [league] } = await db.query<{ id: number; time_zone: string }>(
     `SELECT id::int, time_zone FROM leagues WHERE season = $1 ORDER BY id LIMIT 1`,
     [season],
@@ -154,8 +159,6 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
        FROM transactions
        -- Claims a waiver run decided show in that run's summary instead.
        WHERE league_id = $1 AND status = 'completed' AND NOT (type = 'waiver_claim' AND waiver_run_id IS NOT NULL)
-       ORDER BY coalesce(processed_at, created_at) DESC, id DESC
-       LIMIT $2
      )
      SELECT t.id::int, t.type, to_char(t.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
             t.team_id::int, t.trade_team_id::int, t.faab_bid,
@@ -166,10 +169,10 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
      LEFT JOIN players p ON p.id = tp.player_id
      LEFT JOIN teams nt ON nt.id = p.team_id
      ORDER BY t.at DESC, t.id DESC, p.last_name, p.first_name`,
-    [league.id, limit],
+    [league.id],
   );
-  const { rows: teams } = await db.query<TeamRow>(
-    `SELECT id::int, name, abbreviation, logo_updated_at FROM fantasy_teams WHERE league_id = $1`,
+  const { rows: teams } = await db.query<TeamRow & { owner_user_id: number | null }>(
+    `SELECT id::int, name, abbreviation, logo_updated_at, owner_user_id::int FROM fantasy_teams WHERE league_id = $1`,
     [league.id],
   );
   const teamById = new Map(teams.map((t) => [t.id, toTeamSummary(t)]));
@@ -197,10 +200,13 @@ export async function getRecentTransactions(db: Pool, season: number, limit = 25
   // Adds, then players changing teams, then drops.
   const rank = (m: TransactionMove) => (m.from === null ? 0 : m.to === null ? 2 : 1);
   for (const tx of byId.values()) tx.moves.sort((a, b) => rank(a) - rank(b));
+  // A season's transactions are a few hundred rows, so the feed is built whole and sliced.
+  const feed = transactionFeed([...byId.values()], await getWaiverRunEntries(db, league.id, team));
   return {
     timeZone: league.time_zone,
-    transactions: [...byId.values()],
-    waiverRuns: await getWaiverRunEntries(db, league.id, team),
+    entries: feed.slice(offset, limit === undefined ? undefined : offset + limit),
+    total: feed.length,
+    myTeamId: userId === null ? null : teams.find((t) => t.owner_user_id === userId)?.id ?? null,
   };
 }
 
@@ -235,11 +241,11 @@ export async function getPlayerTransactions(db: Pool, playerId: number, season: 
 }
 
 /**
- * The league's latest waiver runs that decided claims (newest first), each with
- * every claim it decided, won or failed, grouped by player: the whole auction.
+ * The league's waiver runs that decided claims (newest first), each with every
+ * claim it decided, won or failed, grouped by player: the whole auction.
  */
 async function getWaiverRunEntries(
-  db: Pool, leagueId: number, team: (id: number | null) => FantasyTeamSummary | null, limit = 10,
+  db: Pool, leagueId: number, team: (id: number | null) => FantasyTeamSummary | null,
 ): Promise<WaiverRunEntry[]> {
   const { rows } = await db.query<{
     run_id: number; at: string; claim_id: number; team_id: number; status: string; faab_bid: number | null;
@@ -249,8 +255,6 @@ async function getWaiverRunEntries(
     `WITH r AS (
        SELECT r.id, coalesce(r.finished_at, r.started_at) AS at FROM waiver_runs r
         WHERE r.league_id = $1 AND EXISTS (SELECT 1 FROM transactions t WHERE t.waiver_run_id = r.id)
-        ORDER BY coalesce(r.finished_at, r.started_at) DESC, r.id DESC
-        LIMIT $2
      )
      SELECT r.id::int AS run_id, to_char(r.at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
             t.id::int AS claim_id, t.team_id::int, t.status, t.faab_bid, t.failure_reason,
@@ -262,7 +266,7 @@ async function getWaiverRunEntries(
        JOIN players p ON p.id = tp.player_id
        LEFT JOIN teams nt ON nt.id = p.team_id
       ORDER BY r.at DESC, r.id DESC, t.id`,
-    [leagueId, limit],
+    [leagueId],
   );
 
   type Claim = WaiverRunClaim & { add: PlayerSummary };

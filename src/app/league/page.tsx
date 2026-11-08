@@ -18,8 +18,8 @@ const positiveInt = (raw: string | undefined) => {
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
-// Server-rendered from our DB: standings, a week's scoreboard (?week=N, default this week), recent transactions
-// and the waiver order.
+// Server-rendered from our DB: standings, a week's scoreboard (?week=N, default this week), the 5 latest
+// transactions (all of them at /league/transactions) and the waiver order.
 // The header links to /league/settings (read-only for managers); the commissioner also gets Edit on the waiver rules.
 // League data is private: signed out, the page only asks to sign in.
 export default async function LeaguePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
@@ -29,7 +29,7 @@ export default async function LeaguePage({ searchParams }: { searchParams: Promi
   const userId = session.user.id;
   const [data, transactions, waivers, settings] = await Promise.all([
     getLeagueOverview(pool, CURRENT_SEASON, userId, positiveInt(week)),
-    getRecentTransactions(pool, CURRENT_SEASON),
+    getRecentTransactions(pool, CURRENT_SEASON, { limit: 5 }),
     getWaiverOrder(pool, CURRENT_SEASON),
     getLeagueSettings(pool, CURRENT_SEASON, userId),
   ]);
@@ -37,7 +37,7 @@ export default async function LeaguePage({ searchParams }: { searchParams: Promi
   return (
     <LeagueView data={data} isCommissioner={settings?.isCommissioner ?? false}>
       <div className={waiverStyles.below}>
-        <RecentTransactions data={transactions} myTeamId={myTeamId} />
+        <RecentTransactions data={transactions} myTeamId={myTeamId} viewAllHref="/league/transactions" />
         <WaiverOrder data={waivers} myTeamId={myTeamId} canEdit={settings?.isCommissioner ?? false} />
       </div>
     </LeagueView>

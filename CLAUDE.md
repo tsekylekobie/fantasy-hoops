@@ -27,7 +27,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `POST /api/dev/waivers?at=...` (dev only). FAAB (`waiver_type = 'faab'`): `resolveClaims` there (pure, tested) orders
   claims by bid, breaks ties on priority and charges `fantasy_teams.faab_balance`; bids are checked by `faabBidProblem`
   in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
-  one summary per run (`getRecentTransactions` in `queries/league.ts`).
+  one "Waiver report" per run, and groups claims without a run (imported) by the minute they went through
+  (`transactionFeed` in `src/lib/transactions/feed.ts`, pure, tested). The League page shows the 5 latest
+  (`getRecentTransactions` in `queries/league.ts`); `/league/transactions` pages through all of them (`?page=N`).
 - Trades: `src/lib/queries/trades.ts` (propose, accept, review, process; built from another team's page,
   `src/components/trades/`). A team over the active limit after a trade drops players with it
   (`transaction_players.to_team_id` NULL): the proposer picks when proposing, the partner when accepting.
