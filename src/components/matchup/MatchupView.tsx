@@ -21,7 +21,7 @@ import { CATEGORY_KEYS, STARTING_SLOTS } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import Avatar from "@/components/Avatar";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
-import { fmtGameDate, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
+import { fmtGameDate, fmtGameStatus, fmtInt, fmtPct, fullName, teamPos } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
 import TeamLink from "@/components/TeamLink";
 import Flash, { countDelta, shotsDelta } from "@/components/live/Flash";
@@ -77,7 +77,7 @@ function gameText(g: LineupGame, timeZone: string): string {
       : "TBD";
     return `${opp} · ${tip}`;
   }
-  if (g.state === "live") return `${opp} · ${g.statusText ?? "Live"}${score ? ` · ${score}` : ""}`;
+  if (g.state === "live") return `${opp} · ${g.statusText ? fmtGameStatus(g.statusText) : "Live"}${score ? ` · ${score}` : ""}`;
   const result = g.teamScore !== null && g.opponentScore !== null && g.teamScore !== g.opponentScore
     ? (g.teamScore > g.opponentScore ? "W " : "L ") : "";
   return `${opp} · ${result}${score || "Final"}`;

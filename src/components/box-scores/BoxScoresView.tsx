@@ -26,7 +26,7 @@ import Flash, { countDelta as count, shotsDelta, type FlashDelta } from "@/compo
 import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
-import { fmtGameDate, fmtPct, fmtValue, fullName, waiverTooltip } from "@/components/players/format";
+import { fmtGameDate, fmtGameStatus, fmtPct, fmtValue, fullName, waiverTooltip } from "@/components/players/format";
 import TeamLink from "@/components/TeamLink";
 import styles from "./BoxScoresView.module.css";
 
@@ -222,7 +222,7 @@ function GameCard({ g, timeZone, onPick }: { g: BoxScoreGame; timeZone: string; 
   return (
     <button type="button" className={styles.gm} onClick={onPick}>
       <Flash className={`${styles.st} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
-        {g.state === "scheduled" ? tipTime(g, timeZone) : g.statusText}
+        {g.state === "scheduled" ? tipTime(g, timeZone) : g.statusText && fmtGameStatus(g.statusText)}
       </Flash>
       <span className={`${styles.tl} ${dim("away")}`}>
         <b>{g.away.abbreviation}</b>
@@ -289,7 +289,7 @@ function PinnedBar({ games, shown, active, timeZone, onPick, live }: {
                   </span>
                 </span>
                 <Flash className={`${styles.chipSt} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
-                  {g.state === "scheduled" ? tipTime(g, timeZone).replace(/ [A-Z]{2,4}$/, "") : g.statusText}
+                  {g.state === "scheduled" ? tipTime(g, timeZone).replace(/ [A-Z]{2,4}$/, "") : g.statusText && fmtGameStatus(g.statusText)}
                   {g.mine.length > 0 && <i>{g.mine.length} of yours</i>}
                 </Flash>
               </button>
@@ -318,7 +318,7 @@ function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onA
         <h2>{title}</h2>
         {g.state !== "scheduled" && (
           <Flash className={`${styles.bst} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
-            {g.statusText}
+            {g.statusText && fmtGameStatus(g.statusText)}
           </Flash>
         )}
       </div>

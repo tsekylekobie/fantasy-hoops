@@ -11,7 +11,7 @@ import type {
   PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PastSeasonRow, PlayerTransaction, PlayerWeek,
 } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
-import { fetchJson, fmtAvg, fmtGameDate, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtGameStatus, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
 import WatchStar from "./WatchStar";
 import styles from "./PlayerModal.module.css";
 
@@ -713,7 +713,7 @@ function weekGameText(g: PlayerWeek["games"][number], timeZone: string): string 
   if (g.state === "scheduled") {
     return g.tipoff ? new Date(g.tipoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }) : "TBD";
   }
-  if (g.state === "live") return `${g.statusText ?? "Live"}${score ? ` · ${score}` : ""}`;
+  if (g.state === "live") return `${g.statusText ? fmtGameStatus(g.statusText) : "Live"}${score ? ` · ${score}` : ""}`;
   const result = g.teamScore !== null && g.opponentScore !== null && g.teamScore !== g.opponentScore
     ? (g.teamScore > g.opponentScore ? "W " : "L ") : "";
   return `${result}${score || "Final"}`;
