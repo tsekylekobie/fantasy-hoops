@@ -248,7 +248,16 @@ a.arw:hover,
   transition: opacity 140ms ease, transform 140ms ease;
 }
 
+/* Chips scroll sideways; the live countdown (if any) holds the bar's end. */
+.pin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .pinRow {
+  flex: 1;
+  min-width: 0;
   display: flex;
   gap: 6px;
   height: 100%;
@@ -260,6 +269,11 @@ a.arw:hover,
 
 .pinRow::-webkit-scrollbar {
   display: none;
+}
+
+.pinLive {
+  flex: none;
+  font-size: 12px;
 }
 
 .chip {
