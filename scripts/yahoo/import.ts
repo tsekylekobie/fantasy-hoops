@@ -15,7 +15,7 @@
 // against the weekly and season limits, when each rostered player was acquired)
 // and the players they left on waivers.
 // What doesn't: pending trades and claims (managers resubmit them), lineups set
-// ahead for future days, and a playoff bracket in progress (import before the
+// ahead past this week, and a playoff bracket in progress (import before the
 // playoffs start).
 //
 // Also read from the folder:
@@ -78,7 +78,7 @@ async function matchPlayers(db: PoolClient, snap: Snapshot): Promise<Map<string,
     all.set(p.key, e);
   };
   for (const [date, byTeam] of snap.rosters) {
-    for (const entries of byTeam.values()) for (const e of entries) note(e.player, date === snap.meta.today ? "roster" : "past lineups");
+    for (const entries of byTeam.values()) for (const e of entries) note(e.player, date === snap.meta.today ? "roster" : date < snap.meta.today ? "past lineups" : "upcoming lineups");
   }
   for (const tx of snap.transactions) for (const m of tx.moves) note(m.player, "transactions");
 
@@ -315,7 +315,7 @@ async function run(db: PoolClient, snap: Snapshot) {
       if (Y.toSlot(e.position) === null) warnings.push(`${p?.name}: Yahoo position "${e.position}" has no slot here; on the bench.`);
       // Starters must fit our positions (BALLDONTLIE's G/F/C); IL players stay put, like Yahoo, and get flagged below.
       if (isStarting(slot) && !eligible.includes(slot)) {
-        warnings.push(`${p?.name} (${p?.position ?? "no position"}) can't play ${slot} here (Yahoo: ${e.player.eligiblePositions.join(", ")}); on the bench today.`);
+        warnings.push(`${p?.name} (${p?.position ?? "no position"}) can't play ${slot} here (Yahoo: ${e.player.eligiblePositions.join(", ")}); keeps Yahoo's lineup through this week, on the bench after.`);
         slot = "BN";
       }
       slotsToday.set(id, slot);
@@ -332,20 +332,23 @@ async function run(db: PoolClient, snap: Snapshot) {
     }
   }
 
-  // --- Every day's lineup so far (today's as adjusted above) ---
+  // --- Every day's lineup this week, as Yahoo has it (including days set ahead) ---
   const rows = { team: [] as number[], date: [] as string[], player: [] as number[], slot: [] as string[] };
   for (const [date, byTeam] of snap.rosters) {
-    if (date > today) continue;
     for (const [key, entries] of byTeam) {
       const tid = teamId(key);
       if (tid === null) continue;
       for (const e of entries) {
         const id = pid(e.player);
         if (id === null) continue;
+        if (date > meta.today && !todaySlots.get(tid)?.has(id)) {
+          warnings.push(`lineups.csv: ${e.player.full} is in a ${date} lineup but not on that team today; skipped.`);
+          continue;
+        }
         rows.team.push(tid);
         rows.date.push(date);
         rows.player.push(id);
-        rows.slot.push(date === today ? todaySlots.get(tid)?.get(id) ?? "BN" : Y.toSlot(e.position) ?? "BN");
+        rows.slot.push(Y.toSlot(e.position) ?? "BN");
       }
     }
   }

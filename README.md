@@ -175,7 +175,7 @@ The import reads a folder of CSVs (keep it under `yahoo-export/`, which is gitig
 | `schedule.csv` | `week,start,end,team_a,team_b`, one row per matchup |
 | `results.csv` | `week,team,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov` for every finished week |
 | `rosters.csv` | `team,player,nba_team,positions,slot`: today's rosters and lineup slots |
-| `lineups.csv` | optional, `date,team,player,nba_team,positions,slot`: this week's earlier days, so it's scored as Yahoo had it |
+| `lineups.csv` | optional, `date,team,player,nba_team,positions,slot`: this week's other days, earlier ones and any set ahead, so the whole week is scored as Yahoo has it |
 | `transactions.csv` | optional, `id,at,type,player,nba_team,positions,from_team,to_team,faab_bid`: completed adds, drops, claims and trades, one row per player moved (rows sharing an `id` are one transaction; `at` is `yyyy-mm-dd HH:MM` in `league.json`'s `transactionsTimeZone`, else the league's; Yahoo shows times in the viewing device's zone) |
 
 You can also add `league-settings.json` for settings Yahoo's pages don't give, in the shape the
@@ -191,13 +191,13 @@ npm run yahoo:import -- yahoo-export/12345-csv --apply --replace  # replace the 
 
 The dry run lists what it would do and any problems: errors in the files, Yahoo players it couldn't match to
 ours (add their ids to `player-overrides.csv`, which it fills with the unmatched ones), starters whose Yahoo
-position doesn't fit ours (they go to the bench), illegal rosters, teams with no email. Point
+position doesn't fit ours (they keep Yahoo's lineup through this week, then go to the bench), illegal rosters, teams with no email. Point
 `DATABASE_URL` at production to import there. You can import as often as you like (a practice run
 now, the real one on moving day); each run starts over from the files, but users and sign-ins
 are kept. Copy and import on the same day: the import refuses rosters from an earlier day.
 Transactions become the league's history, count toward each team's add limits, and put players dropped within
 the waiver period back on waivers. Not imported: pending trades and waiver claims (managers resubmit them),
-lineups set for future days, and playoff brackets (import before the playoffs).
+lineups set ahead past this week, and playoff brackets (import before the playoffs).
 
 ## Deploying (Railway)
 

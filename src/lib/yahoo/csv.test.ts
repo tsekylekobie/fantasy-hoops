@@ -56,6 +56,15 @@ test("snapshotFromCsv: reports what's wrong", () => {
   assert.ok(errors.some((e) => e.includes('rosters.csv: no players for team "2"')));
 });
 
+test("snapshotFromCsv: lineups set ahead, through the end of this week", () => {
+  const schedule = "week,start,end,team_a,team_b\n1,2026-10-20,2026-10-26,1,2\n2,2026-10-27,2026-11-02,2,1\n3,2026-11-03,2026-11-09,1,2\n4,2026-11-10,2026-11-16,1,2\n";
+  const lineups = (date: string) => `date,team,player,nba_team,positions,slot\n${date},1,Stephen Curry,GS,PG/SG,Util\n`;
+  const ahead = snapshotFromCsv(files({ schedule, lineups: lineups("2026-11-09") }));
+  assert.deepEqual(ahead.errors, []);
+  assert.equal(ahead.snapshot.rosters.get("2026-11-09")!.get("csv.t.1")![0].position, "Util");
+  assert.ok(snapshotFromCsv(files({ schedule, lineups: lineups("2026-11-10") })).errors.some((e) => e.includes("lineups.csv row 2: date")));
+});
+
 test("snapshotFromCsv: weeks must be numbered in order without gaps", () => {
   const { errors } = snapshotFromCsv(files({ schedule: "week,start,end,team_a,team_b\n1,2026-10-20,2026-10-26,1,2\n3,2026-11-03,2026-11-09,1,2\n" }));
   assert.ok(errors.some((e) => e.includes("week 2 is missing")));

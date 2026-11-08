@@ -266,14 +266,18 @@ add counts in. Check: the daily waiver claims should land at the same local time
 
 ## 6. Rosters and lineups
 
-Find the week whose `start`–`end` contains today in `schedule.csv`. Set `start` to that week's first day, `today` to
-today and `teams` to the count from step 2, then run:
+Every day of the current week, not only up to today: managers often use Yahoo's "Set lineups for the entire week", so
+later days can already be set. Find the week whose `start`–`end` contains today in `schedule.csv`. Set `start` and `end`
+to that week's first and last days and `teams` to the count from step 2, then run. It fetches up to 7 pages per team,
+which outlasts `javascript_tool`'s 45 seconds, so it runs in the background on the page:
 
 ```js
-const league = 0, teams = 0, start = "yyyy-mm-dd", today = "yyyy-mm-dd";
+const league = 0, teams = 0, start = "yyyy-mm-dd", end = "yyyy-mm-dd";
 const dates = [];
-for (let d = new Date(`${start}T12:00:00Z`); d.toISOString().slice(0, 10) <= today; d.setUTCDate(d.getUTCDate() + 1)) dates.push(d.toISOString().slice(0, 10));
+for (let d = new Date(`${start}T12:00:00Z`); d.toISOString().slice(0, 10) <= end; d.setUTCDate(d.getUTCDate() + 1)) dates.push(d.toISOString().slice(0, 10));
 const SLOTS = new Set(["PG", "SG", "G", "SF", "PF", "F", "C", "Util", "BN", "IL", "IL+"]);
+window.__status = "running";
+(async () => {
 const rows = [];
 for (const date of dates) for (let t = 1; t <= teams; t++) {
   const html = await (await fetch(`/nba/${league}/${t}?date=${date}`, { credentials: "include" })).text();
@@ -295,7 +299,15 @@ for (const date of dates) for (let t = 1; t <= teams; t++) {
   }
 }
 window.__rows = rows;
-const perDay = {};
+window.__status = "done";
+})().catch((e) => { window.__status = `error ${e}`; });
+"started";
+```
+
+Check `window.__status` until it's `done`, then:
+
+```js
+const rows = window.__rows, perDay = {};
 for (const l of rows) { const d = l.slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; }
 JSON.stringify({ total: rows.length, perDay, noTeam: rows.filter((l) => l.split(",")[3] === "").length });
 ```
@@ -306,14 +318,13 @@ page didn't load or Yahoo's markup changed.
 Save them:
 
 - `rosters.csv`: header `team,player,nba_team,positions,slot`, then today's rows without the date column.
-- `lineups.csv`: header `date,team,player,nba_team,positions,slot`, then every row dated before today. On the week's
-  first day it's the header alone.
+- `lineups.csv`: header `date,team,player,nba_team,positions,slot`, then every other day's rows, earlier and later.
 
-If the rows are too long to read in chunks, read today's rows in full, then only each earlier day's differences. Most
+If the rows are too long to read in chunks, read today's rows in full, then only each other day's differences. Most
 rows repeat, so this is far shorter:
 
 ```js
-const R = window.__rows, today = "yyyy-mm-dd"; // the last date
+const R = window.__rows, today = "yyyy-mm-dd";
 const key = (l) => l.slice(11), who = (k) => k.split(",").slice(0, 2).join(",");
 const latest = R.filter((l) => l.startsWith(today)).map(key), same = new Set(latest), out = [];
 for (const d of [...new Set(R.map((l) => l.slice(0, 10)))].filter((d) => d !== today)) {
@@ -350,8 +361,8 @@ DATABASE_URL="<tunnel url>" npm run yahoo:import -- <folder>
 Fix every error. For unmatched players, fill in their ids in `player-overrides.csv`, which the run creates in the
 folder, then run again. Report the warnings to the user:
 
-- **"can't play ... here; on the bench today"**: Yahoo's positions are wider than ours. The starter moves to the bench
-  today only; earlier days keep their lineups.
+- **"can't play ... here; keeps Yahoo's lineup through this week"**: Yahoo's positions are wider than ours. The whole
+  week stays as Yahoo has it; after that he defaults to the bench until his manager sets him.
 - **"roster is illegal here"**: an IL player no longer qualifies. That team can't add or claim until it's fixed.
 - **"transactions.csv doesn't end with ... on the team rosters.csv has"**: a move happened between steps 5 and 6.
   Redo both.

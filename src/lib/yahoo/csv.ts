@@ -8,7 +8,8 @@
 //                  matchups, e.g. playoffs, can be a row with the teams blank)
 //   results.csv    week,team,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov   (finished weeks)
 //   rosters.csv    team,player,nba_team,positions,slot   (today)
-//   lineups.csv    date,team,player,nba_team,positions,slot   (optional: earlier days)
+//   lineups.csv    date,team,player,nba_team,positions,slot   (optional: this week's other days,
+//                  earlier ones and any set ahead through the week's end)
 //   transactions.csv  id,at,type,player,nba_team,positions,from_team,to_team,faab_bid
 //                  (optional: completed moves, one row per player moved; rows with the same id
 //                  are one transaction. at: "yyyy-mm-dd HH:MM" in league.json's
@@ -194,8 +195,9 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
     list.push({ player: csvPlayer(r.player, r.nba_team ?? "", r.positions ?? ""), position: r.slot ?? "BN" });
   };
   for (const [i, r] of parseCsv(files.rosters).entries()) addEntry("rosters.csv", i + 2, today, r);
+  const lastLineupDay = sorted.find((w) => w.start <= today && today <= w.end)?.end ?? today;
   for (const [i, r] of parseCsv(files.lineups ?? "").entries()) {
-    if (!DATE.test(r.date ?? "") || r.date >= today) errors.push(`lineups.csv row ${i + 2}: date "${r.date ?? ""}" must be a day before today (${today}).`);
+    if (!DATE.test(r.date ?? "") || r.date === today || r.date > lastLineupDay) errors.push(`lineups.csv row ${i + 2}: date "${r.date ?? ""}" must be a day other than today (${today}, which is rosters.csv) and no later than ${lastLineupDay}, the end of this week.`);
     else addEntry("lineups.csv", i + 2, r.date, r);
   }
   for (const t of teams) if (!rosters.get(today)?.has(t.key)) errors.push(`rosters.csv: no players for team "${t.key.slice(6)}".`);
