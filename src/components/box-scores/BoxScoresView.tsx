@@ -8,6 +8,9 @@
 // game you're reading; the tables' pinned headers sit just under it.
 // Keyed by date and ?game (page.tsx): ?game jumps to that game on load.
 // Signed out there's no Owner column and no Add/Claim (league data is private).
+// While games are live the page refreshes every 30s (LiveRefresh): changed stats,
+// scores and statuses flash, counts show the change ("+1") and ranks the move
+// ("▲3") for a moment (Flash), and rows reordered by Value slide into place (useFlipRows).
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,6 +20,8 @@ import { useSignedIn } from "@/components/SessionProvider";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
 import AddDropSheet from "@/components/transactions/AddDropSheet";
 import LiveRefresh from "@/components/live/LiveRefresh";
+import Flash, { type FlashDelta } from "@/components/live/Flash";
+import { useFlipRows } from "@/components/live/useFlipRows";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "@/components/players/ScrollName";
 import { fmtGameDate, fmtPct, fmtValue, fullName, waiverTooltip } from "@/components/players/format";
@@ -131,12 +136,16 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        <LiveRefresh active={data.live} />
         <PlayerModalHost>
           <h1 className={styles.title}>Box scores</h1>
           <p className={styles.sub}>
             {summary(data)}
-            {data.live && <b> · Live games update every 30 seconds</b>}
+            {data.live && (
+              <>
+                {" · "}
+                <b><LiveRefresh active countdown /></b>
+              </>
+            )}
           </p>
 
           <nav className={styles.dbar} aria-label="Date">
@@ -233,16 +242,16 @@ function GameCard({ g, timeZone, onPick }: { g: BoxScoreGame; timeZone: string; 
   const dim = (side: "away" | "home") => (winner !== null && winner !== side ? styles.lost : "");
   return (
     <button type="button" className={styles.gm} onClick={onPick}>
-      <span className={`${styles.st} ${g.state === "live" ? styles.live : ""}`}>
+      <Flash className={`${styles.st} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
         {g.state === "scheduled" ? tipTime(g, timeZone) : g.statusText}
-      </span>
+      </Flash>
       <span className={`${styles.tl} ${dim("away")}`}>
         <b>{g.away.abbreviation}</b>
-        <em>{g.away.score ?? ""}</em>
+        <Flash as="em" value={g.away.score} scope={g.id}>{g.away.score ?? ""}</Flash>
       </span>
       <span className={`${styles.tl} ${dim("home")}`}>
         <b>@ {g.home.abbreviation}</b>
-        <em>{g.home.score ?? ""}</em>
+        <Flash as="em" value={g.home.score} scope={g.id}>{g.home.score ?? ""}</Flash>
       </span>
       {g.mine.length > 0 && <span className={styles.mi}>{g.mine.length} of yours</span>}
     </button>
@@ -291,17 +300,17 @@ function PinnedBar({ games, shown, active, timeZone, onPick }: {
                 <span className={styles.chipTeams}>
                   <span className={dim("away")}>
                     <b>{g.away.abbreviation}</b>
-                    <em>{g.away.score ?? ""}</em>
+                    <Flash as="em" value={g.away.score} scope={g.id}>{g.away.score ?? ""}</Flash>
                   </span>
                   <span className={dim("home")}>
                     <b>{g.home.abbreviation}</b>
-                    <em>{g.home.score ?? ""}</em>
+                    <Flash as="em" value={g.home.score} scope={g.id}>{g.home.score ?? ""}</Flash>
                   </span>
                 </span>
-                <span className={`${styles.chipSt} ${g.state === "live" ? styles.live : ""}`}>
+                <Flash className={`${styles.chipSt} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
                   {g.state === "scheduled" ? tipTime(g, timeZone).replace(/ [A-Z]{2,4}$/, "") : g.statusText}
                   {g.mine.length > 0 && <i>{g.mine.length} of yours</i>}
-                </span>
+                </Flash>
               </button>
             );
           })}
@@ -321,7 +330,11 @@ function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onA
     <section id={boxId(g.id)} className={styles.box} aria-label={title}>
       <div className={styles.bh}>
         <h2>{title}</h2>
-        {g.state !== "scheduled" && <span className={`${styles.bst} ${g.state === "live" ? styles.live : ""}`}>{g.statusText}</span>}
+        {g.state !== "scheduled" && (
+          <Flash className={`${styles.bst} ${g.state === "live" ? styles.live : ""}`} value={g.statusText} scope={g.id}>
+            {g.statusText}
+          </Flash>
+        )}
       </div>
       {!hasRows ? (
         <p className={styles.empty}>
@@ -350,12 +363,17 @@ function TeamTable({ t, other, g, data, onAdd }: {
 }) {
   const result = g.state === "final" && t.score !== null && other.score !== null && t.score !== other.score
     ? (t.score > other.score ? "Won" : "Lost") : null;
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useFlipRows(bodyRef);
+  const tot = t.totals;
   return (
     <div className={styles.card}>
       <h3>
-        {t.abbreviation}
-        {t.score !== null && ` · ${t.score}`}
-        {result && <span>{result}</span>}
+        <span>
+          {t.abbreviation}
+          {t.score !== null && <> · <Flash value={t.score} scope={t.id}>{t.score}</Flash></>}
+        </span>
+        {result && <span className={styles.result}>{result}</span>}
       </h3>
       <StickyHeadTable
         tableClassName={`${styles.table} ${onAdd ? "" : styles.noOwner}`}
@@ -378,7 +396,7 @@ function TeamTable({ t, other, g, data, onAdd }: {
           </thead>
         )}
       >
-        <tbody>
+        <tbody ref={bodyRef}>
           {t.players.map((p) => (
             <PlayerRow key={p.id} p={p} data={data} onAdd={onAdd} />
           ))}
@@ -388,20 +406,30 @@ function TeamTable({ t, other, g, data, onAdd }: {
             <td className={styles.rk} />
             <th scope="row" className={styles.pl}>Team totals</th>
             {onAdd && <td />}
-            <td className={styles.n}>{t.totals.min}</td>
+            <td className={styles.n}>{tot.min}</td>
             <td className={styles.n}>
-              {fmtPct(t.totals.fgPct)}
-              <small>{t.totals.fgm}/{t.totals.fga}</small>
+              <Flash className={styles.c} value={`${tot.fgm}/${tot.fga}`} scope={t.id}>
+                {fmtPct(tot.fgPct)}
+                <small>{tot.fgm}/{tot.fga}</small>
+              </Flash>
             </td>
             <td className={styles.n}>
-              {fmtPct(t.totals.ftPct)}
-              <small>{t.totals.ftm}/{t.totals.fta}</small>
+              <Flash className={styles.c} value={`${tot.ftm}/${tot.fta}`} scope={t.id}>
+                {fmtPct(tot.ftPct)}
+                <small>{tot.ftm}/{tot.fta}</small>
+              </Flash>
             </td>
             {COUNTING.map((k) => (
-              <td key={k} className={styles.n}>{t.totals[k]}</td>
+              <td key={k} className={styles.n}>
+                <Flash className={styles.c} value={tot[k]} scope={t.id} delta={count(tot[k])}>{tot[k]}</Flash>
+              </td>
             ))}
-            <td className={styles.n}>{t.totals.tov}</td>
-            <td className={styles.n}>{t.totals.pf}</td>
+            <td className={styles.n}>
+              <Flash className={styles.c} value={tot.tov} scope={t.id} delta={count(tot.tov, true)}>{tot.tov}</Flash>
+            </td>
+            <td className={styles.n}>
+              <Flash className={styles.c} value={tot.pf} scope={t.id} delta={count(tot.pf, true)}>{tot.pf}</Flash>
+            </td>
             <td />
           </tr>
         </tfoot>
@@ -415,12 +443,21 @@ function rankTitle(k: BoxRankKey, r: BoxRank | undefined, of: number): string {
   return `${LABELS[k]}: ${r.tied ? "T-" : ""}${ordinal(r.rank)} of ${of} players on this date`;
 }
 
-function Cell({ k, r, of, children }: { k: BoxRankKey; r: BoxRank | undefined; of: number; children: React.ReactNode }) {
+/** A count's change, for Flash's badge ("+1"); TO and PF are lower-is-better (red when they go up). */
+const count = (n: number, lowerIsBetter = false): FlashDelta => ({ n, kind: "count", lowerIsBetter });
+
+/**
+ * A stat cell, shaded by its rank tier. `value` is what flashes when it changes (live
+ * updates; `scope` is the player); `delta` also shows the change.
+ */
+function Cell({ k, r, of, value, scope, delta, children }: {
+  k: BoxRankKey; r: BoxRank | undefined; of: number; value: string | number; scope: number; delta?: FlashDelta; children: React.ReactNode;
+}) {
   return (
     <td className={styles.n}>
-      <span className={`${styles.c} ${r ? TIER_CLASS[r.tier] ?? "" : ""}`} title={rankTitle(k, r, of)}>
+      <Flash className={`${styles.c} ${r ? TIER_CLASS[r.tier] ?? "" : ""}`} title={rankTitle(k, r, of)} value={value} scope={scope} delta={delta}>
         {children}
-      </span>
+      </Flash>
     </td>
   );
 }
@@ -430,9 +467,12 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
   const l = p.line;
   const of = data.playerCount;
   return (
-    <tr className={`${mine ? styles.mine : ""} ${l ? "" : styles.out}`}>
+    <tr data-flip={p.id} className={`${mine ? styles.mine : ""} ${l ? "" : styles.out}`}>
       <td className={styles.rk} title={l ? rankTitle("value", p.ranks.value, of) : undefined}>
-        {l && p.ranks.value ? `${p.ranks.value.tied ? "T-" : ""}${p.ranks.value.rank}` : "–"}
+        {/* Flashes (with ▲/▼) only when his own Value changed and moved him, not when others' lines did. */}
+        <Flash value={l ? p.value : null} scope={p.id} delta={{ n: l ? p.ranks.value?.rank ?? null : null, kind: "rank" }}>
+          {l && p.ranks.value ? `${p.ranks.value.tied ? "T-" : ""}${p.ranks.value.rank}` : "–"}
+        </Flash>
       </td>
       <th scope="row" className={styles.pl}>
         <PlayerButton playerId={p.id}>
@@ -466,20 +506,22 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
       {l ? (
         <>
           <td className={styles.n}>{l.min}</td>
-          <Cell k="fgPct" r={p.ranks.fgPct} of={of}>
+          <Cell k="fgPct" r={p.ranks.fgPct} of={of} value={`${l.fgm}/${l.fga}`} scope={p.id}>
             {fmtPct(l.fgPct)}
             <small>{l.fgm}/{l.fga}</small>
           </Cell>
-          <Cell k="ftPct" r={p.ranks.ftPct} of={of}>
+          <Cell k="ftPct" r={p.ranks.ftPct} of={of} value={`${l.ftm}/${l.fta}`} scope={p.id}>
             {fmtPct(l.ftPct)}
             <small>{l.ftm}/{l.fta}</small>
           </Cell>
           {COUNTING.map((k) => (
-            <Cell key={k} k={k} r={p.ranks[k]} of={of}>{l[k]}</Cell>
+            <Cell key={k} k={k} r={p.ranks[k]} of={of} value={l[k]} scope={p.id} delta={count(l[k])}>{l[k]}</Cell>
           ))}
-          <Cell k="tov" r={p.ranks.tov} of={of}>{l.tov}</Cell>
-          <td className={styles.n} title={l.pf >= 6 ? "Fouled out" : undefined}>{l.pf}</td>
-          <Cell k="value" r={p.ranks.value} of={of}>
+          <Cell k="tov" r={p.ranks.tov} of={of} value={l.tov} scope={p.id} delta={count(l.tov, true)}>{l.tov}</Cell>
+          <td className={styles.n} title={l.pf >= 6 ? "Fouled out" : undefined}>
+            <Flash className={styles.c} value={l.pf} scope={p.id} delta={count(l.pf, true)}>{l.pf}</Flash>
+          </td>
+          <Cell k="value" r={p.ranks.value} of={of} value={p.value ?? 0} scope={p.id}>
             <b>{fmtValue(p.value ?? 0)}</b>
           </Cell>
         </>

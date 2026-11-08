@@ -108,7 +108,10 @@ stored game logs), and neither is `/plays` (no play-by-play).
   scrolled) and `players/ScrollName` (names shorten to "S. Gilgeous-Alexander" while scrolled); My team's roster sets `data-scrolled` itself and also hides headshots then).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek` and
   `TeamLineupResponse`), Matchup (`router.refresh`) and My team (refetch) poll every 30s; `Flash` highlights a cell whose
-  value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed).
+  value changed (not on first render, from null, or when its `scope`, e.g. the player in the row, changed); its `delta`
+  also badges the change ("+1", a rank's "▲3"). Box scores (`LiveRefresh`) flashes stats, totals, scores and statuses,
+  badges counts and the rank (only when the player's own Value changed), `useFlipRows` slides re-sorted rows into place
+  (rising rows pass over the others), and `LiveRefresh countdown` shows the next update (`LiveCountdown`, from `useLivePoll`'s `nextAt`).
 - `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (https://claude.ai/artifact/3ZpzKr2ULidGFpMvgVcvAm, private to the owner).
   `players-table` and `player-modal` are the Players page;
   `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`, `trade-analyzer`,
