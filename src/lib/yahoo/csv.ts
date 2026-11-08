@@ -9,6 +9,12 @@
 //   results.csv    week,team,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov   (finished weeks)
 //   rosters.csv    team,player,nba_team,positions,slot   (today)
 //   lineups.csv    date,team,player,nba_team,positions,slot   (optional: earlier days)
+//   transactions.csv  id,at,type,player,nba_team,positions,from_team,to_team,faab_bid
+//                  (optional: completed moves, one row per player moved; rows with the same id
+//                  are one transaction. at: "yyyy-mm-dd HH:MM" in league.json's
+//                  transactionsTimeZone, else the league's. type: add, drop, add_drop,
+//                  waiver_claim or trade. from_team blank = free agents or waivers; to_team
+//                  blank = dropped. faab_bid: on a claim's added player.)
 // `team` is any short id used across the files (e.g. 1-12). `slot` is a Yahoo
 // position (PG ... Util, BN, IL, IL+); `positions` is the player's eligible
 // positions, separated by "/" (optional, only used in messages).
@@ -24,6 +30,7 @@ import {
   type YahooMatchup,
   type YahooPlayer,
   type YahooRosterEntry,
+  type YahooTransaction,
 } from "./parse";
 
 export interface CsvFiles {
@@ -33,6 +40,7 @@ export interface CsvFiles {
   results: string;
   rosters: string;
   lineups?: string;
+  transactions?: string;
 }
 
 export interface CsvLeague {
@@ -42,9 +50,13 @@ export interface CsvLeague {
   rosterSlots: Record<string, number>;
   playoffStartWeek?: number | null;
   settings?: YahooLeague["settings"];
+  /** The IANA time zone of transactions.csv's times (Yahoo shows them in the viewing device's); default the league's. */
+  transactionsTimeZone?: string;
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+const TX_TYPES = new Set<YahooTransaction["type"]>(["add", "drop", "add_drop", "waiver_claim", "trade"]);
 const STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -188,6 +200,46 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
   }
   for (const t of teams) if (!rosters.get(today)?.has(t.key)) errors.push(`rosters.csv: no players for team "${t.key.slice(6)}".`);
 
+  // --- Transactions ---
+  const txs = new Map<string, YahooTransaction>();
+  for (const [i, r] of parseCsv(files.transactions ?? "").entries()) {
+    const row = i + 2, F = "transactions.csv";
+    const type = r.type as YahooTransaction["type"];
+    if (!r.id) { errors.push(`${F} row ${row}: id is missing.`); continue; }
+    if (!DATE_TIME.test(r.at ?? "")) { errors.push(`${F} row ${row}: at "${r.at ?? ""}" isn't "yyyy-mm-dd HH:MM".`); continue; }
+    if (!TX_TYPES.has(type)) { errors.push(`${F} row ${row}: type "${r.type ?? ""}" isn't add, drop, add_drop, waiver_claim or trade.`); continue; }
+    if (!r.player) { errors.push(`${F} row ${row}: player is missing.`); continue; }
+    const from = r.from_team ? key(F, row, r.from_team) : null;
+    const to = r.to_team ? key(F, row, r.to_team) : null;
+    if (!r.from_team && !r.to_team) { errors.push(`${F} row ${row}: from_team and to_team are both blank.`); continue; }
+    if ((r.from_team && !from) || (r.to_team && !to)) continue;
+    if (type === "trade" && (!from || !to)) { errors.push(`${F} row ${row}: a trade moves a player from one team to another.`); continue; }
+    const bid = num(F, row, "faab_bid", r.faab_bid, null);
+    let tx = txs.get(r.id);
+    if (!tx) {
+      tx = { id: r.id, at: r.at, type, team: "", tradeTeam: null, faabBid: null, moves: [] };
+      txs.set(r.id, tx);
+    } else if (tx.at !== r.at || tx.type !== type) {
+      errors.push(`${F} row ${row}: transaction ${r.id} has a different at or type than an earlier row.`);
+      continue;
+    }
+    if (bid !== null && to) tx.faabBid = bid;
+    tx.moves.push({ player: csvPlayer(r.player, r.nba_team ?? "", r.positions ?? ""), from, to });
+  }
+  for (const tx of txs.values()) {
+    if (tx.type === "trade") {
+      const sides = [...new Set(tx.moves.flatMap((m) => [m.from!, m.to!]))];
+      if (sides.length !== 2) errors.push(`transactions.csv: trade ${tx.id} is between ${sides.length} teams; only two-team trades are imported.`);
+      [tx.team, tx.tradeTeam = null] = sides;
+    } else {
+      const teams_ = [...new Set(tx.moves.map((m) => m.to ?? m.from!))];
+      if (teams_.length !== 1) errors.push(`transactions.csv: transaction ${tx.id} moves players for ${teams_.length} teams; only a trade can.`);
+      if (tx.moves.some((m) => m.from && m.to)) errors.push(`transactions.csv: transaction ${tx.id} moves a player between teams but isn't a trade.`);
+      tx.team = teams_[0];
+    }
+  }
+  const transactions = [...txs.values()].sort((a, b) => a.at.localeCompare(b.at));
+
   const league: YahooLeague = {
     key: "csv",
     name: l.name ?? "",
@@ -210,6 +262,8 @@ export function snapshotFromCsv(files: CsvFiles): { snapshot: ImportSnapshot; me
       weeks: sorted,
       matchups,
       rosters: new Map([...rosters].sort(([x], [y]) => x.localeCompare(y))),
+      transactions,
+      transactionsTimeZone: l.transactionsTimeZone?.trim() || null,
     },
     members,
     errors,

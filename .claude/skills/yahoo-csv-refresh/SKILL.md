@@ -48,7 +48,8 @@ If `<folder>/league.json` exists, this is a refresh:
 | `league.json` | Set `today` |
 | `teams.csv` | Update `waiver_priority` and `faab_balance`: step 2 |
 | `results.csv` | Add weeks finished since last time: step 4 |
-| `rosters.csv`, `lineups.csv` | Rebuild: step 5 |
+| `transactions.csv` | Rebuild: step 5 |
+| `rosters.csv`, `lineups.csv` | Rebuild: step 6 |
 | `schedule.csv`, `league-settings.json`, `player-overrides.csv` | Keep. The import adds to `player-overrides.csv` |
 
 Otherwise it's a first build: do every step, in order.
@@ -187,7 +188,83 @@ Add the rows to `results.csv` under the header `week,team,fgm,fga,ftm,fta,fg3m,p
 assumes the league's nine categories (FG%, FT%, 3PTM, PTS, REB, AST, ST, BLK, TO, in Yahoo's order). Check one matchup's
 category score against Yahoo's page to confirm the columns still line up and the first line really is `team_a`.
 
-## 5. Rosters and lineups
+## 5. Transactions
+
+Every completed transaction this season: adds, drops, waiver claims with their FAAB bids, and trades. The import uses
+them for the league's history, each team's adds against the weekly and season limits, and which dropped players are
+still on waivers. Do this right before step 6, so the two agree. Set `league` and `season` and run:
+
+```js
+const league = 0, season = 0; // <id>, league.json's season
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const when = (s) => { // "Nov 7, 4:24 pm" -> "2026-11-07 16:24"
+  const m = s.trim().match(/^(\w{3}) (\d{1,2}), (\d{1,2}):(\d{2}) ([ap]m)$/);
+  if (!m) return "";
+  const mo = MONTHS.indexOf(m[1]) + 1, h = (+m[3] % 12) + (m[5] === "pm" ? 12 : 0);
+  return `${mo >= 7 ? season : season + 1}-${String(mo).padStart(2, "0")}-${m[2].padStart(2, "0")} ${String(h).padStart(2, "0")}:${m[4]}`;
+};
+const teamOf = (td) => [...td.querySelectorAll("a")].map((a) => (a.getAttribute("href") || "").match(/\/nba\/\d+\/(\d+)$/)).find(Boolean)?.[1] ?? "";
+// Each player is a child of the cell holding his name link and "NBA - positions".
+const players = (td) => [...td.children].filter((c) => c.querySelector(".F-position")).map((c) => {
+  const [nba = "", pos = ""] = c.querySelector(".F-position").textContent.split(" - ").map((x) => x.trim());
+  const name = [...c.querySelectorAll("a")].find((a) => a.textContent.trim())?.textContent.trim() ?? "";
+  return { name, nba, pos: pos.replace(/,/g, "/"), note: (c.querySelector("h6")?.textContent || "").replace(/\s+/g, " ").trim() };
+});
+const trs = [];
+for (let c = 0; ; c += 25) {
+  const doc = new DOMParser().parseFromString(await (await fetch(`/nba/${league}/transactions?transactionsfilter=all&count=${c}`, { credentials: "include" })).text(), "text/html");
+  const page = [...doc.querySelectorAll("table tbody tr")];
+  trs.push(...page);
+  if (page.length < 25) break;
+}
+const moves = [], problems = [], q = (s) => `"${s.replace(/"/g, '""')}"`;
+for (let i = 0; i < trs.length; i++) {
+  const tds = [...trs[i].querySelectorAll("td")], last = tds.at(-1);
+  const at = when(last.querySelector(".F-timestamp")?.textContent || ""), rows = [];
+  if (!at) problems.push(`row ${i}: no date`);
+  if (trs[i].querySelector(".F-trade")) {
+    // A trade: this row and the next ones without an icon each list what one team received.
+    const sides = [[players(tds[1]), teamOf(last)]];
+    while (trs[i + 1] && !trs[i + 1].querySelector(".F-icon") && /Traded to/.test(trs[i + 1].textContent)) {
+      const n = [...trs[++i].querySelectorAll("td")];
+      sides.push([players(n[0]), teamOf(n.at(-1))]);
+    }
+    if (sides.length !== 2 || sides.some(([ps, t]) => !ps.length || !t)) problems.push(`row ${i}: a trade with ${sides.length} sides`);
+    for (const [k, [ps, to]] of sides.entries()) for (const p of ps) rows.push(["trade", q(p.name), p.nba, p.pos, sides[1 - k]?.[1] ?? "", to, ""]);
+  } else {
+    const team = teamOf(last), ps = players(tds[1]);
+    const icons = [...tds[0].querySelectorAll(".F-icon")].map((s) => (s.classList.contains("F-positive") ? "+" : "-"));
+    const adds = ps.filter((_, k) => icons[k] === "+"), drops = ps.filter((_, k) => icons[k] === "-");
+    if (icons.length !== ps.length || !ps.length || !team) problems.push(`row ${i}: ${icons.length} icons, ${ps.length} players, team "${team}"`);
+    const type = adds.some((p) => /Waiver/.test(p.note)) ? "waiver_claim" : adds.length && drops.length ? "add_drop" : adds.length ? "add" : "drop";
+    for (const p of adds) rows.push([type, q(p.name), p.nba, p.pos, "", team, (p.note.match(/\$(\d+)/) || [])[1] ?? ""]);
+    for (const p of drops) rows.push([type, q(p.name), p.nba, p.pos, team, "", ""]);
+  }
+  moves.push({ at, rows });
+}
+// Oldest first, numbered from 1.
+window.__transactions = moves.reverse().flatMap((m, k) => m.rows.map((r) => [k + 1, m.at, ...r].join(",")));
+const types = {};
+for (const l of window.__transactions) { const t = l.split(",")[2]; types[t] = (types[t] || 0) + 1; }
+JSON.stringify({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  yahooRows: trs.length, transactions: moves.length, rows: window.__transactions.length, types, problems: problems.slice(0, 5),
+  notes: [...new Set(trs.flatMap((r) => [...r.querySelectorAll("h6")].map((h) => h.textContent.replace(/\s+/g, " ").trim().replace(/\$\d+/, "$N"))))] });
+```
+
+Save the rows to `transactions.csv` under the header `id,at,type,player,nba_team,positions,from_team,to_team,faab_bid`
+(one row per player moved; rows sharing an `id` are one transaction). `problems` should be empty. `notes` lists how
+Yahoo labels each player's move: `$N Waiver` is a claim and its bid, `To Waivers` a drop. An add whose label doesn't
+say "Waiver" is taken as a free-agent add (`add`, `add_drop`); if a label you haven't seen shows up, check that its
+rows got the right `type`.
+A trade between three teams is reported in `problems`: the import takes only two-team trades, so leave it out and tell
+the user.
+
+**Times.** Yahoo shows them in the time zone of the device the page runs on, not the league's, and the user may be
+travelling. The script reports that zone as `timeZone`: set it in `league.json` as `"transactionsTimeZone"` on every
+refresh (drop the field only if it equals the league's `timeZone`). It decides which day, and so which matchup week, an
+add counts in. Check: the daily waiver claims should land at the same local time each day in the league's time zone.
+
+## 6. Rosters and lineups
 
 Find the week whose `start`–`end` contains today in `schedule.csv`. Set `start` to that week's first day, `today` to
 today and `teams` to the count from step 2, then run:
@@ -253,7 +330,7 @@ Rebuild each day locally from today's rows, and check its count against `perDay`
 
 Finally set `today` in `league.json`. Do this last: it's what tells the import the rosters are current.
 
-## 6. Dry run
+## 7. Dry run
 
 Confirm which database with the user. Importing into production needs `players` and game stats loaded there
 (README, "Deploying"). For Railway, open the tunnel in the background and send its output to a file in your scratchpad,
@@ -276,11 +353,18 @@ folder, then run again. Report the warnings to the user:
 - **"can't play ... here; on the bench today"**: Yahoo's positions are wider than ours. The starter moves to the bench
   today only; earlier days keep their lineups.
 - **"roster is illegal here"**: an IL player no longer qualifies. That team can't add or claim until it's fixed.
+- **"transactions.csv doesn't end with ... on the team rosters.csv has"**: a move happened between steps 5 and 6.
+  Redo both.
+- **"No match for ... in transactions"**: a player who has since left the league's rosters; his move is skipped. Add
+  his id to `player-overrides.csv` if the user wants that history complete.
+
+The `Transactions:` line lists the players still on waivers and when they clear. Check them against Yahoo's
+players-on-waivers list.
 
 "There's already a season league" means production has one. Stop and ask before using `--replace`. "The snapshot is
 from ..." means `today` is stale: refresh rather than reaching for `--stale-ok`, unless the user chooses it.
 
-## 7. Apply
+## 8. Apply
 
 Only after a clean dry run and the user's go-ahead. Add `--replace` only if a league already exists and the user has
 said to replace it.
@@ -292,7 +376,7 @@ DATABASE_URL="<tunnel url>" npm run yahoo:import -- <folder> --apply
 The import is one transaction, so an error or a dropped tunnel saves nothing. Afterwards, check the team, roster and
 week counts in the database, and that the site loads.
 
-## 8. Close the tunnel
+## 9. Close the tunnel
 
 Interrupt `railway` with Ctrl-C (`kill -INT`). Its SSH process can outlive it, so check the port:
 
@@ -308,3 +392,6 @@ nothing. Delete any scratch file holding the URL.
 - **Row counts look wrong, or `nba_team` is blank:** Yahoo changed its markup. Look at one row with
   `document.querySelector("table tbody tr").innerText` and update the selectors here.
 - **`noId` is above 0 or the team count looks wrong:** check the Managers table's columns against step 2.
+- **Transactions `problems` aren't empty:** look at one row's cells with
+  `[...document.querySelector("table tbody tr").children].map((c) => c.innerText)` on the Transactions page and update
+  step 5's selectors. A trade is one row per team that received players, the first with the trade icon.

@@ -84,6 +84,26 @@ export interface YahooLeague {
   };
 }
 
+/** One move in a Yahoo transaction: from a team (null = free agents or waivers) to a team (null = dropped). */
+export interface YahooMove {
+  player: YahooPlayer;
+  from: string | null;
+  to: string | null;
+}
+
+/** A completed Yahoo transaction (transactions.csv); team keys as in `teams`. */
+export interface YahooTransaction {
+  id: string;
+  /** Local time, "yyyy-mm-dd HH:MM", in `ImportSnapshot.transactionsTimeZone` (or the league's). */
+  at: string;
+  type: "add" | "drop" | "add_drop" | "waiver_claim" | "trade";
+  /** Who made it (for a trade, one side) and, for a trade, the other side. */
+  team: string;
+  tradeTeam: string | null;
+  faabBid: number | null;
+  moves: YahooMove[];
+}
+
 /** Everything the import reads, built from a folder of CSVs (csv.ts). */
 export interface ImportSnapshot {
   meta: { leagueKey: string; exportedAt: string; today: string };
@@ -93,6 +113,10 @@ export interface ImportSnapshot {
   matchups: YahooMatchup[];
   /** date -> team key -> that day's roster. */
   rosters: Map<string, Map<string, YahooRosterEntry[]>>;
+  /** Completed transactions, oldest first (none without transactions.csv). */
+  transactions: YahooTransaction[];
+  /** The IANA time zone transactions.csv's times are in; null = the league's. */
+  transactionsTimeZone: string | null;
 }
 
 // --- Matching Yahoo players to ours (BALLDONTLIE) ---

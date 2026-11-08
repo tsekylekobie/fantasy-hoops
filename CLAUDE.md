@@ -96,6 +96,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   shape and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
   totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
   `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
+  Yahoo's completed transactions (`transactions.csv`) become ordinary `transactions` rows (no `waiver_run_id`), so
+  they show in history and count toward add limits; players dropped within the waiver period go back on waivers.
 - Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is
   signed-in only. Signed out, the header shows League (a sign-in prompt), Players and Box scores; Players hides the
   league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/

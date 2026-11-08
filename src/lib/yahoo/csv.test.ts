@@ -60,3 +60,44 @@ test("snapshotFromCsv: weeks must be numbered in order without gaps", () => {
   const { errors } = snapshotFromCsv(files({ schedule: "week,start,end,team_a,team_b\n1,2026-10-20,2026-10-26,1,2\n3,2026-11-03,2026-11-09,1,2\n" }));
   assert.ok(errors.some((e) => e.includes("week 2 is missing")));
 });
+
+const TX = "id,at,type,player,nba_team,positions,from_team,to_team,faab_bid\n";
+
+test("snapshotFromCsv: transactions grouped by id, oldest first", () => {
+  const { snapshot: s, errors } = snapshotFromCsv(files({
+    league: { name: "Hoops", season: 2026, today: "2026-11-04", rosterSlots: { PG: 1, BN: 2 }, transactionsTimeZone: "UTC" },
+    transactions: TX +
+      "2,2026-11-03 16:24,waiver_claim,Jaren Jackson Jr.,MEM,PF/C,,2,7\n2,2026-11-03 16:24,waiver_claim,Gui Santos,GS,F,2,,\n" +
+      "1,2026-10-29 15:28,trade,Stephen Curry,GS,PG,2,1,\n1,2026-10-29 15:28,trade,Nikola Jokić,DEN,C,1,2,\n" +
+      "3,2026-11-04 01:00,drop,\"Payton, Gary II\",GS,G/F,1,,\n",
+  }));
+  assert.deepEqual(errors, []);
+  assert.equal(s.transactionsTimeZone, "UTC");
+  assert.deepEqual(s.transactions.map((t) => [t.id, t.type, t.team, t.tradeTeam, t.faabBid, t.moves.length]), [
+    ["1", "trade", "csv.t.2", "csv.t.1", null, 2],
+    ["2", "waiver_claim", "csv.t.2", null, 7, 2],
+    ["3", "drop", "csv.t.1", null, null, 1],
+  ]);
+  assert.deepEqual(s.transactions[1].moves.map((m) => [m.player.key, m.from, m.to]), [
+    ["jaren jackson|MEM", null, "csv.t.2"], ["gui santos|GSW", "csv.t.2", null],
+  ]);
+  assert.equal(snapshotFromCsv(files()).snapshot.transactions.length, 0);
+});
+
+test("snapshotFromCsv: reports what's wrong with transactions", () => {
+  const { errors } = snapshotFromCsv(files({
+    transactions: TX +
+      "1,2026-11-03,add,A B,MEM,F,,1,\n" +
+      "2,2026-11-03 10:00,swap,A B,MEM,F,,1,\n" +
+      "3,2026-11-03 10:00,add,A B,MEM,F,,,\n" +
+      "4,2026-11-03 10:00,trade,A B,MEM,F,,1,\n" +
+      "5,2026-11-03 10:00,add,A B,MEM,F,,1,\n5,2026-11-03 10:00,add,C D,MEM,F,,2,\n" +
+      "6,2026-11-03 10:00,add,A B,MEM,F,,9,\n",
+  }));
+  assert.ok(errors.some((e) => e.includes('row 2: at "2026-11-03"')));
+  assert.ok(errors.some((e) => e.includes('row 3: type "swap"')));
+  assert.ok(errors.some((e) => e.includes("row 4: from_team and to_team are both blank")));
+  assert.ok(errors.some((e) => e.includes("row 5: a trade moves")));
+  assert.ok(errors.some((e) => e.includes("transaction 5 moves players for 2 teams")));
+  assert.ok(errors.some((e) => e.includes('row 8: no team "9"')));
+});

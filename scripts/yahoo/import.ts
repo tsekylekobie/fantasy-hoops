@@ -10,10 +10,13 @@
 // What carries over: teams and their managers' emails, the schedule (Yahoo's
 // matchup weeks and pairings), every finished week's result exactly as Yahoo
 // scored it (week_results), each team's lineup on every day in lineups.csv,
-// today's rosters, waiver order, FAAB balances, and the settings in league.json.
-// What doesn't: transactions, players on waivers, pending trades and claims
-// (managers resubmit them), lineups set ahead for future days, and a playoff
-// bracket in progress (import before the playoffs start).
+// today's rosters, waiver order, FAAB balances, the settings in league.json and,
+// from transactions.csv, completed transactions (league history, adds counted
+// against the weekly and season limits, when each rostered player was acquired)
+// and the players they left on waivers.
+// What doesn't: pending trades and claims (managers resubmit them), lineups set
+// ahead for future days, and a playoff bracket in progress (import before the
+// playoffs start).
 //
 // Also read from the folder:
 //   league-settings.json   optional: settings to use instead of league.json's or our defaults, in the
@@ -59,6 +62,7 @@ function loadSnapshot(): Snapshot {
   const csv = snapshotFromCsv({
     league: read("league.json"), teams: text("teams.csv"), schedule: text("schedule.csv"),
     results: text("results.csv"), rosters: text("rosters.csv"), lineups: text("lineups.csv"),
+    transactions: text("transactions.csv"),
   });
   errors.push(...csv.errors);
   members = csv.members;
@@ -76,6 +80,7 @@ async function matchPlayers(db: PoolClient, snap: Snapshot): Promise<Map<string,
   for (const [date, byTeam] of snap.rosters) {
     for (const entries of byTeam.values()) for (const e of entries) note(e.player, date === snap.meta.today ? "roster" : "past lineups");
   }
+  for (const tx of snap.transactions) for (const m of tx.moves) note(m.player, "transactions");
 
   const OVERRIDES = "player-overrides.csv";
   const overrides = has(OVERRIDES) ? Y.parseCsv(readFileSync(join(dir!, OVERRIDES), "utf8")) : [];
@@ -352,6 +357,8 @@ async function run(db: PoolClient, snap: Snapshot) {
   );
   notes.push(`Rosters: ${rostered} players on ${todaySlots.size} teams; ${rows.team.length} daily lineup rows over ${snap.rosters.size} days.`);
 
+  await importTransactions(db, snap, leagueId, teamId, pid, s.timeZone, s.waiverDays, today);
+
   // --- Managers who have signed in before get their teams now ---
   // Matched by canonicalEmail, so "a.b@gmail.com" signed in finds a team listed as "ab@gmail.com".
   const { rows: identities } = await db.query<{ id: number; email: string }>(
@@ -369,6 +376,101 @@ async function run(db: PoolClient, snap: Snapshot) {
     if (userId) linked += await linkMemberships(db, userId, email);
   }
   notes.push(`Managers: ${emails.size} emails for ${snap.teams.length - unclaimed.length} teams; ${linked} already signed in and linked, the rest link on first sign-in.`);
+}
+
+/**
+ * Yahoo's completed transactions, as if made here: the League page's history and
+ * each player's, adds counted against the limits (countAdds), and roster_players.acquired_at.
+ * A player dropped within the waiver period and not picked up since goes on waivers.
+ */
+async function importTransactions(
+  db: PoolClient, snap: Snapshot, leagueId: number, teamId: (key: string | null) => number | null,
+  pid: (p: Y.YahooPlayer) => number | null, leagueTz: string, waiverDays: number, today: string,
+) {
+  if (snap.transactions.length === 0) {
+    notes.push("Transactions: none (no transactions.csv), so no history, add counts or players on waivers.");
+    return;
+  }
+  const tz = snap.transactionsTimeZone ?? leagueTz;
+  const { rowCount: known } = await db.query(`SELECT 1 FROM pg_timezone_names WHERE name = $1`, [tz]);
+  if (!known) {
+    errors.push(`league.json: transactionsTimeZone "${tz}" isn't a time zone (e.g. "America/Los_Angeles").`);
+    return;
+  }
+  let saved = 0;
+  let moves = 0;
+  for (const tx of snap.transactions) {
+    const players = new Map<number, { from: number | null; to: number | null }>();
+    for (const m of tx.moves) {
+      const id = pid(m.player);
+      if (id !== null) players.set(id, { from: teamId(m.from), to: teamId(m.to) });
+    }
+    if (players.size === 0) continue;
+    const { rows: [row] } = await db.query<{ id: number; day: string }>(
+      `INSERT INTO transactions (league_id, type, status, team_id, trade_team_id, faab_bid, created_at, processed_at, accepted_at)
+       SELECT $1, $2, 'completed', $3, $4, $5, x.at, x.at, CASE WHEN $2 = 'trade' THEN x.at END
+         FROM (SELECT ($6::timestamp AT TIME ZONE $7) AS at) x
+       RETURNING id::int, to_char((created_at AT TIME ZONE $8)::date, 'YYYY-MM-DD') AS day`,
+      [leagueId, tx.type, teamId(tx.team), teamId(tx.tradeTeam), tx.type === "waiver_claim" ? tx.faabBid : null, tx.at, tz, leagueTz],
+    );
+    if (row.day > today) errors.push(`transactions.csv: transaction ${tx.id} (${tx.at}, ${tz}) is after today (${today}); rebuild the CSVs.`);
+    for (const [player, { from, to }] of players) {
+      await db.query(
+        `INSERT INTO transaction_players (transaction_id, player_id, from_team_id, to_team_id) VALUES ($1, $2, $3, $4)`,
+        [row.id, player, from, to],
+      );
+      moves++;
+    }
+    saved++;
+  }
+
+  // Rostered players were acquired by their latest move to that team (else the season start, as set above).
+  const { rowCount: acquired } = await db.query(
+    `UPDATE roster_players rp SET acquired_at = x.at
+       FROM (SELECT DISTINCT ON (tp.player_id, tp.to_team_id) tp.player_id, tp.to_team_id, t.created_at AS at
+               FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
+              WHERE t.league_id = $1 AND tp.to_team_id IS NOT NULL
+              ORDER BY tp.player_id, tp.to_team_id, t.created_at DESC, t.id DESC) x
+      WHERE rp.league_id = $1 AND rp.player_id = x.player_id AND rp.fantasy_team_id = x.to_team_id`,
+    [leagueId],
+  );
+  // On waivers, like a drop here (runRosterMove): until the first waiver run at least waiver_days after the drop.
+  const { rows: onWaivers } = waiverDays <= 0 ? { rows: [] } : await db.query<{ name: string; clears: string }>(
+    `WITH last AS (
+       SELECT DISTINCT ON (tp.player_id) tp.player_id, tp.from_team_id, tp.to_team_id, t.created_at AS at
+         FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
+        WHERE t.league_id = $1
+        ORDER BY tp.player_id, t.created_at DESC, t.id DESC
+     ), w AS (
+       INSERT INTO waiver_players (league_id, player_id, clears_at, dropped_by_team_id)
+       SELECT $1, l.player_id, next_waiver_run($1, l.at + make_interval(days => $2)), l.from_team_id
+         FROM last l
+        WHERE l.to_team_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM roster_players rp WHERE rp.league_id = $1 AND rp.player_id = l.player_id)
+          AND next_waiver_run($1, l.at + make_interval(days => $2)) > now()
+       RETURNING player_id, clears_at
+     )
+     SELECT p.first_name || ' ' || p.last_name AS name,
+            to_char(w.clears_at AT TIME ZONE $3, 'Mon FMDD FMHH12:MI am') AS clears
+       FROM w JOIN players p ON p.id = w.player_id ORDER BY w.clears_at, p.last_name`,
+    [leagueId, waiverDays, leagueTz],
+  );
+  // A rostered player whose last move here isn't onto his team: the files disagree.
+  const { rows: mismatched } = await db.query<{ name: string }>(
+    `SELECT p.first_name || ' ' || p.last_name AS name
+       FROM roster_players rp JOIN players p ON p.id = rp.player_id
+       JOIN LATERAL (SELECT tp.to_team_id FROM transaction_players tp JOIN transactions t ON t.id = tp.transaction_id
+                      WHERE t.league_id = $1 AND tp.player_id = rp.player_id
+                      ORDER BY t.created_at DESC, t.id DESC LIMIT 1) last ON true
+      WHERE rp.league_id = $1 AND last.to_team_id IS DISTINCT FROM rp.fantasy_team_id
+      ORDER BY p.last_name`,
+    [leagueId],
+  );
+  if (mismatched.length > 0) {
+    warnings.push(`transactions.csv doesn't end with ${mismatched.map((m) => m.name).join(", ")} on the team rosters.csv has; check both are from today.`);
+  }
+  notes.push(`Transactions: ${saved} (${moves} player moves, times in ${tz}); ${acquired} rostered players' acquired dates; ` +
+    `${onWaivers.length} on waivers${onWaivers.length > 0 ? ` (${onWaivers.map((w) => `${w.name} until ${w.clears}`).join(", ")})` : ""}.`);
 }
 
 async function main() {
