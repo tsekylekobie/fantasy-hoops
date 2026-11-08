@@ -648,12 +648,14 @@ export interface WaiverRunClaim {
 }
 
 /**
- * A waiver run that decided at least one claim, for Recent transactions: every
- * claim, grouped by the player claimed. Its won claims aren't listed again as
- * separate transactions.
+ * A waiver report for Recent transactions: a waiver run that decided at least one
+ * claim, or claims without a run (imported from Yahoo) that went through in the same
+ * minute. Every claim, grouped by the player claimed; its won claims aren't listed
+ * again as separate transactions.
  */
 export interface WaiverRunEntry {
-  id: number;
+  /** The waiver run; null for imported claims grouped by time (all won, no failures known). */
+  id: number | null;
   /** When the run finished, ISO timestamp. */
   at: string;
   /** Any claim carried a bid (the league ran FAAB). */
@@ -664,12 +666,20 @@ export interface WaiverRunEntry {
   players: { player: PlayerSummary; claims: WaiverRunClaim[] }[];
 }
 
-/** The League page's Recent transactions: newest first, and the league's time zone for times. */
+/** One row of Recent transactions: a transaction or a waiver report. */
+export type TransactionEntry = { kind: "tx"; tx: LeagueTransaction } | { kind: "run"; run: WaiverRunEntry };
+
+/**
+ * Recent transactions (League page: the latest few) and /league/transactions (every one, a page at a time):
+ * newest first, and the league's time zone for times.
+ */
 export interface RecentTransactions {
   timeZone: string;
-  transactions: LeagueTransaction[];
-  /** Recent waiver runs with claims, newest first; shown in time order among the transactions. */
-  waiverRuns: WaiverRunEntry[];
+  entries: TransactionEntry[];
+  /** Entries in the whole feed, for "View all" and paging. */
+  total: number;
+  /** The viewer's team, when asked with their user id and they have one. */
+  myTeamId: number | null;
 }
 
 /** The signed-in user, as the UI sees it. */
