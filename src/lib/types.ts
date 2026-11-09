@@ -509,6 +509,8 @@ export interface RankingsRow extends FantasyTeamSummary {
   gamesPlayed: number;
   /** Categories won, lost and tied against every other team, each week (the ranking). */
   allPlay: MatchupScore;
+  /** The ranking's score: all-play category win %, ties counting half (0–1). */
+  allPlayPct: number;
   isMine: boolean;
 }
 

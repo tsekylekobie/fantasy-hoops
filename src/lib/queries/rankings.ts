@@ -191,6 +191,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
         catRanks: catRanks.get(t.id)!,
         gamesPlayed: games.get(t.id) ?? 0,
         allPlay: t.record,
+        allPlayPct: winPct(t.record) ?? 0,
         isMine: t.id === mine?.id,
       });
     });

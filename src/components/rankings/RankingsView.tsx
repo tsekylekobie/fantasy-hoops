@@ -38,6 +38,12 @@ const fmtStat = (line: CategoryLine, key: CategoryKey) =>
 /** 6–3, or 5–3–1 with ties. */
 const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}${s.ties ? `–${s.ties}` : ""}`;
 
+/** .642, or 1.000 */
+const fmtWinPct = (p: number) => (p >= 1 ? "1.000" : p.toFixed(3).slice(1));
+
+/** How far below first place: "−.045", or "tied" level with it. */
+const fmtBehind = (d: number) => (d < 0.0005 ? "tied" : `−${fmtWinPct(d)}`);
+
 /** The shading for a category place: top quarter of the league, second, third, bottom. */
 const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
 
@@ -94,12 +100,13 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                 <tr>
                   <th scope="col" className={styles.pos}>#</th>
                   <th scope="col" className={styles.team}>Team</th>
+                  <th scope="col" className={styles.score} title="All-play category win % (ties count half): every category against every other team">Score</th>
                   <th scope="col" className={`${styles.num} ${styles.gp}`} title="Games played">GP</th>
                   {CATEGORY_KEYS.map((k) => <th key={k} scope="col" className={styles.num}>{CATEGORY_LABELS[k]}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((r) => (
+                {data.rows.map((r, i) => (
                   <tr
                     key={r.id}
                     className={[r.isMine && styles.mine, r.id === data.focus?.team.id && styles.focused].filter(Boolean).join(" ") || undefined}
@@ -119,6 +126,16 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                         <TeamLink team={r} myTeamId={data.myTeam?.id} className={styles.teamName} />
                       </span>
                     </th>
+                    <td className={styles.score}>
+                      <span className={styles.scoreCell}>
+                        <b>{fmtWinPct(r.allPlayPct)}</b>
+                        <span className={styles.scoreBar} aria-hidden="true"><span style={{ width: `${r.allPlayPct * 100}%` }} /></span>
+                        <small title="Categories won–lost–tied against every other team">
+                          {fmtScore(r.allPlay)}
+                          {i > 0 && <> · {fmtBehind(data.rows[0].allPlayPct - r.allPlayPct)}</>}
+                        </small>
+                      </span>
+                    </td>
                     <td className={`${styles.num} ${styles.gp}`}>{fmtInt(r.gamesPlayed)}</td>
                     {CATEGORY_KEYS.map((k) => (
                       <td key={k} className={styles.num}>
