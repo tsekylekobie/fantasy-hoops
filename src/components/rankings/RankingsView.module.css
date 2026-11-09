@@ -320,7 +320,7 @@ thead .pos {
   color: var(--bg);
 }
 
-/* The power score: one number, all-play win % doubled. */
+/* The power score: one number, all-play win % out of 100. */
 .rank .score {
   font-family: var(--font-display);
   font-size: 16px;

@@ -38,8 +38,8 @@ const fmtStat = (line: CategoryLine, key: CategoryKey) =>
 /** 6–3, or 5–3–1 with ties. */
 const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}${s.ties ? `–${s.ties}` : ""}`;
 
-/** The power score: all-play win % doubled and rounded (0–200, 100 = an even team), e.g. .626 → 125. */
-const fmtScoreValue = (pct: number) => String(Math.round(pct * 200));
+/** The power score: all-play win % as a whole number (0–100, 50 = an even team), e.g. .626 → 63. */
+const fmtScoreValue = (pct: number) => String(Math.round(pct * 100));
 
 /** The shading for a category place: top quarter of the league, second, third, bottom. */
 const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
@@ -141,7 +141,7 @@ function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | n
                 <tr>
                   {head("rank", "#", styles.pos, "Power rank")}
                   {head("team", "Team", styles.team)}
-                  {head("rank", "Score", `${styles.num} ${styles.score}`, "Power score: how this team does against every other team (100 = even)")}
+                  {head("rank", "Score", `${styles.num} ${styles.score}`, "Power score: how this team does against every other team (50 = even)")}
                   {head("gp", "GP", `${styles.num} ${styles.gp}`, "Games played")}
                   {CATEGORY_KEYS.map((k) => head(k, CATEGORY_LABELS[k], styles.num))}
                 </tr>
