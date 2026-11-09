@@ -327,48 +327,41 @@ thead .pos {
   font-weight: 700;
 }
 
-/* A category value and its place, shaded by quarter of the league. */
+/* A category value and its place, shaded by value: the column's median is gray,
+   its best value full green and its worst full red (--heat-end/--heat-amt set inline). */
+.rank {
+  --heat-mid: #e7e5e0;
+  --heat-good: #4ade80;
+  --heat-bad: #f87171;
+}
+
+:global(:root[data-theme="dark"]) .rank {
+  --heat-mid: #34373d;
+  --heat-good: #16a34a;
+  --heat-bad: #dc2626;
+}
+
 .cv {
   display: block;
   padding: 6px;
   border-radius: 6px;
   line-height: 1.15;
   text-align: right;
+  color: var(--ink);
+  background: color-mix(in oklch, var(--heat-end, var(--heat-mid)) var(--heat-amt, 0%), var(--heat-mid));
 }
 
 .cv small {
   display: block;
   font-size: 10px;
   font-weight: 600;
-  color: var(--ink-subtle);
-}
-
-/* Red to green like Box scores' tiers, by league quarter: t1 top (green) … t4 bottom (red). */
-.t1 {
-  background: var(--tier-top25-bg);
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.t1 small {
-  color: var(--ink);
-}
-
-.t2 {
-  background: var(--tier-top40-bg);
+  color: inherit;
+  opacity: 0.7;
 }
 
 .gp {
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.t3 {
-  background: var(--tier-bottom25-bg);
-}
-
-.t4 {
-  background: var(--tier-bottom10-bg);
 }
 
 /* Versus the league */
