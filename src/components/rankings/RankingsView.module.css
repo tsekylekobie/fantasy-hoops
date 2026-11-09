@@ -328,7 +328,8 @@ thead .pos {
 }
 
 /* A category value and its place, shaded by value: the column's median is gray,
-   its best value full green and its worst full red (--heat-end/--heat-amt set inline). */
+   its best value full green and its worst full red (--heat-end/--heat-amt set inline).
+   Mixed in oklab, not oklch: oklch walks the hue wheel, so gray to red passed through purple. */
 .rank {
   --heat-mid: #e7e5e0;
   --heat-good: #4ade80;
@@ -336,7 +337,7 @@ thead .pos {
 }
 
 :global(:root[data-theme="dark"]) .rank {
-  --heat-mid: #34373d;
+  --heat-mid: #39393b;
   --heat-good: #16a34a;
   --heat-bad: #dc2626;
 }
@@ -348,7 +349,7 @@ thead .pos {
   line-height: 1.15;
   text-align: right;
   color: var(--ink);
-  background: color-mix(in oklch, var(--heat-end, var(--heat-mid)) var(--heat-amt, 0%), var(--heat-mid));
+  background: color-mix(in oklab, var(--heat-end, var(--heat-mid)) var(--heat-amt, 0%), var(--heat-mid));
 }
 
 .cv small {
