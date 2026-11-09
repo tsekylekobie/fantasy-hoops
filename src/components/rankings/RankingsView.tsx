@@ -38,11 +38,8 @@ const fmtStat = (line: CategoryLine, key: CategoryKey) =>
 /** 6–3, or 5–3–1 with ties. */
 const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}${s.ties ? `–${s.ties}` : ""}`;
 
-/** .642, or 1.000 */
-const fmtWinPct = (p: number) => (p >= 1 ? "1.000" : p.toFixed(3).slice(1));
-
-/** How far below first place: "−.045", or "tied" level with it. */
-const fmtBehind = (d: number) => (d < 0.0005 ? "tied" : `−${fmtWinPct(d)}`);
+/** The power score: all-play win % doubled and rounded (0–200, 100 = an even team), e.g. .626 → 125. */
+const fmtScoreValue = (pct: number) => String(Math.round(pct * 200));
 
 /** The shading for a category place: top quarter of the league, second, third, bottom. */
 const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
@@ -117,7 +114,6 @@ export default function RankingsView({ data, teamParam, sortParam = DEFAULT_SORT
 function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | null; sort: Sort }) {
   const here: Where = { period: data.period, week: data.week?.week ?? null, team: teamParam, sort };
   const rows = sortRows(data.rows, sort);
-  const leader = data.rows[0];
   const head = (key: SortKey, label: string, className: string | undefined, title?: string) => (
     <SortHead key={key} sortKey={key} label={label} className={className} title={title} here={here} />
   );
@@ -145,7 +141,7 @@ function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | n
                 <tr>
                   {head("rank", "#", styles.pos, "Power rank")}
                   {head("team", "Team", styles.team)}
-                  {head("rank", "Score", styles.score, "All-play category win % (ties count half): every category against every other team")}
+                  {head("rank", "Score", `${styles.num} ${styles.score}`, "Power score: how this team does against every other team (100 = even)")}
                   {head("gp", "GP", `${styles.num} ${styles.gp}`, "Games played")}
                   {CATEGORY_KEYS.map((k) => head(k, CATEGORY_LABELS[k], styles.num))}
                 </tr>
@@ -171,16 +167,7 @@ function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | n
                         <TeamLink team={r} myTeamId={data.myTeam?.id} className={styles.teamName} />
                       </span>
                     </th>
-                    <td className={styles.score}>
-                      <span className={styles.scoreCell}>
-                        <b>{fmtWinPct(r.allPlayPct)}</b>
-                        <span className={styles.scoreBar} aria-hidden="true"><span style={{ width: `${r.allPlayPct * 100}%` }} /></span>
-                        <small title="Categories won–lost–tied against every other team">
-                          {fmtScore(r.allPlay)}
-                          {r.id !== leader.id && <> · {fmtBehind(leader.allPlayPct - r.allPlayPct)}</>}
-                        </small>
-                      </span>
-                    </td>
+                    <td className={`${styles.num} ${styles.score}`}>{fmtScoreValue(r.allPlayPct)}</td>
                     <td className={`${styles.num} ${styles.gp}`}>{fmtInt(r.gamesPlayed)}</td>
                     {CATEGORY_KEYS.map((k) => (
                       <td key={k} className={styles.num}>
