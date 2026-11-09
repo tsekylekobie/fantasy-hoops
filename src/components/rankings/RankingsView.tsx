@@ -1,6 +1,7 @@
 // The /rankings page: docs/design/rankings.mockup.html. The stack rank orders
 // every team by its all-play record (each team against all the others) for one
-// week or the season, showing the nine category totals shaded by their rank.
+// week or the season, showing the nine category totals shaded by value (median
+// gray, best green, worst red; heatOf) with their place.
 // Versus the league shows one team (yours by default) against each other team;
 // picking a team's row in the stack rank focuses it (its name goes to its page).
 import Link from "next/link";
@@ -41,8 +42,34 @@ const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}${s.ties ? `–${s
 /** The power score: all-play win % as a whole number, at most two digits (0–99, 50 = an even team), e.g. .626 → 63. */
 const fmtScoreValue = (pct: number) => String(Math.min(99, Math.round(pct * 100)));
 
-/** The shading for a category place: top quarter of the league, second, third, bottom. */
-const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
+/** How far a value sits from the column's median toward its best (+1) or worst (−1) value. */
+type Heat = (v: number | null) => number;
+
+/**
+ * A column's shading by value, not place: the median is 0 (gray), the best
+ * value +1 (green), the worst −1 (red), straight-line in between on each side,
+ * so the shade shows how close teams are. TO: fewer is better. No attempts: 0.
+ */
+function heatOf(values: (number | null)[], lowerIsBetter: boolean): Heat {
+  const vs = values.filter((v): v is number => v !== null).sort((a, b) => a - b);
+  if (vs.length === 0) return () => 0;
+  const mid = vs.length / 2;
+  const median = vs.length % 2 ? vs[Math.floor(mid)] : (vs[mid - 1] + vs[mid]) / 2;
+  const [best, worst] = lowerIsBetter ? [vs[0], vs[vs.length - 1]] : [vs[vs.length - 1], vs[0]];
+  return (v) => {
+    if (v === null || v === median) return 0;
+    const better = lowerIsBetter ? v < median : v > median;
+    const end = better ? best : worst;
+    return (better ? 1 : -1) * Math.min(1, Math.abs((v - median) / (end - median)));
+  };
+}
+
+/** A cell's background: gray mixed toward green or red by its heat. */
+const heatStyle = (h: number) =>
+  ({
+    "--heat-end": h >= 0 ? "var(--heat-good)" : "var(--heat-bad)",
+    "--heat-amt": `${Math.round(Math.abs(h) * 100)}%`,
+  }) as React.CSSProperties;
 
 /** What the stack rank can be sorted by: the power rank, the team's name, games played or a category. */
 export type SortKey = "rank" | "team" | "gp" | CategoryKey;
@@ -114,6 +141,9 @@ export default function RankingsView({ data, teamParam, sortParam = DEFAULT_SORT
 function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | null; sort: Sort }) {
   const here: Where = { period: data.period, week: data.week?.week ?? null, team: teamParam, sort };
   const rows = sortRows(data.rows, sort);
+  const heat = Object.fromEntries(
+    CATEGORY_KEYS.map((k) => [k, heatOf(data.rows.map((r) => r.stats[k]), k === "tov")]),
+  ) as Record<CategoryKey, Heat>;
   const head = (key: SortKey, label: string, className: string | undefined, title?: string) => (
     <SortHead key={key} sortKey={key} label={label} className={className} title={title} here={here} />
   );
@@ -171,7 +201,7 @@ function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | n
                     <td className={`${styles.num} ${styles.gp}`}>{fmtInt(r.gamesPlayed)}</td>
                     {CATEGORY_KEYS.map((k) => (
                       <td key={k} className={styles.num}>
-                        <span className={`${styles.cv} ${styles[`t${tierOf(r.catRanks[k], teams)}`] ?? ""}`}>
+                        <span className={styles.cv} style={heatStyle(heat[k](r.stats[k]))}>
                           {fmtStat(r.stats, k)}
                           <small>{ordinal(r.catRanks[k])}</small>
                         </span>
