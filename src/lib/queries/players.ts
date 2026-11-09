@@ -326,17 +326,20 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   const total = q.mode === "total";
   const valueOf = (v: Valuation) => (total ? v.totalValue : v.value);
   const rankOf = (v: Valuation) => (total ? v.totalRank : v.rank);
-  const matching = rows
-    .filter((r) => q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
-    .filter((r) => q.team === null || owners.get(r.player_id)?.teamId === q.team)
-    .filter((r) => q.nba === null || r.team_abbr === q.nba)
-    .filter((r) => positionMatches(q.pos, r.position) && nameMatches(q.q, r.first_name, r.last_name))
-    .filter((r) => !q.hideInjured || injuries.get(r.player_id)?.status !== "Out")
-    .filter((r) => q.plays.length === 0 || (r.team_id !== null && upcoming.has(r.team_id)))
-    .filter((r) =>
-      q.waivers === "any" ? true
+  // A name search looks across every player: the filters (scope, teams, position, injured, plays, waivers) apply
+  // only when not searching. The range and mode still decide the stats shown.
+  const filtered = (r: SeasonPlayerRow) =>
+    (q.scope === "all" || (q.scope === "fa" ? !owners.has(r.player_id) : watched.has(r.player_id)))
+    && (q.team === null || owners.get(r.player_id)?.teamId === q.team)
+    && (q.nba === null || r.team_abbr === q.nba)
+    && positionMatches(q.pos, r.position)
+    && (!q.hideInjured || injuries.get(r.player_id)?.status !== "Out")
+    && (q.plays.length === 0 || (r.team_id !== null && upcoming.has(r.team_id)))
+    && (q.waivers === "any" ? true
       : q.waivers === "on" ? onWaivers(r.player_id)
-      : onWaivers(r.player_id) && clearsByTomorrow(waivers.players.get(r.player_id)!.clearsAt, waivers.timeZone, now))
+      : onWaivers(r.player_id) && clearsByTomorrow(waivers.players.get(r.player_id)!.clearsAt, waivers.timeZone, now));
+  const matching = rows
+    .filter((r) => (q.q ? nameMatches(q.q, r.first_name, r.last_name) : filtered(r)))
     .map((r) => {
       const v = values.get(r.player_id)!;
       return { r, v, k: key ? key(r) : valueOf(v) };
