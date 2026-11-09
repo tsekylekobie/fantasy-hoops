@@ -237,6 +237,16 @@ export default function PlayersBrowser() {
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [search, navigate]);
+  // The X: empty the box and drop the query right away (no debounce), keeping focus for the next search.
+  const searchInput = useRef<HTMLInputElement>(null);
+  const clearSearch = useCallback(() => {
+    setSearch("");
+    if (lastWrittenQ.current !== "") {
+      lastWrittenQ.current = "";
+      navigate({ q: "", page: 1 }, "replace");
+    }
+    searchInput.current?.focus();
+  }, [navigate]);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -440,14 +450,22 @@ export default function PlayersBrowser() {
             </span>
           )}
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
-          <input
-            type="search"
-            className={styles.search}
-            placeholder="Search players"
-            aria-label="Search players"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <span className={styles.searchBox}>
+            <input
+              ref={searchInput}
+              type="search"
+              className={styles.search}
+              placeholder="Search players"
+              aria-label="Search players"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search !== "" && (
+              <button type="button" className={styles.searchClear} aria-label="Clear search" onClick={clearSearch}>
+                ×
+              </button>
+            )}
+          </span>
           <button
             type="button"
             className={styles.weightsBtn}

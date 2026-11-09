@@ -219,16 +219,57 @@
   color: var(--ink-muted);
 }
 
-.search {
-  height: 44px;
+.searchBox {
+  position: relative;
+  display: inline-flex;
   width: 280px;
   max-width: 100%;
+}
+
+.search {
+  height: 44px;
+  width: 100%;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  padding: 0 14px;
+  padding: 0 40px 0 14px;
   font-size: 14px;
   background: var(--surface);
   color: var(--ink);
+}
+
+/* Our own clear button replaces the browser's. */
+.search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.searchClear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.searchClear:hover {
+  background: var(--border);
+  color: var(--ink);
+}
+
+.searchClear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .weightsBtn {
@@ -306,7 +347,7 @@
     margin-top: 28px;
   }
 
-  .search {
+  .searchBox {
     width: 100%;
   }
 
