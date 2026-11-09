@@ -301,8 +301,8 @@ function Ranks({ ranks }: { ranks: PlayerRanks }) {
 }
 
 const TABS = [
-  { value: "overview", label: "Overview" },
   { value: "stats", label: "Game log & seasons" },
+  { value: "news", label: "News & transactions" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
@@ -312,8 +312,8 @@ const boxScoreHref = (date: string, gameId: number) => `/box-scores?date=${date}
 function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClose: () => void; myTeamId: number | null }) {
   const { season, seasonAverages: avg, gameLog, pastSeasons } = data;
   const label = seasonLabel(season);
-  // Remounted per player (keyed by id), so each player opens on Overview; a refresh keeps the tab.
-  const [tab, setTab] = useState<Tab>("overview");
+  // Remounted per player (keyed by id), so each player opens on the game log; a refresh keeps the tab.
+  const [tab, setTab] = useState<Tab>("stats");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const router = useRouter();
   const signedIn = useSignedIn();
@@ -379,16 +379,9 @@ function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClo
       </div>
 
       {/* Both panels stay mounted (hidden) so switching tabs doesn't refetch the news. */}
-      <div role="tabpanel" id="player-panel-overview" aria-labelledby="player-tab-overview" className={styles.tabPanel} hidden={tab !== "overview"}>
+      <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
         {data.thisWeek && <ThisWeek week={data.thisWeek} />}
 
-        <News playerId={data.player.id} />
-
-        {/* League data is private: signed out, no transaction history. */}
-        {signedIn && <Transactions transactions={data.transactions} timeZone={data.timeZone} myTeamId={myTeamId} />}
-      </div>
-
-      <div role="tabpanel" id="player-panel-stats" aria-labelledby="player-tab-stats" className={styles.tabPanel} hidden={tab !== "stats"}>
         <section className={styles.section} aria-labelledby="game-log-heading">
           <h3 id="game-log-heading" className={styles.h3}>
             Game log · {label}
@@ -396,7 +389,8 @@ function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClo
           {gameLog.length === 0 ? (
             <p className={styles.empty}>No games played this season yet.</p>
           ) : (
-            <div className={styles.scroll}>
+            // About five games in view; the rest scroll under the pinned header.
+            <div className={`${styles.scroll} ${styles.logScroll}`} tabIndex={0} aria-label={`Game log, ${label}`}>
               <table className={`${styles.table} ${styles.logTable}`}>
                 <colgroup>
                   <col className={styles.cDate} />
@@ -496,6 +490,13 @@ function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClo
             </div>
           )}
         </section>
+      </div>
+
+      <div role="tabpanel" id="player-panel-news" aria-labelledby="player-tab-news" className={styles.tabPanel} hidden={tab !== "news"}>
+        <News playerId={data.player.id} />
+
+        {/* League data is private: signed out, no transaction history. */}
+        {signedIn && <Transactions transactions={data.transactions} timeZone={data.timeZone} myTeamId={myTeamId} />}
       </div>
     </>
   );

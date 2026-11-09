@@ -272,7 +272,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Overview / Game log & seasons tabs, under the averages strip */
+/* Game log & seasons / News & transactions tabs, under the averages strip */
 .tabs {
   display: flex;
   gap: 4px;
@@ -338,6 +338,33 @@
 
 .logTable {
   min-width: 760px;
+}
+
+/* The season's game log: a 36px header and about five 44px rows in view, the rest scroll. */
+.logScroll {
+  max-height: calc(36px + 5.5 * 44px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--border);
+}
+
+.logScroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.logScroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Collapsed borders scroll away with the rows, so the pinned header draws its rule with a shadow. */
+.logScroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .seasonTable {
@@ -786,6 +813,12 @@
     z-index: 1;
     background: var(--surface);
     box-shadow: 1px 0 0 var(--row-divider);
+  }
+
+  /* The game log's Date header is pinned both ways. */
+  .logScroll thead th:first-child {
+    z-index: 3;
+    box-shadow: 1px 0 0 var(--row-divider), inset 0 -1px 0 var(--border);
   }
 }
 
