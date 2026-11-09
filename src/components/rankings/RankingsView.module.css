@@ -222,6 +222,37 @@ thead .pos {
   text-align: right;
 }
 
+/* Sortable headers: links that set ?sort=, the arrow on the active one. */
+.sortLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.num .sortLink {
+  flex-direction: row-reverse;
+}
+
+.sortLink:hover,
+.sortActive {
+  color: var(--ink);
+}
+
+.sortLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.arrow {
+  display: inline-block;
+  width: 9px;
+  font-size: 8px;
+  text-align: center;
+}
+
 /* A row picks its team for Versus the league: the badge's link covers the row
    (::after); the name (TeamLink, which sits above covers) opens the team's page. */
 .rank tbody tr {

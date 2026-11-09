@@ -4,7 +4,7 @@
 // Versus the league shows one team (yours by default) against each other team;
 // picking a team's row in the stack rank focuses it (its name goes to its page).
 import Link from "next/link";
-import type { CategoryKey, CategoryLine, MatchupScore, RankingsPeriod, RankingsView as View } from "@/lib/types";
+import type { CategoryKey, CategoryLine, MatchupScore, RankingsPeriod, RankingsRow, RankingsView as View } from "@/lib/types";
 import { CATEGORY_KEYS } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import TeamBadge from "@/components/TeamBadge";
@@ -47,10 +47,46 @@ const fmtBehind = (d: number) => (d < 0.0005 ? "tied" : `−${fmtWinPct(d)}`);
 /** The shading for a category place: top quarter of the league, second, third, bottom. */
 const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
 
+/** What the stack rank can be sorted by: the power rank, the team's name, games played or a category. */
+export type SortKey = "rank" | "team" | "gp" | CategoryKey;
+export type SortDir = "asc" | "desc";
+export interface Sort { key: SortKey; dir: SortDir }
+
+const DEFAULT_SORT: Sort = { key: "rank", dir: "asc" };
+
+/** A column's first click: best first (fewest TO, rank 1), names A–Z, most games. */
+const firstDir = (key: SortKey): SortDir => (key === "rank" || key === "team" || key === "tov" ? "asc" : "desc");
+
+/** ?sort= and ?dir= from the URL; anything unknown is the power rank. */
+export function parseSort(sort: string | undefined, dir: string | undefined): Sort {
+  const keys: readonly string[] = ["rank", "team", "gp", ...CATEGORY_KEYS];
+  if (!sort || !keys.includes(sort)) return DEFAULT_SORT;
+  const key = sort as SortKey;
+  return { key, dir: dir === "asc" || dir === "desc" ? dir : firstDir(key) };
+}
+
+/** The rows in `sort`'s order; ties (and teams without attempts, last) keep the power rank's order. */
+function sortRows(rows: RankingsRow[], sort: Sort): RankingsRow[] {
+  if (sort.key === "rank" && sort.dir === "asc") return rows;
+  const { key } = sort;
+  const sign = sort.dir === "asc" ? 1 : -1;
+  const value = (r: RankingsRow): number | string | null =>
+    key === "rank" ? r.rank : key === "team" ? r.name.toLowerCase() : key === "gp" ? r.gamesPlayed : r.stats[key];
+  return rows
+    .map((r, i) => ({ r, i, v: value(r) }))
+    .sort((a, b) => {
+      if (a.v === null || b.v === null) return a.v === b.v ? a.i - b.i : a.v === null ? 1 : -1;
+      const c = typeof a.v === "string" ? a.v.localeCompare(b.v as string) : a.v - (b.v as number);
+      return c !== 0 ? sign * c : a.i - b.i;
+    })
+    .map((x) => x.r);
+}
+
 interface Where {
   period: RankingsPeriod;
   week: number | null;
   team: number | null;
+  sort: Sort;
 }
 
 function hrefOf(w: Where): string {
@@ -58,24 +94,33 @@ function hrefOf(w: Where): string {
   if (w.period === "season") q.set("view", "season");
   else if (w.week !== null) q.set("week", String(w.week));
   if (w.team !== null) q.set("team", String(w.team));
+  if (w.sort.key !== DEFAULT_SORT.key || w.sort.dir !== DEFAULT_SORT.dir) {
+    q.set("sort", w.sort.key);
+    if (w.sort.dir !== firstDir(w.sort.key)) q.set("dir", w.sort.dir);
+  }
   const s = q.toString();
   return s ? `/rankings?${s}` : "/rankings";
 }
 
-export default function RankingsView({ data, teamParam }: { data: View | null; teamParam: number | null }) {
+export default function RankingsView({ data, teamParam, sortParam = DEFAULT_SORT }: { data: View | null; teamParam: number | null; sortParam?: Sort }) {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
         <h1 className={styles.title}>Power rankings</h1>
-        {data ? <Rankings data={data} teamParam={teamParam} /> : <p className={styles.empty}>No league schedule for this season yet.</p>}
+        {data ? <Rankings data={data} teamParam={teamParam} sort={sortParam} /> : <p className={styles.empty}>No league schedule for this season yet.</p>}
       </div>
     </div>
   );
 }
 
-function Rankings({ data, teamParam }: { data: View; teamParam: number | null }) {
-  const here: Where = { period: data.period, week: data.week?.week ?? null, team: teamParam };
+function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | null; sort: Sort }) {
+  const here: Where = { period: data.period, week: data.week?.week ?? null, team: teamParam, sort };
+  const rows = sortRows(data.rows, sort);
+  const leader = data.rows[0];
+  const head = (key: SortKey, label: string, className: string | undefined, title?: string) => (
+    <SortHead key={key} sortKey={key} label={label} className={className} title={title} here={here} />
+  );
   const teams = data.rows.length;
   const isWeek = data.period === "week";
   return (
@@ -98,15 +143,15 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
             <table className={styles.rank}>
               <thead>
                 <tr>
-                  <th scope="col" className={styles.pos}>#</th>
-                  <th scope="col" className={styles.team}>Team</th>
-                  <th scope="col" className={styles.score} title="All-play category win % (ties count half): every category against every other team">Score</th>
-                  <th scope="col" className={`${styles.num} ${styles.gp}`} title="Games played">GP</th>
-                  {CATEGORY_KEYS.map((k) => <th key={k} scope="col" className={styles.num}>{CATEGORY_LABELS[k]}</th>)}
+                  {head("rank", "#", styles.pos, "Power rank")}
+                  {head("team", "Team", styles.team)}
+                  {head("rank", "Score", styles.score, "All-play category win % (ties count half): every category against every other team")}
+                  {head("gp", "GP", `${styles.num} ${styles.gp}`, "Games played")}
+                  {CATEGORY_KEYS.map((k) => head(k, CATEGORY_LABELS[k], styles.num))}
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((r, i) => (
+                {rows.map((r) => (
                   <tr
                     key={r.id}
                     className={[r.isMine && styles.mine, r.id === data.focus?.team.id && styles.focused].filter(Boolean).join(" ") || undefined}
@@ -132,7 +177,7 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
                         <span className={styles.scoreBar} aria-hidden="true"><span style={{ width: `${r.allPlayPct * 100}%` }} /></span>
                         <small title="Categories won–lost–tied against every other team">
                           {fmtScore(r.allPlay)}
-                          {i > 0 && <> · {fmtBehind(data.rows[0].allPlayPct - r.allPlayPct)}</>}
+                          {r.id !== leader.id && <> · {fmtBehind(leader.allPlayPct - r.allPlayPct)}</>}
                         </small>
                       </span>
                     </td>
@@ -155,6 +200,29 @@ function Rankings({ data, teamParam }: { data: View; teamParam: number | null })
 
       {data.focus && <Versus data={data} focus={data.focus} />}
     </>
+  );
+}
+
+/** A header that sorts the stack rank: best first, then reversed on a second click. */
+function SortHead({ sortKey, label, className, title, here }: {
+  sortKey: SortKey; label: string; className?: string; title?: string; here: Where;
+}) {
+  const active = here.sort.key === sortKey;
+  const dir: SortDir = active ? (here.sort.dir === "asc" ? "desc" : "asc") : firstDir(sortKey);
+  // Score and # both sort by the power rank; only # shows the arrow.
+  const shows = active && !(sortKey === "rank" && label !== "#");
+  return (
+    <th scope="col" className={className} aria-sort={shows ? (here.sort.dir === "asc" ? "ascending" : "descending") : undefined}>
+      <Link
+        href={hrefOf({ ...here, sort: { key: sortKey, dir } })}
+        scroll={false}
+        className={`${styles.sortLink} ${shows ? styles.sortActive : ""}`}
+        title={title}
+      >
+        {label}
+        <span className={styles.arrow} aria-hidden="true">{shows ? (here.sort.dir === "asc" ? "▲" : "▼") : ""}</span>
+      </Link>
+    </th>
   );
 }
 

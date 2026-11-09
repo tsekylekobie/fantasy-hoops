@@ -58,7 +58,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `/api/players` lists it. `watched` on rows and player detail is null when signed out (no star).
 - `src/lib/queries/rankings.ts` + `/rankings`: power rankings. Every team's week against every other team's (all-play),
   for one week or the regular season added up, ranked by all-play category win % (ties half; `RankingsRow.allPlayPct`,
-  shown as the Score column with the record and the gap to first); Versus the league shows one team against each other team.
+  shown as the Score column with the record and the gap to first); the stack rank sorts by any column (`?sort=  shown as the Score column with the record and the gap to first); Versusdir=`,
+  `parseSort` in `RankingsView.tsx`; best first, # stays the power rank); Versus the league shows one team against each other team.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
   status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims;
   with `leagues.claims_ignore_il_status`, migration 0019, the waiver run skips its IL check so a status change doesn't fail a pending claim).
