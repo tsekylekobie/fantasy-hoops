@@ -38,8 +38,8 @@ const fmtStat = (line: CategoryLine, key: CategoryKey) =>
 /** 6–3, or 5–3–1 with ties. */
 const fmtScore = (s: MatchupScore) => `${s.wins}–${s.losses}${s.ties ? `–${s.ties}` : ""}`;
 
-/** The power score: all-play win % as a whole number (0–100, 50 = an even team), e.g. .626 → 63. */
-const fmtScoreValue = (pct: number) => String(Math.round(pct * 100));
+/** The power score: all-play win % as a whole number, at most two digits (0–99, 50 = an even team), e.g. .626 → 63. */
+const fmtScoreValue = (pct: number) => String(Math.min(99, Math.round(pct * 100)));
 
 /** The shading for a category place: top quarter of the league, second, third, bottom. */
 const tierOf = (rank: number, teams: number) => Math.min(4, Math.max(1, Math.ceil((rank * 4) / teams)));
