@@ -593,7 +593,7 @@ export async function getMatchupWeek(
         ORDER BY bracket NULLS FIRST, bracket_round, bracket_slot, id`,
       [league.id, w.week],
     ),
-    gamesInProgress(db),
+    gamesInProgress(db, { leagueId: league.id }),
     importedLines(db, league.id, w.starts_on),
   ]);
   const played = countedRows(starts.rows, limits);

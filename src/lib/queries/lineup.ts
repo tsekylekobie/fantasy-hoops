@@ -512,7 +512,7 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
   const [gamesById, gameLimits, live] = await Promise.all([
     getWeekGames(pool, day.players.map((p) => p.id), start, end),
     week ? teamGameLimitUsage(pool, team.leagueId, team.teamId, week, team.today) : null,
-    gamesInProgress(pool),
+    gamesInProgress(pool, { date, playerIds: day.players.map((p) => p.id) }),
   ]);
   const days: TeamLineupResponse["days"] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) days.push({ date: d, nbaGames: byDate.get(d) ?? 0 });

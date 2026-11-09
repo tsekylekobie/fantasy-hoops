@@ -449,7 +449,7 @@ export interface MatchupWeek {
   myTeam: FantasyTeamSummary | null;
   /** Every pairing this week other than `matchup`. */
   others: OtherMatchup[];
-  /** Some NBA game is in progress (or just finished), so stats can still change: the page polls while true. */
+  /** A game with a player on one of the league's rosters is in progress: the page polls while true. */
   live: boolean;
 }
 
@@ -804,7 +804,7 @@ export interface TeamLineupResponse {
   players: LineupPlayer[];
   /** Starters' games against that week's game limits; null when the week has none (or outside the schedule). */
   gameLimits: GameLimitUsage | null;
-  /** Some NBA game is in progress (or just finished), so stats can still change: the page polls while true. */
+  /** A game one of this day's roster plays in is in progress: the page polls while true. */
   live: boolean;
 }
 
@@ -1379,6 +1379,6 @@ export interface BoxScoresResponse {
   /** Players with minutes on this date, the pool the ranks are out of. */
   playerCount: number;
   myTeamId: number | null;
-  /** Some game can still change: the page polls (components/live). */
+  /** A game on this date is in progress: the page polls (components/live). */
   live: boolean;
 }

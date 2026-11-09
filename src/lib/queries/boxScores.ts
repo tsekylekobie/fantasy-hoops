@@ -158,7 +158,6 @@ const CONTEXT_SQL = `
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /** "Final", "Final/1OT", "Final/2OT"; live: the clock ("Q4 5:06") or "Halftime". */
 function statusText(g: GameRow): string | null {
@@ -210,7 +209,7 @@ export async function getBoxScores(
     getSeasonTotals(db, season),
     getOwners(db, season),
     getWaiverStatus(db, season),
-    gamesInProgress(db),
+    gamesInProgress(db, { date: day }),
   ]);
   const ctx = ctxRes.rows[0];
   const score = gameScorer(seasonTotals, weights);
@@ -281,7 +280,6 @@ export async function getBoxScores(
     games,
     playerCount: played.length,
     myTeamId: ctx.my_team_id,
-    // gamesInProgress also counts games that ended in the last few hours (their lines can still change).
-    live: anyLive && (games.some((g) => g.state === "live") || day === ctx.today || day === addDays(ctx.today, -1)),
+    live: anyLive,
   };
 }
