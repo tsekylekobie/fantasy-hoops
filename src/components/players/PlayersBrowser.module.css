@@ -130,6 +130,11 @@
 
 /* Every phrase leads with a "·"; the list sits one dot to the left so the dot that
    starts each line is clipped, whether it's the first line or a wrapped one. */
+.filtersOff {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
 .summaryParts {
   display: flex;
   flex-wrap: wrap;

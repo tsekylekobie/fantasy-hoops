@@ -377,9 +377,12 @@ export default function PlayersBrowser() {
   const hasNext = page * PER_PAGE < total;
   let summary = " ";
   if (data) {
-    if (total === 0) summary = waivers !== "any" ? "No players on waivers" : `No ${SCOPE_NOUNS[scope]}`;
+    // A search ignores the filters (getPlayers), so it counts every player.
+    const searching = q !== "";
+    const noun = searching ? "players" : SCOPE_NOUNS[scope];
+    if (total === 0) summary = searching ? `No players match “${q}”` : waivers !== "any" ? "No players on waivers" : `No ${noun}`;
     else if (shown === 0) summary = `No players on this page · ${total.toLocaleString("en-US")} total`;
-    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${SCOPE_NOUNS[scope]}`;
+    else summary = `Showing ${first}–${last} of ${total.toLocaleString("en-US")} ${noun}`;
   }
 
   // Custom starts from the dates on screen: the preset's window, else the season so far, else the last 30 days.
@@ -470,7 +473,8 @@ export default function PlayersBrowser() {
           >
             <span className={styles.chevron} aria-hidden="true" />
             <span className={styles.filtersTitle}>Filters</span>
-            {!filtersOpen && (
+            {q !== "" && <span className={styles.filtersOff}>Off while searching</span>}
+            {!filtersOpen && q === "" && (
               <span className={styles.filtersSummary}>
                 <span className={styles.summaryParts}>
                   {filterSummary(state, teamOptions, signedIn).map((part) => (
