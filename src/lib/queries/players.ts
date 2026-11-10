@@ -168,6 +168,19 @@ async function getTeamOptions(db: Pool, season: number): Promise<PlayersResponse
   return { fantasy: fantasy.rows, nba: nba.rows };
 }
 
+// A name search's candidates beyond the range's rows: players on an NBA team, on a fantasy roster ($2) or with a
+// regular-season game in the season (outside a shorter range), so someone who hasn't played yet can still be found.
+// Players with no team and no game (retired, unsigned) stay out: the players table holds every player BDL lists.
+const SEARCHABLE_SQL = `
+  SELECT p.id AS player_id, p.first_name, p.last_name, nullif(p.position, '') AS position,
+         p.nba_person_id, p.team_id, tm.abbreviation AS team_abbr
+  FROM players p
+  LEFT JOIN teams tm ON tm.id = p.team_id
+  WHERE p.team_id IS NOT NULL OR p.id = ANY($2::int[])
+     OR EXISTS (SELECT 1 FROM player_game_stats s WHERE s.player_id = p.id AND s.season = $1 AND s.min > 0)`;
+
+const NO_GAMES = { gp: 0, min: 0, fgm: 0, fga: 0, ftm: 0, fta: 0, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0 };
+
 export async function getOwners(db: Pool, season: number): Promise<Map<number, PlayerOwner>> {
   const { rows } = await db.query<{ player_id: number; team_id: number; abbreviation: string }>(ROSTERED_SQL, [season]);
   return new Map(rows.map((r) => [r.player_id, { teamId: r.team_id, abbreviation: r.abbreviation }]));
@@ -338,7 +351,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     && (q.waivers === "any" ? true
       : q.waivers === "on" ? onWaivers(r.player_id)
       : onWaivers(r.player_id) && clearsByTomorrow(waivers.players.get(r.player_id)!.clearsAt, waivers.timeZone, now));
-  const matching = rows
+  const ranked = rows
     .filter((r) => (q.q ? nameMatches(q.q, r.first_name, r.last_name) : filtered(r)))
     .map((r) => {
       const v = values.get(r.player_id)!;
@@ -351,6 +364,22 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       if (typeof a.k === "string") return sign * a.k.localeCompare(b.k as string) || byRank;
       return sign * (a.k - (b.k as number)) || byRank;
     });
+
+  // A name search also finds players with no game in the range (e.g. hurt since opening night): unranked, after the
+  // ranked ones, by name. They never show without a search, so the rankings stay players who've played.
+  const unranked: { r: SeasonPlayerRow; v: Valuation | null }[] = [];
+  if (q.q) {
+    const inRange = new Set(rows.map((r) => r.player_id));
+    const { rows: found } = await db.query<Omit<SeasonPlayerRow, keyof TotalsRow> & { player_id: number }>(
+      SEARCHABLE_SQL, [q.season, [...owners.keys()]],
+    );
+    for (const p of found) {
+      if (inRange.has(p.player_id) || !nameMatches(q.q, p.first_name, p.last_name)) continue;
+      unranked.push({ r: { ...NO_GAMES, ...p }, v: null });
+    }
+    unranked.sort((a, b) => a.r.last_name.localeCompare(b.r.last_name) || a.r.first_name.localeCompare(b.r.first_name));
+  }
+  const matching: { r: SeasonPlayerRow; v: Valuation | null }[] = [...ranked, ...unranked];
 
   const start = (q.page - 1) * q.perPage;
   const page = matching.slice(start, start + q.perPage);
@@ -367,12 +396,12 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
       teamAbbr: r.team_abbr,
       position: r.position,
       nbaPersonId: r.nba_person_id,
-      rank: rankOf(v),
+      rank: v ? rankOf(v) : null,
       gp: r.gp,
       min,
       stats,
-      value: Math.round(valueOf(v) * 100) / 100,
-      tiers: total ? v.totalTiers : v.tiers,
+      value: v ? Math.round(valueOf(v) * 100) / 100 : null,
+      tiers: !v ? {} : total ? v.totalTiers : v.tiers,
       owner: owners.get(r.player_id) ?? null,
       waiver: waivers.players.get(r.player_id) ?? null,
       games: (r.team_id !== null && upcoming.get(r.team_id)) || [],

@@ -76,7 +76,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   shaded red to green by the chance. Hidden once the week is final.
 - Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and
   colors as My team's chip (`getWeekGames` in `queries/weekGames.ts`, run for the page's rows only; not sortable).
-- Players page filters: a name search (`q`) ignores them all and looks across every player (`getPlayers`); the filters apply only when not searching. Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
+- Players page filters: a name search (`q`) ignores them all and looks across every player (`getPlayers`); the filters apply only when not searching. A search also lists players with no game in the range (on an NBA team or a roster, e.g. hurt since opening night) after the ranked ones, with no rank, stats or value; without a search they never show. Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
   `injured=hide` defaults to showing them).
 - Players page ranges: season, last 30 and last 14 days (`statWindow` in `queries/players.ts`), or Custom
   (`range=custom&from=&to=`, inclusive dates, picked between the season's first and last played dates); the player modal shows

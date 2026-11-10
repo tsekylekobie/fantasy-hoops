@@ -196,9 +196,12 @@ function Row({
 }) {
   const s = p.stats;
   const t = p.tiers;
+  // No game in the range (found only by a name search): dashes, not zeros.
+  const played = p.gp > 0;
+  const stat = (v: number) => (played ? num(v) : "—");
   return (
     <tr>
-      <td>{p.rank}</td>
+      <td>{p.rank ?? "—"}</td>
       <td>
         <span className={styles.player}>
           <Avatar player={p} size={40} />
@@ -233,21 +236,21 @@ function Row({
         )}
       </td>
       <td className={styles.n}>{fmtInt(p.gp)}</td>
-      <td className={styles.n}>{mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
+      <td className={styles.n}>{!played ? "—" : mode === "total" ? fmtInt(p.min) : fmtAvg(p.min)}</td>
       <Shaded mode={mode} k="fgPct" tier={t.fgPct}>
-        <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} />
+        {played ? <PctCell pct={s.fgPct} made={s.fgm} att={s.fga} num={num} /> : "—"}
       </Shaded>
       <Shaded mode={mode} k="ftPct" tier={t.ftPct}>
-        <PctCell pct={s.ftPct} made={s.ftm} att={s.fta} num={num} />
+        {played ? <PctCell pct={s.ftPct} made={s.ftm} att={s.fta} num={num} /> : "—"}
       </Shaded>
-      <Shaded mode={mode} k="fg3m" tier={t.fg3m}>{num(s.fg3m)}</Shaded>
-      <Shaded mode={mode} k="pts" tier={t.pts} className={styles.key}>{num(s.pts)}</Shaded>
-      <Shaded mode={mode} k="reb" tier={t.reb}>{num(s.reb)}</Shaded>
-      <Shaded mode={mode} k="ast" tier={t.ast}>{num(s.ast)}</Shaded>
-      <Shaded mode={mode} k="stl" tier={t.stl}>{num(s.stl)}</Shaded>
-      <Shaded mode={mode} k="blk" tier={t.blk}>{num(s.blk)}</Shaded>
-      <Shaded mode={mode} k="tov" tier={t.tov}>{num(s.tov)}</Shaded>
-      <td className={`${styles.n} ${styles.value}`}>{fmtValue(p.value)}</td>
+      <Shaded mode={mode} k="fg3m" tier={t.fg3m}>{stat(s.fg3m)}</Shaded>
+      <Shaded mode={mode} k="pts" tier={t.pts} className={styles.key}>{stat(s.pts)}</Shaded>
+      <Shaded mode={mode} k="reb" tier={t.reb}>{stat(s.reb)}</Shaded>
+      <Shaded mode={mode} k="ast" tier={t.ast}>{stat(s.ast)}</Shaded>
+      <Shaded mode={mode} k="stl" tier={t.stl}>{stat(s.stl)}</Shaded>
+      <Shaded mode={mode} k="blk" tier={t.blk}>{stat(s.blk)}</Shaded>
+      <Shaded mode={mode} k="tov" tier={t.tov}>{stat(s.tov)}</Shaded>
+      <td className={`${styles.n} ${styles.value}`}>{p.value === null ? "—" : fmtValue(p.value)}</td>
       {onAdd && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
           <span className={styles.claimWrap}>

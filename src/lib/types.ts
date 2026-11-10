@@ -103,8 +103,11 @@ export interface PlayerInjury {
 }
 
 export interface PlayerRow extends PlayerSummary {
-  /** 1-based rank by (weighted) 9CAT `value` among all players with a game in the range (independent of q/pos). */
-  rank: number;
+  /**
+   * 1-based rank by (weighted) 9CAT `value` among all players with a game in the range (independent of q/pos).
+   * Null for a player with no game in the range, listed only by a name search (`gp` 0, no value or tiers).
+   */
+  rank: number | null;
   gp: number;
   /** Minutes per game in avg mode, total minutes in total mode. */
   min: number;
@@ -113,7 +116,7 @@ export interface PlayerRow extends PlayerSummary {
    * 9CAT value (average of category z-scores weighted by the request's weights; 0 = average rosterable player, higher
    * is better): of per-game averages in avg mode, of the range's totals in total mode (fewer games, lower value).
    */
-  value: number;
+  value: number | null;
   /**
    * Shading for each stat cell and Value: where he falls among the valuation pool, the ~156 players worth rostering
    * (same scale as Box scores). Per game (category z-scores) in avg mode; season totals in total mode (FG%/FT%: total
