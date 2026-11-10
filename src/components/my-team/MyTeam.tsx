@@ -11,7 +11,7 @@
 // Game limits (when the week has them): games used against the total and each
 // capped slot, warning before starts that won't count (GameLimits.tsx).
 // The selected day lives in the URL (?date=yyyy-mm-dd; omitted for today).
-// While today's games are live, today's lineup refetches every 30s and changed
+// While today's games are live, today's lineup refetches every minute and changed
 // stats flash, counts show the change ("+1") and game statuses flash
 // (components/live); a countdown by the week label shows the next update (pinned
 // to the top of the screen once scrolled off).

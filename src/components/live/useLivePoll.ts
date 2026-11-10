@@ -2,12 +2,13 @@
 
 // Calls `poll` every LIVE_POLL_MS while `active` and the tab is visible, and
 // once right away when the tab comes back. The worker writes live stats every
-// 30s (WORKER_LIVE_SECONDS), so polling more often than this buys nothing.
+// 30s (WORKER_LIVE_SECONDS); pages poll every minute, since a game rarely
+// moves much in 30s (timeouts, free throws, reviews).
 // Returns when the next poll is due (epoch ms; LiveCountdown shows it), or
 // null while inactive or the tab is hidden (nothing is scheduled then).
 import { useEffect, useRef, useState } from "react";
 
-export const LIVE_POLL_MS = 30_000;
+export const LIVE_POLL_MS = 60_000;
 
 export function useLivePoll(active: boolean, poll: () => void): number | null {
   const latest = useRef(poll);

@@ -118,7 +118,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
 - Live updates: `src/components/live/`. While `live` is true (`queries/live.ts` `gamesInProgress`, on `MatchupWeek`,
   `TeamLineupResponse` and `BoxScoresResponse`: a game the page shows is in progress, i.e. one with a league-rostered player,
   one of that day's roster, or on that date; finals don't count, so no countdown or polling once they're all over), Matchup and Box scores (`LiveRefresh`, `router.refresh`) and My team
-  (refetch) poll every 30s, each with a countdown to the next update (`LiveCountdown`, from `useLivePoll`'s `nextAt`;
+  (refetch) poll every minute (`LIVE_POLL_MS`), each with a countdown to the next update (`LiveCountdown`, from `useLivePoll`'s `nextAt`;
   `pin` floats a copy at the top of the screen once it scrolls off; Box scores shows a compact one in its pinned bar
   instead, `useLiveRefresh`). `Flash` highlights a value that changed (not on first render, from null, or when its
   `scope`, e.g. the player in the row, changed); its `delta` adds a badge with the change (`countDelta`: "+1", red when

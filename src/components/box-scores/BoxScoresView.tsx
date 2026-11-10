@@ -8,7 +8,7 @@
 // game you're reading; the tables' pinned headers sit just under it.
 // Keyed by date and ?game (page.tsx): ?game jumps to that game on load.
 // Signed out there's no Owner column and no Add/Claim (league data is private).
-// While games are live the page refreshes every 30s (useLiveRefresh; the countdown
+// While games are live the page refreshes every minute (useLiveRefresh; the countdown
 // floats at the top once scrolled off, then sits in the pinned bar): changed stats,
 // scores and statuses flash, counts show the change ("+1") and ranks the move
 // ("▲3") for a moment (Flash), and rows reordered by Value slide into place (useFlipRows).
