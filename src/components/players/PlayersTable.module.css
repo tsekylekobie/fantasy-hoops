@@ -536,7 +536,8 @@
   .table th:nth-child(-n + 2),
   .table td:nth-child(-n + 2) {
     position: sticky;
-    z-index: 1;
+    /* Above the Owner column's TeamLink (z-index 1), which would otherwise paint over it. */
+    z-index: 2;
     background: var(--surface);
   }
 
