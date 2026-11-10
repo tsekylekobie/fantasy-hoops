@@ -168,16 +168,17 @@ async function getTeamOptions(db: Pool, season: number): Promise<PlayersResponse
   return { fantasy: fantasy.rows, nba: nba.rows };
 }
 
-// A name search's candidates beyond the range's rows: players on an NBA team, on a fantasy roster ($2) or with a
-// regular-season game in the season (outside a shorter range), so someone who hasn't played yet can still be found.
-// Players with no team and no game (retired, unsigned) stay out: the players table holds every player BDL lists.
+// A name search's candidates beyond the range's rows: active players, i.e. those with a regular-season game this
+// season or last, on a fantasy roster ($2) or on the current injury report ($3), so someone hurt since opening night
+// can still be found. Not players.team_id: the provider keeps retired players on their last team.
 const SEARCHABLE_SQL = `
   SELECT p.id AS player_id, p.first_name, p.last_name, nullif(p.position, '') AS position,
          p.nba_person_id, p.team_id, tm.abbreviation AS team_abbr
   FROM players p
   LEFT JOIN teams tm ON tm.id = p.team_id
-  WHERE p.team_id IS NOT NULL OR p.id = ANY($2::int[])
-     OR EXISTS (SELECT 1 FROM player_game_stats s WHERE s.player_id = p.id AND s.season = $1 AND s.min > 0)`;
+  WHERE p.id = ANY($2::int[]) OR p.id = ANY($3::int[])
+     OR EXISTS (SELECT 1 FROM player_game_stats s
+                 WHERE s.player_id = p.id AND s.season BETWEEN $1 - 1 AND $1 AND s.min > 0)`;
 
 const NO_GAMES = { gp: 0, min: 0, fgm: 0, fga: 0, ftm: 0, fta: 0, fg3m: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0 };
 
@@ -371,7 +372,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   if (q.q) {
     const inRange = new Set(rows.map((r) => r.player_id));
     const { rows: found } = await db.query<Omit<SeasonPlayerRow, keyof TotalsRow> & { player_id: number }>(
-      SEARCHABLE_SQL, [q.season, [...owners.keys()]],
+      SEARCHABLE_SQL, [q.season, [...owners.keys()], [...injuries.keys()]],
     );
     for (const p of found) {
       if (inRange.has(p.player_id) || !nameMatches(q.q, p.first_name, p.last_name)) continue;
