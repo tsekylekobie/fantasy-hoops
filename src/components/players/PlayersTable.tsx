@@ -22,7 +22,7 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "STL", sort: "stl" },
   { label: "BLK", sort: "blk" },
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
-  { label: "Value", sort: "value", title: "DURANT H2H value (Josh Lloyd): each category power-transformed and standardized, weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6 (times your category weights), turnovers left out, the worst category dropped. 0 is about an average rostered player" },
+  { label: "Value", sort: "value", title: "DURANT H2H value (Josh Lloyd): each category power-transformed and standardized, weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6, turnovers and your punts left out, the worst remaining category dropped. 0 is about an average rostered player" },
 ];
 
 const TIER_CLASS: Record<RankTier, string | undefined> = {

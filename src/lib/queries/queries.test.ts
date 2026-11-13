@@ -42,6 +42,8 @@ test("durantValue: DURANT H2H weights, TO excluded, Minus 1 drops the worst weig
   const c = durantValue(scores({ pts: 1, reb: 1, ast: -1, ftPct: -2 }), { ...EQUAL_WEIGHTS, ftPct: 0 });
   assert.equal(c.dropped, "ast");
   assert.ok(Math.abs(c.value - (1 + 0.94) / (H2H_SUM - 0.6)) < 1e-12);
+  // Any weight above 0 counts fully (old saved slider weights): only punts matter.
+  assert.deepEqual(durantValue(scores({ pts: 1, reb: -1 }), { ...EQUAL_WEIGHTS, pts: 0.3, reb: 2 }), durantValue(scores({ pts: 1, reb: -1 }), EQUAL_WEIGHTS));
   // A turnover weight never brings TO back.
   assert.equal(durantValue(scores({ tov: 3 }), { ...EQUAL_WEIGHTS, tov: 2 }).value, 0);
 });

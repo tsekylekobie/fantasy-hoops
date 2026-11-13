@@ -7,8 +7,8 @@ import type { Pool } from "pg";
 import { isIlSlot } from "../lineup/rules";
 import { addPerGame, emptyPerGame } from "../trades/analysis";
 import {
-  CATEGORIES,
   DEFAULT_WEIGHTS,
+  puntedCategories,
   LINEUP_SLOTS,
   STARTING_SLOTS,
   type CategoryWeights,
@@ -95,7 +95,7 @@ export async function getTradeAnalysis(
     slots: LINEUP_SLOTS.filter((s) => STARTING_SLOTS.includes(s) && (league.rosterSlots[s] ?? 0) > 0)
       .map((slot) => ({ slot, count: league.rosterSlots[slot]! })),
     weights,
-    weightsAreDefault: CATEGORIES.every((c) => weights[c] === DEFAULT_WEIGHTS[c]),
+    weightsAreDefault: puntedCategories(weights).length === 0,
     teams: teamIds.map((id) => ({
       ...byId.get(id)!,
       players: roster.filter((r) => r.team_id === id).map(toPlayer)

@@ -63,15 +63,24 @@ export const CATEGORIES = ["fgPct", "ftPct", "fg3m", "pts", "reb", "ast", "stl",
 export type Category = (typeof CATEGORIES)[number];
 
 /**
- * Punt weights: multiply DURANT H2H's category weights in the players page's value (value.ts). 0 ignores (punts)
- * the category, 1 counts it as DURANT H2H does; 0 to MAX_WEIGHT. TO is never counted (DURANT H2H excludes it).
+ * Punts, stored as weights: 0 punts the category, anything above 0 counts it at its DURANT H2H weight (value.ts).
+ * The players page sets 0 or 1 (punt toggles); older saved weights (up to MAX_WEIGHT) read the same way.
+ * TO is never counted (DURANT H2H excludes it) and has no toggle; its stored weight is ignored.
  */
 export type CategoryWeights = Record<Category, number>;
 export const MAX_WEIGHT = 2;
-/** Turnovers count 0.3 by default (on the sliders' tenths). Reset goes back to these. */
+/** Nothing punted. TO's 0.3 is left from the old sliders and means nothing now. Reset goes back to these. */
 export const DEFAULT_WEIGHTS: CategoryWeights = {
   fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 0.3,
 };
+
+/** The categories that can be punted: all but TO. */
+export const PUNTABLE_CATEGORIES = CATEGORIES.filter((c) => c !== "tov");
+
+/** The punted categories (weight 0), TO aside, in table order. */
+export function puntedCategories(w: CategoryWeights): Category[] {
+  return PUNTABLE_CATEGORIES.filter((c) => w[c] === 0);
+}
 
 /** GET /api/me/weights (defaults when signed out or never saved); PUT the same shape to save (signed in). */
 export interface WeightsResponse {

@@ -14,7 +14,7 @@ import PlayersTable, { TierKey } from "./PlayersTable";
 import { isIsoDate } from "@/lib/queries/params";
 import { fetchJson, fmtGameDate, todayIn } from "./format";
 import PlayerModal from "./PlayerModal";
-import PuntWeights, { isDefaultWeights, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
+import PuntWeights, { isDefaultWeights, puntsSummary, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
 import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
 import styles from "./PlayersBrowser.module.css";
 
@@ -472,7 +472,7 @@ export default function PlayersBrowser() {
             aria-expanded={showWeights}
             onClick={() => setShowWeights((v) => !v)}
           >
-            Category weights{isDefaultWeights(weights) ? "" : " · custom"}
+            {isDefaultWeights(weights) ? "Punt categories" : `Punting ${puntsSummary(weights)}`}
           </button>
         </div>
 

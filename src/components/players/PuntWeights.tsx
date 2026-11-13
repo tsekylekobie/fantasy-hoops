@@ -1,15 +1,15 @@
 "use client";
 
 import { toWeights } from "@/lib/queries/params";
-import { CATEGORIES, DEFAULT_WEIGHTS, MAX_WEIGHT, type Category, type CategoryWeights } from "@/lib/types";
+import {
+  CATEGORIES, DEFAULT_WEIGHTS, PUNTABLE_CATEGORIES, puntedCategories, type Category, type CategoryWeights,
+} from "@/lib/types";
 import styles from "./PuntWeights.module.css";
 
 const LABELS: Record<Category, string> = {
   fgPct: "FG%", ftPct: "FT%", fg3m: "3PM", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK", tov: "TO",
 };
 
-/** Sliders move in tenths. Weights off the grid (saved before TO's default became 0.3, or from a URL) stay until moved. */
-const STEP = 0.1;
 const CACHE_KEY = "fantasy-hoops:punt-weights";
 
 /** The defaults before TO moved to 0.3. A cached copy of exactly these was never customized (see migration 0016). */
@@ -30,17 +30,18 @@ export function writeCachedWeights(w: CategoryWeights): void {
   try {
     window.localStorage.setItem(CACHE_KEY, JSON.stringify(w));
   } catch {
-    // Storage blocked or full: the weights still apply to this visit.
+    // Storage blocked or full: the punts still apply to this visit.
   }
 }
 
-/** "1.0", "0.3", and "0.25" for a weight off the tenths. */
-function fmtWeight(w: number): string {
-  return Number.isInteger(Math.round(w * 100) / 10) ? w.toFixed(1) : w.toFixed(2);
+/** Nothing punted (TO's stored weight doesn't matter). */
+export function isDefaultWeights(w: CategoryWeights): boolean {
+  return puntedCategories(w).length === 0;
 }
 
-export function isDefaultWeights(w: CategoryWeights): boolean {
-  return CATEGORIES.every((c) => w[c] === DEFAULT_WEIGHTS[c]);
+/** "FT%, AST" for the toolbar button; "" with no punts. */
+export function puntsSummary(w: CategoryWeights): string {
+  return puntedCategories(w).map((c) => LABELS[c]).join(", ");
 }
 
 /** "1,1,1,1,1,1,1,1,0.3" for GET /api/players?weights= */
@@ -51,54 +52,40 @@ export function weightsParam(w: CategoryWeights): string {
 interface Props {
   weights: CategoryWeights;
   onChange: (weights: CategoryWeights) => void;
-  /** Signed out: changes apply but aren't saved. */
   /** Last save failed. */
   saveError: string | null;
 }
 
 /**
- * One slider per category: 0 ignores it (a punt), 1 counts it as DURANT H2H does. Feeds the Value column and rank.
- * TO's slider is off: DURANT H2H leaves turnovers out.
+ * One punt toggle per category but TO: a punted category is left out of the Value column and rank (stored as weight
+ * 0; counted is 1, at its DURANT H2H weight). TO has no toggle: DURANT H2H never counts it. Shading isn't affected.
  */
 export default function PuntWeights({ weights, onChange, saveError }: Props) {
   return (
-    <section className={styles.panel} aria-label="Category weights">
-      <div className={styles.grid}>
-        {CATEGORIES.map((c) => (
-          <label
-            key={c}
-            className={`${styles.cat} ${weights[c] === 0 || c === "tov" ? styles.punted : ""}`}
-            title={c === "tov" ? "DURANT H2H leaves turnovers out of Value" : undefined}
-          >
-            <span className={styles.head}>
+    <section className={styles.panel} aria-label="Punt categories">
+      <div className={styles.grid} role="group" aria-label="Punt toggles">
+        {PUNTABLE_CATEGORIES.map((c) => {
+          const punted = weights[c] === 0;
+          return (
+            <button
+              key={c}
+              type="button"
+              className={`${styles.toggle} ${punted ? styles.punted : ""}`}
+              aria-pressed={punted}
+              aria-label={`Punt ${LABELS[c]}`}
+              onClick={() => onChange({ ...weights, [c]: punted ? 1 : 0 })}
+            >
               <span className={styles.label}>{LABELS[c]}</span>
-              <span className={styles.num}>{c === "tov" ? "Not counted" : weights[c] === 0 ? "Punt" : fmtWeight(weights[c])}</span>
-            </span>
-            <input
-              type="range"
-              disabled={c === "tov"}
-              min={0}
-              max={MAX_WEIGHT}
-              step={STEP}
-              value={weights[c]}
-              aria-label={`${LABELS[c]} weight`}
-              aria-valuetext={weights[c] === 0 ? "0, ignored" : fmtWeight(weights[c])}
-              onChange={(e) => onChange({ ...weights, [c]: Math.round(Number(e.target.value) * 10) / 10 })}
-              onKeyDown={(e) => {
-                // Off the grid (e.g. an older saved 0.25), the browser would snap to 0.3 before stepping: step to the neighbor instead.
-                const tenths = weights[c] * 10;
-                const dir = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
-                if (dir === 0 || Math.abs(tenths - Math.round(tenths)) < 1e-9) return;
-                e.preventDefault();
-                onChange({ ...weights, [c]: (dir > 0 ? Math.ceil(tenths) : Math.floor(tenths)) / 10 });
-              }}
-            />
-          </label>
-        ))}
+              <span className={styles.state}>{punted ? "Punted" : "Counted"}</span>
+            </button>
+          );
+        })}
       </div>
       <div className={styles.footer}>
-        <span className={saveError ? styles.error : styles.note} aria-live="polite">
-          {saveError ? `Couldn’t save: ${saveError}` : "Value is DURANT H2H: PTS 1, REB 0.94, AST 0.75, the rest 0.6, times these; worst category dropped."}
+        <span className={saveError ? styles.error : undefined} aria-live="polite">
+          {saveError
+            ? `Couldn’t save: ${saveError}`
+            : "Value is DURANT H2H: punted categories are left out. Turnovers never count."}
         </span>
         <button
           type="button"
@@ -106,7 +93,7 @@ export default function PuntWeights({ weights, onChange, saveError }: Props) {
           disabled={isDefaultWeights(weights)}
           onClick={() => onChange({ ...DEFAULT_WEIGHTS })}
         >
-          Reset to defaults
+          Clear punts
         </button>
       </div>
     </section>

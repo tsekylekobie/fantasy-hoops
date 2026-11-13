@@ -2,7 +2,7 @@
 
 // The trade analyzer (docs/design/trade-analyzer.mockup.html): what a trade does
 // to both teams. Each team's per-game category totals now and after, where
-// they'd rank in the league, the value change with the viewer's punt weights,
+// they'd rank in the league, the value change with the viewer's punts,
 // and the roster consequences: drops to fit the active limit and the best
 // lineup after (empty slots are positional holes). The numbers come from
 // src/lib/trades/analysis.ts over GET /api/trades/analysis; used by the trade
@@ -10,7 +10,7 @@
 import { useState, type ReactNode } from "react";
 import { fmtAvg, fmtPct, fmtValue, fullName } from "@/components/players/format";
 import { analyzeTrade, playerValue, type CategoryChange, type SideAnalysis, type TradeSideInput, type WeightSet } from "@/lib/trades/analysis";
-import { CATEGORIES, type Category, type CategoryWeights, type TradeAnalysisResponse, type TradeWindow } from "@/lib/types";
+import { CATEGORIES, puntedCategories, type Category, type CategoryWeights, type TradeAnalysisResponse, type TradeWindow } from "@/lib/types";
 import TeamLink from "@/components/TeamLink";
 import styles from "./TradeAnalysis.module.css";
 
@@ -25,10 +25,10 @@ export interface AnalysisSide extends TradeSideInput {
   dropMode: DropMode;
 }
 
-/** "Punt FT%" / "Punt FT%, TO" / "Custom". */
+/** "Punt FT%" / "Punt FT%, AST" / "No punts". */
 export function weightsLabel(w: CategoryWeights): string {
-  const punted = CATEGORIES.filter((c) => w[c] === 0).map((c) => LABEL[c]);
-  return punted.length > 0 ? `Punt ${punted.join(", ")}` : "Custom";
+  const punted = puntedCategories(w).map((c) => LABEL[c]);
+  return punted.length > 0 ? `Punt ${punted.join(", ")}` : "No punts";
 }
 
 const isPct = (k: Category) => k === "fgPct" || k === "ftPct";
@@ -65,7 +65,7 @@ function Rank({ c }: { c: CategoryChange }) {
   );
 }
 
-/** The Season / Last 14 days and Your weights / Default switches, shared with the builder's toolbar. */
+/** The Season / Last 14 days and Your punts / No punts switches, shared with the builder's toolbar. */
 export function AnalysisControls({ data, statWindow, weights, onWindow, onWeights }: {
   data: TradeAnalysisResponse;
   statWindow: TradeWindow;
@@ -83,10 +83,10 @@ export function AnalysisControls({ data, statWindow, weights, onWindow, onWeight
         ))}
       </div>
       {!data.weightsAreDefault && (
-        <div className={styles.seg} role="group" aria-label="Value weights">
+        <div className={styles.seg} role="group" aria-label="Value punts">
           {(["mine", "default"] as const).map((w) => (
             <button key={w} type="button" className={weights === w ? styles.on : undefined} aria-pressed={weights === w} onClick={() => onWeights(w)}>
-              {w === "mine" ? <>Your weights <small>{weightsLabel(data.weights)}</small></> : "Default"}
+              {w === "mine" ? <>Your punts <small>{weightsLabel(data.weights)}</small></> : "No punts"}
             </button>
           ))}
         </div>
@@ -116,7 +116,7 @@ export default function TradeAnalysis({ data, sides, viewerTeamId, statWindow, w
   const title = (teamId: number) => (
     <><TeamLink team={{ id: teamId, name: name(teamId) }} myTeamId={viewerTeamId} />{teamId === viewerTeamId ? " (you)" : ""}</>
   );
-  const weightName = weights === "mine" && !data.weightsAreDefault ? `your weights (${weightsLabel(data.weights)})` : "default weights";
+  const weightName = weights === "mine" && !data.weightsAreDefault ? `your punts (${weightsLabel(data.weights)})` : "no punts";
   const windowName = statWindow === "season" ? "season averages" : "the last 14 days";
 
   return (

@@ -15,10 +15,10 @@
 //    then standardized over the pool (yeoJohnson.ts, scikit-learn's PowerTransformer). The transform pulls in long
 //    tails (one huge blocks number) before the categories are compared; a category with no spread scores 0.
 // 5. Value = DURANT H2H: each category's score times its weight, DURANT_H2H_WEIGHTS (PTS 1, REB 0.94, AST 0.75,
-//    the rest 0.6; TO excluded) times the caller's punt weight (all 1 = plain DURANT H2H; 0 punts it). Minus 1:
+//    the rest 0.6; TO excluded), with the caller's punts (weight 0) left out. Minus 1:
 //    the player's worst weighted contribution among the counted categories is dropped (7 of the 8 by default).
-//    The rest are summed and divided by the sum of every counted category's weight, so scaling the punt weights
-//    doesn't change the scale. 0 is about the pool's average player. Players outside the pool are scored with the
+//    The rest are summed and divided by the sum of every counted category's weight, so punting doesn't change
+//    the scale. 0 is about the pool's average player. Players outside the pool are scored with the
 //    pool's transforms.
 // 6. Totals (the Players page's Totals mode): the same, over season totals
 //    instead of per-game averages (FG%/FT%: total impact, makes - poolPct *
@@ -175,15 +175,15 @@ function poolScorer(pool: SeasonTotals[]) {
 }
 
 /**
- * DURANT H2H value (step 5) of a player's category scores: weights are DURANT_H2H_WEIGHTS times `weights`;
- * Minus 1 drops the worst weighted contribution; the rest over the sum of every counted weight. 0 when nothing counts.
+ * DURANT H2H value (step 5) of a player's category scores: DURANT_H2H_WEIGHTS, without the categories `weights`
+ * punts (0; any other weight counts fully); Minus 1 drops the worst weighted contribution; the rest over the sum of every counted weight. 0 when nothing counts.
  */
 export function durantValue(
   scores: Record<Category, number>, weights: CategoryWeights,
 ): { value: number; dropped: Category | null } {
   const counted: { c: Category; w: number; contrib: number }[] = [];
   for (const c of Object.keys(DURANT_H2H_WEIGHTS) as Category[]) {
-    const w = DURANT_H2H_WEIGHTS[c] * weights[c];
+    const w = weights[c] > 0 ? DURANT_H2H_WEIGHTS[c] : 0;
     if (w > 0) counted.push({ c, w, contrib: w * scores[c] });
   }
   const den = counted.reduce((a, x) => a + x.w, 0);
