@@ -78,7 +78,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   analyzer, box scores) are Josh Lloyd's DURANT H2H: each category Yeo–Johnson transformed and standardized over the
   156-player pool (`yeoJohnson.ts`, matches scikit-learn's PowerTransformer, tested), weighted by `DURANT_H2H_WEIGHTS`
   (PTS 1, REB 0.94, AST 0.75, the rest 0.6, TO excluded), without the user's punts, minus the worst category
-  (Minus 1). `Valuation.z` and the cell tiers stay plain z-scores. Punts are punt toggles (`PuntWeights.tsx`, every
+  (Minus 1). `Valuation.z` and the cell tiers stay plain z-scores. Punts are checkboxes (`PuntWeights.tsx`, every
   category but TO), still stored as `CategoryWeights` (0 = punted, anything above 0 counts fully; old saved slider
   weights read that way).
 - Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and

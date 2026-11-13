@@ -57,36 +57,23 @@ interface Props {
 }
 
 /**
- * One punt toggle per category but TO: a punted category is left out of the Value column and rank (stored as weight
- * 0; counted is 1, at its DURANT H2H weight). TO has no toggle: DURANT H2H never counts it. Shading isn't affected.
+ * One punt checkbox per category but TO (DURANT H2H never counts it): a checked category is left out of the Value
+ * column and rank (stored as weight 0; unchecked is 1). Shading isn't affected.
  */
 export default function PuntWeights({ weights, onChange, saveError }: Props) {
   return (
     <section className={styles.panel} aria-label="Punt categories">
-      <div className={styles.grid} role="group" aria-label="Punt toggles">
-        {PUNTABLE_CATEGORIES.map((c) => {
-          const punted = weights[c] === 0;
-          return (
-            <button
-              key={c}
-              type="button"
-              className={`${styles.toggle} ${punted ? styles.punted : ""}`}
-              aria-pressed={punted}
-              aria-label={`Punt ${LABELS[c]}`}
-              onClick={() => onChange({ ...weights, [c]: punted ? 1 : 0 })}
-            >
-              <span className={styles.label}>{LABELS[c]}</span>
-              <span className={styles.state}>{punted ? "Punted" : "Counted"}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div className={styles.footer}>
-        <span className={saveError ? styles.error : undefined} aria-live="polite">
-          {saveError
-            ? `Couldn’t save: ${saveError}`
-            : "Value is DURANT H2H: punted categories are left out. Turnovers never count."}
-        </span>
+      <div className={styles.grid}>
+        {PUNTABLE_CATEGORIES.map((c) => (
+          <label key={c} className={styles.check}>
+            <input
+              type="checkbox"
+              checked={weights[c] === 0}
+              onChange={(e) => onChange({ ...weights, [c]: e.target.checked ? 0 : 1 })}
+            />
+            {LABELS[c]}
+          </label>
+        ))}
         <button
           type="button"
           className={styles.reset}
@@ -96,6 +83,7 @@ export default function PuntWeights({ weights, onChange, saveError }: Props) {
           Clear punts
         </button>
       </div>
+      {saveError && <p className={styles.error} aria-live="polite">Couldn’t save: {saveError}</p>}
     </section>
   );
 }
