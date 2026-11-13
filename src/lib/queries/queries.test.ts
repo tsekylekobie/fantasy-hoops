@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { BadRequest, nameMatches, normalizeName, parsePlayersQuery, positionMatches } from "./params";
 import { categoryLine } from "./players";
 import { DEFAULT_WEIGHTS } from "../types";
-import { EQUAL_WEIGHTS, POOL_SIZE, selectPool, valuePlayers, type SeasonTotals } from "./value";
+import { DURANT_H2H_WEIGHTS, EQUAL_WEIGHTS, POOL_SIZE, durantValue, selectPool, valuePlayers, type SeasonTotals } from "./value";
 
 function player(id: number, over: Partial<SeasonTotals> = {}): SeasonTotals {
   return {
@@ -18,11 +18,32 @@ test("identical players all get value 0", () => {
   for (const id of [1, 2, 3]) assert.equal(v.get(id)!.value, 0);
 });
 
-test("better counting stats raise value; more turnovers lower it", () => {
-  const v = valuePlayers([player(1), player(2, { pts: 300 }), player(3, { tov: 60 })]);
+test("better counting stats raise value; turnovers don't count (DURANT H2H)", () => {
+  const v = valuePlayers([player(1), player(2, { pts: 300 }), player(3, { tov: 60 }), player(4, { pts: 90, reb: 30 })]);
   assert.equal(v.get(2)!.rank, 1);
-  assert.equal(v.get(3)!.rank, 3);
-  assert.ok(v.get(3)!.value < 0);
+  assert.equal(v.get(4)!.rank, 4);
+  assert.ok(v.get(4)!.value < 0);
+  assert.equal(v.get(3)!.value, v.get(1)!.value);
+});
+
+const scores = (over: Partial<Record<keyof typeof EQUAL_WEIGHTS, number>>) => ({ ...Object.fromEntries(Object.keys(EQUAL_WEIGHTS).map((c) => [c, 0])), ...over }) as typeof EQUAL_WEIGHTS;
+const H2H_SUM = 1 + 0.94 + 0.75 + 5 * 0.6;
+
+test("durantValue: DURANT H2H weights, TO excluded, Minus 1 drops the worst weighted contribution", () => {
+  assert.equal(DURANT_H2H_WEIGHTS.tov, 0);
+  // Two weak categories: the worse weighted one (FT% -2 * 0.6 = -1.2, vs AST -1 * 0.75) is dropped.
+  const a = durantValue(scores({ pts: 1, reb: 1, ast: -1, ftPct: -2, tov: -5 }), EQUAL_WEIGHTS);
+  assert.equal(a.dropped, "ftPct");
+  assert.ok(Math.abs(a.value - (1 + 0.94 - 0.75) / H2H_SUM) < 1e-12);
+  // All positive: the smallest contribution is still dropped.
+  const b = durantValue(scores({ pts: 1, reb: 1, ast: 1, fgPct: 1, ftPct: 1, fg3m: 1, stl: 1, blk: 1 }), EQUAL_WEIGHTS);
+  assert.ok(Math.abs(b.value - (H2H_SUM - 0.6) / H2H_SUM) < 1e-12);
+  // Punting FT% (weight 0) leaves it out, so Minus 1 drops AST instead.
+  const c = durantValue(scores({ pts: 1, reb: 1, ast: -1, ftPct: -2 }), { ...EQUAL_WEIGHTS, ftPct: 0 });
+  assert.equal(c.dropped, "ast");
+  assert.ok(Math.abs(c.value - (1 + 0.94) / (H2H_SUM - 0.6)) < 1e-12);
+  // A turnover weight never brings TO back.
+  assert.equal(durantValue(scores({ tov: 3 }), { ...EQUAL_WEIGHTS, tov: 2 }).value, 0);
 });
 
 test("FG%/FT% impact: z-scores per game, season totals = makes - pool % * attempts", () => {
@@ -55,9 +76,9 @@ test("value is per game: doubling every total and GP leaves value unchanged", ()
 });
 
 test("pool requires 25% of max GP and takes the top POOL_SIZE by value, not minutes", () => {
-  const many = Array.from({ length: 200 }, (_, i) => player(i + 1, { pts: 100 + 2 * i }));
+  const many = Array.from({ length: 200 }, (_, i) => player(i + 1, { pts: 100 + 2 * i, reb: 40 + i / 2 }));
   const fewGames = player(999, { gp: 2, pts: 80 }); // 40 ppg but 2 < ceil(10 * 0.25) = 3
-  const heavyMinutes = player(998, { min: 400, pts: 50 }); // most minutes per game, least scoring
+  const heavyMinutes = player(998, { min: 400, pts: 50, reb: 30 }); // most minutes per game, least scoring and rebounding
   const pool = selectPool([...many, fewGames, heavyMinutes]);
   assert.equal(pool.length, POOL_SIZE);
   assert.ok(!pool.some((p) => p.playerId === 999));
@@ -84,13 +105,9 @@ test("punt weights: 0 ignores a category, other weights scale it", () => {
   // Punting points drops the scorer below the rebounder.
   assert.ok(plain.get(1)!.rank < plain.get(2)!.rank);
   assert.ok(punted.get(2)!.rank < punted.get(1)!.rank);
-  // Value is the weighted average: turnovers at 0.25 count a quarter, over 8.25 weights instead of 9.
-  const quarter = valuePlayers([player(1), player(3, { tov: 60 })], { ...EQUAL_WEIGHTS, tov: 0.25 });
-  const full = valuePlayers([player(1), player(3, { tov: 60 })]);
-  assert.ok(Math.abs(quarter.get(3)!.value * 8.25 - (full.get(3)!.value * 9) / 4) < 1e-9);
 });
 
-test("value is the weighted average of the z-scores: scaling every weight changes nothing", () => {
+test("value is a weighted average: scaling every punt weight changes nothing", () => {
   const players = [player(1, { pts: 300 }), player(2, { reb: 90 }), player(3, { tov: 60 }), player(4)];
   const ones = valuePlayers(players);
   const twos = valuePlayers(players, Object.fromEntries(Object.keys(EQUAL_WEIGHTS).map((c) => [c, 2])) as typeof EQUAL_WEIGHTS);
@@ -181,8 +198,8 @@ test("no FG%/FT% tier without attempts", () => {
 });
 
 test("totals: the same per-game line over fewer games ranks lower, Value and rank included", () => {
-  const base = Array.from({ length: 19 }, (_, i) => player(i + 10, { pts: 100 + i * 5 }));
-  const star = player(1, { pts: 300 }); // 30 a game over 10 games: best per game and in totals
+  const base = Array.from({ length: 19 }, (_, i) => player(i + 10, { pts: 100 + i * 5, reb: 40 + i }));
+  const star = player(1, { pts: 300, reb: 59 }); // 30 a game over 10 games: best per game and in totals
   const short = player(2, { gp: 2, min: 60, fgm: 10, fga: 20, ftm: 4, fta: 5, fg3m: 3, pts: 60, reb: 10, ast: 6, stl: 2, blk: 1, tov: 4 });
   const v = valuePlayers([...base, star, short]);
   assert.equal(v.get(1)!.totalTiers.pts, "top10");

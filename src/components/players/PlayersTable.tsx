@@ -22,7 +22,7 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "STL", sort: "stl" },
   { label: "BLK", sort: "blk" },
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
-  { label: "Value", sort: "value", title: "9CAT value: average of the nine category z-scores, weighted by your category weights. 0 is an average rostered player" },
+  { label: "Value", sort: "value", title: "DURANT H2H value (Josh Lloyd): each category power-transformed and standardized, weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6 (times your category weights), turnovers left out, the worst category dropped. 0 is about an average rostered player" },
 ];
 
 const TIER_CLASS: Record<RankTier, string | undefined> = {
@@ -138,7 +138,7 @@ export default function PlayersTable({
       head={(copy) => (
         <thead>
           <tr>
-            <th scope="col" title="9CAT rank">#</th>
+            <th scope="col" title="DURANT H2H rank">#</th>
             <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} copy={copy} />
             <th scope="col" className={styles.week}>
               <abbr className={styles.abbr} title="Games remaining / total in this matchup week">Gms</abbr>

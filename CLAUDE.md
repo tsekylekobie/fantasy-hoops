@@ -74,6 +74,11 @@ stored game logs), and neither is `/plays` (no play-by-play).
   The Categories table's Win chance row (`components/matchup/categoryOdds.ts`, pure, tested): each category's chance of
   winning by week's end, the projected margin over a spread that grows with what's left to play (projected minus actual);
   shaded red to green by the chance. Hidden once the week is final.
+- Player value and rank (`src/lib/queries/value.ts`, everywhere a Value or # shows: Players, player modal, trade
+  analyzer, box scores) are Josh Lloyd's DURANT H2H: each category Yeo–Johnson transformed and standardized over the
+  156-player pool (`yeoJohnson.ts`, matches scikit-learn's PowerTransformer, tested), weighted by `DURANT_H2H_WEIGHTS`
+  (PTS 1, REB 0.94, AST 0.75, the rest 0.6, TO excluded) times the user's punt weights, minus the worst category
+  (Minus 1). `Valuation.z` and the cell tiers stay plain z-scores.
 - Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and
   colors as My team's chip (`getWeekGames` in `queries/weekGames.ts`, run for the page's rows only; not sortable).
 - Players page filters: a name search (`q`) ignores them all and looks across every player (`getPlayers`); the filters apply only when not searching. A search also lists players with no game in the range (active ones: a game this season or last, on a roster or on the injury report, e.g. hurt since opening night; not `players.team_id`, which retired players keep) after the ranked ones, with no rank, stats or value; without a search they never show. Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's

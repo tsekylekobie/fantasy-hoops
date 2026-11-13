@@ -388,7 +388,7 @@ function DropTable({ players, pick, onPick, range, onRange }: {
       <div className={styles.table} role="radiogroup" aria-label="Player to drop">
         <div className={`${styles.grid} ${styles.header}`} aria-hidden="true">
           <span /><span>Slot</span><span>Player</span>
-          <span className={styles.num} title="9CAT rank">#</span>
+          <span className={styles.num} title="DURANT H2H rank">#</span>
           {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((h) => (
             <span key={h} className={styles.num}>{h}</span>
           ))}

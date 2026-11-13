@@ -205,7 +205,7 @@ export default function TradeAnalysis({ data, sides, viewerTeamId, statWindow, w
       <p className={styles.foot}>
         Per-game team totals: every active player’s averages added up (arrivals included, IL left out), with FG% and FT%
         from summed makes and attempts. League rank is against all {data.league.length} teams; TO counts fewer as better.
-        Value is the Players page’s 9CAT value with {weightName}, summed over the roster.
+        Value is the Players page’s DURANT H2H value with {weightName}, summed over the roster.
       </p>
 
       <div className={styles.cons}>

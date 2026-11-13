@@ -56,19 +56,27 @@ interface Props {
   saveError: string | null;
 }
 
-/** One slider per category: 0 ignores it (a punt), 1 counts it fully. Feeds the Value column and rank. */
+/**
+ * One slider per category: 0 ignores it (a punt), 1 counts it as DURANT H2H does. Feeds the Value column and rank.
+ * TO's slider is off: DURANT H2H leaves turnovers out.
+ */
 export default function PuntWeights({ weights, onChange, saveError }: Props) {
   return (
     <section className={styles.panel} aria-label="Category weights">
       <div className={styles.grid}>
         {CATEGORIES.map((c) => (
-          <label key={c} className={`${styles.cat} ${weights[c] === 0 ? styles.punted : ""}`}>
+          <label
+            key={c}
+            className={`${styles.cat} ${weights[c] === 0 || c === "tov" ? styles.punted : ""}`}
+            title={c === "tov" ? "DURANT H2H leaves turnovers out of Value" : undefined}
+          >
             <span className={styles.head}>
               <span className={styles.label}>{LABELS[c]}</span>
-              <span className={styles.num}>{weights[c] === 0 ? "Punt" : fmtWeight(weights[c])}</span>
+              <span className={styles.num}>{c === "tov" ? "Not counted" : weights[c] === 0 ? "Punt" : fmtWeight(weights[c])}</span>
             </span>
             <input
               type="range"
+              disabled={c === "tov"}
               min={0}
               max={MAX_WEIGHT}
               step={STEP}
@@ -89,8 +97,8 @@ export default function PuntWeights({ weights, onChange, saveError }: Props) {
         ))}
       </div>
       <div className={styles.footer}>
-        <span className={saveError ? styles.error : undefined} aria-live="polite">
-          {saveError && `Couldn’t save: ${saveError}`}
+        <span className={saveError ? styles.error : styles.note} aria-live="polite">
+          {saveError ? `Couldn’t save: ${saveError}` : "Value is DURANT H2H: PTS 1, REB 0.94, AST 0.75, the rest 0.6, times these; worst category dropped."}
         </span>
         <button
           type="button"

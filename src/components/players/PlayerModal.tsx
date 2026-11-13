@@ -267,7 +267,7 @@ function DetailHead({
   );
 }
 
-/** 9CAT rank for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
+/** DURANT H2H rank for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
 function Ranks({ ranks }: { ranks: PlayerRanks }) {
   if (ranks.season === null && ranks.last30 === null && ranks.last14 === null) return null;
   const items = [
@@ -278,7 +278,7 @@ function Ranks({ ranks }: { ranks: PlayerRanks }) {
   const trend = (rank: number | null) =>
     rank === null || ranks.season === null || rank === ranks.season ? null : rank < ranks.season ? "up" : "down";
   return (
-    <dl className={styles.ranks} aria-label="9CAT rank">
+    <dl className={styles.ranks} aria-label="DURANT H2H rank">
       {items.map(({ label, rank }, i) => {
         const t = i === 0 ? null : trend(rank);
         return (
@@ -471,7 +471,7 @@ function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClo
                 <thead>
                   <tr>
                     <th scope="col">Season</th>
-                    <th scope="col" className={styles.n} title="9CAT rank that season (default weights)">
+                    <th scope="col" className={styles.n} title="DURANT H2H rank that season (default weights)">
                       Rank
                     </th>
                     {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (

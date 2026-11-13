@@ -277,7 +277,7 @@ function Roster({ title, team, players, picked, dropping, lineFor, onPick }: {
         <span className={`${styles.n} ${styles.opt}`}>PTS</span>
         <span className={`${styles.n} ${styles.opt}`}>REB</span>
         <span className={`${styles.n} ${styles.opt}`}>AST</span>
-        <span className={styles.n} title="9CAT value, with the analyzer's window and weights">Value</span>
+        <span className={styles.n} title="DURANT H2H value, with the analyzer's window and weights">Value</span>
       </div>
       {players.map((p) => {
         const on = picked.has(p.id);

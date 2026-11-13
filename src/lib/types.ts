@@ -63,8 +63,8 @@ export const CATEGORIES = ["fgPct", "ftPct", "fg3m", "pts", "reb", "ast", "stl",
 export type Category = (typeof CATEGORIES)[number];
 
 /**
- * Punt weights: the players page's value is the average of the category z-scores weighted by these.
- * 0 ignores (punts) the category, 1 counts it fully; 0 to MAX_WEIGHT.
+ * Punt weights: multiply DURANT H2H's category weights in the players page's value (value.ts). 0 ignores (punts)
+ * the category, 1 counts it as DURANT H2H does; 0 to MAX_WEIGHT. TO is never counted (DURANT H2H excludes it).
  */
 export type CategoryWeights = Record<Category, number>;
 export const MAX_WEIGHT = 2;
