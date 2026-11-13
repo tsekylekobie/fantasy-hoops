@@ -6,6 +6,16 @@
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   background: var(--surface);
+  /* Never wider than the screen: a page wider than the phone is zoomed out to
+     fit, and the modal's scroll lock then clips it and zooms back in. As a last
+     resort on the narrowest phones, the pill scrolls sideways. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.group::-webkit-scrollbar {
+  display: none;
 }
 
 .segment {
@@ -20,8 +30,15 @@
   color: var(--ink);
   font-size: 13px;
   font-weight: 500;
+  flex-shrink: 0;
   white-space: nowrap;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .segment {
+    padding: 0 8px;
+  }
 }
 
 .segment:hover:not([aria-pressed="true"]) {
