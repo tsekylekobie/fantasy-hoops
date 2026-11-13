@@ -12,13 +12,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 24px;
+  gap: 4px 14px;
 }
 
 .check {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 36px;
   font-size: 13px;
   font-weight: 500;
