@@ -444,19 +444,22 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
   return { season, gp: t.gp, ...categoryLine(t, "avg") };
 }
 
-/** His rank among every player with a game in each range, as the Players page ranks them with `weights` and `method`. */
+/** His rank and Value among every player with a game in each range, as the Players page ranks them with `weights` and `method`. */
 async function getRanks(
   db: Pool, playerId: number, season: number, weights: CategoryWeights, method: RankMethod,
-): Promise<PlayerRanks> {
+): Promise<{ ranks: PlayerRanks; values: PlayerRanks }> {
   const rank = async (range: StatRange) => {
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
     if (days !== null && window === null) return null;
     const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
-    return valuePlayers(rows.map(toTotals), weights, method).get(playerId)?.rank ?? null;
+    return valuePlayers(rows.map(toTotals), weights, method).get(playerId) ?? null;
   };
   const [all, last30, last14] = await Promise.all([rank("season"), rank("last30"), rank("last14")]);
-  return { season: all, last30, last14 };
+  return {
+    ranks: { season: all?.rank ?? null, last30: last30?.rank ?? null, last14: last14?.rank ?? null },
+    values: { season: all?.value ?? null, last30: last30?.value ?? null, last14: last14?.value ?? null },
+  };
 }
 
 // Ranks for finished seasons barely change (only a stats backfill moves them), so keep each season's for a while.
@@ -577,7 +580,8 @@ export async function getPlayerDetail(
     timeZone: waivers.timeZone,
     season,
     seasonAverages: current ? seasonRow(season, current) : null,
-    ranks,
+    ranks: ranks.ranks,
+    values: ranks.values,
     gameLog,
     pastSeasons,
     watched: userId === null ? null : watched.has(p.id),

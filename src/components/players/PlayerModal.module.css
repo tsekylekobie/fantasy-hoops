@@ -110,6 +110,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The Value behind the rank, quieter than the rank itself. */
+.rankValue {
+  margin-left: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.rankValueLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-subtle);
+}
+
 .rankUp {
   color: var(--ok-ink);
   font-size: 13px;
