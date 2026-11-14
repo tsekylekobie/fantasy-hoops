@@ -444,21 +444,29 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
   return { season, gp: t.gp, ...categoryLine(t, "avg") };
 }
 
-/** His rank and Value among every player with a game in each range, as the Players page ranks them with `weights` and `method`. */
+/**
+ * His rank among every player with a game in each range, as the Players page ranks them with `weights`: by `method`,
+ * and by the other method (`otherRanks`).
+ */
 async function getRanks(
   db: Pool, playerId: number, season: number, weights: CategoryWeights, method: RankMethod,
-): Promise<{ ranks: PlayerRanks; values: PlayerRanks }> {
+): Promise<{ ranks: PlayerRanks; otherRanks: PlayerRanks }> {
+  const other: RankMethod = method === "durant" ? "9cat" : "durant";
   const rank = async (range: StatRange) => {
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
-    if (days !== null && window === null) return null;
+    if (days !== null && window === null) return { mine: null, other: null };
     const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
-    return valuePlayers(rows.map(toTotals), weights, method).get(playerId) ?? null;
+    const totals = rows.map(toTotals);
+    return {
+      mine: valuePlayers(totals, weights, method).get(playerId)?.rank ?? null,
+      other: valuePlayers(totals, weights, other).get(playerId)?.rank ?? null,
+    };
   };
   const [all, last30, last14] = await Promise.all([rank("season"), rank("last30"), rank("last14")]);
   return {
-    ranks: { season: all?.rank ?? null, last30: last30?.rank ?? null, last14: last14?.rank ?? null },
-    values: { season: all?.value ?? null, last30: last30?.value ?? null, last14: last14?.value ?? null },
+    ranks: { season: all.mine, last30: last30.mine, last14: last14.mine },
+    otherRanks: { season: all.other, last30: last30.other, last14: last14.other },
   };
 }
 
@@ -581,7 +589,7 @@ export async function getPlayerDetail(
     season,
     seasonAverages: current ? seasonRow(season, current) : null,
     ranks: ranks.ranks,
-    values: ranks.values,
+    otherRanks: ranks.otherRanks,
     gameLog,
     pastSeasons,
     watched: userId === null ? null : watched.has(p.id),

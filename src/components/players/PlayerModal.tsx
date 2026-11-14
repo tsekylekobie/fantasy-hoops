@@ -12,7 +12,7 @@ import type {
   RankMethod,
 } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
-import { fetchJson, fmtValue, fmtAvg, fmtGameDate, fmtGameStatus, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
+import { fetchJson, fmtAvg, fmtGameDate, fmtGameStatus, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
 import WatchStar from "./WatchStar";
 import styles from "./PlayerModal.module.css";
 
@@ -240,7 +240,7 @@ function DetailHead({
             </>
           )}
         </p>
-        <Ranks ranks={data.ranks} values={data.values} method={method} />
+        <Ranks ranks={data.ranks} otherRanks={data.otherRanks} method={method} />
         {injury && (injuryLine || injury.note) && (
           <div className={styles.injury}>
             {injuryLine && <p className={styles.injuryLine}>{injuryLine}</p>}
@@ -273,19 +273,19 @@ function DetailHead({
 }
 
 /** Rank (DURANT H2H or 9CAT) for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
-function Ranks({ ranks, values, method }: { ranks: PlayerRanks; values: PlayerRanks; method: RankMethod }) {
+function Ranks({ ranks, otherRanks, method }: { ranks: PlayerRanks; otherRanks: PlayerRanks; method: RankMethod }) {
   if (ranks.season === null && ranks.last30 === null && ranks.last14 === null) return null;
   const items = [
-    { label: "Season", rank: ranks.season, value: values.season },
-    { label: "Last 30", rank: ranks.last30, value: values.last30 },
-    { label: "Last 14", rank: ranks.last14, value: values.last14 },
+    { label: "Season", rank: ranks.season, other: otherRanks.season },
+    { label: "Last 30", rank: ranks.last30, other: otherRanks.last30 },
+    { label: "Last 14", rank: ranks.last14, other: otherRanks.last14 },
   ];
-  const valueName = method === "durant" ? "DURANT value" : "9CAT value";
+  const otherName = method === "durant" ? "9CAT" : "DURANT";
   const trend = (rank: number | null) =>
     rank === null || ranks.season === null || rank === ranks.season ? null : rank < ranks.season ? "up" : "down";
   return (
     <dl className={styles.ranks} aria-label={method === "durant" ? "DURANT H2H rank" : "9CAT rank"}>
-      {items.map(({ label, rank, value }, i) => {
+      {items.map(({ label, rank, other }, i) => {
         const t = i === 0 ? null : trend(rank);
         return (
           <div key={label} className={styles.rank}>
@@ -298,10 +298,10 @@ function Ranks({ ranks, values, method }: { ranks: PlayerRanks; values: PlayerRa
                   <span className={styles.sr}>{t === "up" ? " (up from season)" : " (down from season)"}</span>
                 </span>
               )}
-              {value !== null && (
-                <span className={styles.rankValue} title={valueName}>
-                  {fmtValue(value)}
-                  <span className={styles.rankValueLabel}>{method === "durant" ? " DURANT" : " 9CAT"}</span>
+              {other !== null && (
+                <span className={styles.rankOther} title={`${otherName} rank`}>
+                  #{other}
+                  <span className={styles.rankOtherLabel}> {otherName}</span>
                 </span>
               )}
             </dd>

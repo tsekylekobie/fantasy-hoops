@@ -110,8 +110,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The Value behind the rank, quieter than the rank itself. */
-.rankValue {
+/* The rank by the other method (9CAT or DURANT), quieter than the page's own. */
+.rankOther {
   margin-left: 8px;
   font-family: var(--font-body);
   font-size: 13px;
@@ -119,7 +119,7 @@
   color: var(--ink-muted);
 }
 
-.rankValueLabel {
+.rankOtherLabel {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;

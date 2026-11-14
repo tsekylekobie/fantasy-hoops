@@ -281,10 +281,10 @@ export interface PlayerDetailResponse {
   season: number;
   /** Per-game averages for `season`; null if the player has no games in it. */
   seasonAverages: SeasonRow | null;
-  /** His rank for `season` and its last 30 and 14 days, as the Players page ranks them (your punts, `method`). */
+  /** His rank for `season` and its last 30 and 14 days, as the Players page ranks them (your punts), by `method`. */
   ranks: PlayerRanks;
-  /** His per-game Value behind each of `ranks` (the Players page's Value column); null where unranked. */
-  values: PlayerRanks;
+  /** The same ranks by the other method (9CAT when `method` is DURANT, and the other way round). */
+  otherRanks: PlayerRanks;
   /** Newest game first. */
   gameLog: GameLogRow[];
   /** Seasons before `season`, newest first. */
