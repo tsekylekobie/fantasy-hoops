@@ -25,7 +25,11 @@
 //    attempts), fitted over the same pool's totals. Fewer games means a lower value.
 // `z` and the category tiers stay plain z-scores against the pool (the tiers are places, which the transform
 // doesn't change); only Value and rank are DURANT.
-import type { Category, CategoryWeights, RankTier } from "../types";
+//
+// method "9cat" (the Players page's 9CAT switch) is the valuation before DURANT: the pool is re-picked by plain 9CAT
+// value (step 2), and Value is the weighted average of all nine plain z-scores, TO included at its stored weight
+// (0.3 by default), punted categories 0 and the rest 1 (nineCatValue). Totals mode z-scores the pool's totals.
+import type { Category, CategoryWeights, RankMethod, RankTier } from "../types";
 import { fitPowerScaler } from "./yeoJohnson";
 
 export const POOL_SIZE = 156;
@@ -194,6 +198,28 @@ export function durantValue(
   return { value: num / den, dropped: worst?.c ?? null };
 }
 
+/**
+ * 9CAT value: the weighted average of the nine plain z-scores. Punted categories (0) are left out, the others count 1,
+ * and TO counts at its own stored weight (the old sliders' default, 0.3). 0 when nothing counts.
+ */
+export function nineCatValue(z: Record<Category, number>, weights: CategoryWeights): number {
+  let num = 0;
+  let den = 0;
+  for (const c of Object.keys(DURANT_H2H_WEIGHTS) as Category[]) {
+    const w = c === "tov" ? weights.tov : weights[c] > 0 ? 1 : 0;
+    num += w * z[c];
+    den += w;
+  }
+  return den > 0 ? num / den : 0;
+}
+
+/** A player's value by `method` from his DURANT scores and plain z-scores. */
+function methodValue(
+  method: RankMethod, d: Record<Category, number>, z: Record<Category, number>, weights: CategoryWeights,
+): { value: number; dropped: Category | null } {
+  return method === "durant" ? durantValue(d, weights) : { value: nineCatValue(z, weights), dropped: null };
+}
+
 /** Scores keyed by the public category names. */
 function byCategory(zs: Record<Cat, number>): Record<Category, number> {
   const out = {} as Record<Category, number>;
@@ -206,8 +232,8 @@ function byValue(scored: { p: SeasonTotals; value: number }[]) {
   return scored.sort((a, b) => b.value - a.value || mpg(b.p) - mpg(a.p) || a.p.playerId - b.p.playerId);
 }
 
-/** The reference pool (step 2). Doesn't depend on punt weights. */
-export function selectPool(players: SeasonTotals[]): SeasonTotals[] {
+/** The reference pool (step 2), re-picked by `method`'s value. Doesn't depend on punt weights. */
+export function selectPool(players: SeasonTotals[], method: RankMethod = "durant"): SeasonTotals[] {
   const played = players.filter((p) => p.gp > 0);
   const maxGp = played.reduce((m, p) => Math.max(m, p.gp), 0);
   const minGp = Math.max(1, Math.ceil(maxGp * MIN_GP_FRACTION));
@@ -215,21 +241,27 @@ export function selectPool(players: SeasonTotals[]): SeasonTotals[] {
   let pool = [...eligible].sort((a, b) => mpg(b) - mpg(a) || a.playerId - b.playerId).slice(0, POOL_SIZE);
   for (let pass = 0; pass < POOL_PASSES; pass++) {
     const s = poolScorer(pool);
-    pool = byValue(eligible.map((p) => ({ p, value: durantValue(byCategory(s.durant(p)), EQUAL_WEIGHTS).value })))
+    const value = (p: SeasonTotals) => methodValue(method, byCategory(s.durant(p)), byCategory(s.z(p)), EQUAL_WEIGHTS).value;
+    pool = byValue(eligible.map((p) => ({ p, value: value(p) })))
       .slice(0, POOL_SIZE)
       .map((x) => x.p);
   }
   return pool;
 }
 
-/** Returns a value and rank for every player with gp > 0. The pool and its fits don't depend on the weights. */
-export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS): Map<number, Valuation> {
+/**
+ * Returns a value and rank for every player with gp > 0, by `method` (DURANT H2H by default, or plain 9CAT).
+ * The pool and its fits don't depend on the weights.
+ */
+export function valuePlayers(
+  players: SeasonTotals[], weights: CategoryWeights = EQUAL_WEIGHTS, method: RankMethod = "durant",
+): Map<number, Valuation> {
   const played = players.filter((p) => p.gp > 0);
-  const pool = selectPool(played);
+  const pool = selectPool(played, method);
   const s = poolScorer(pool);
   const zs = new Map(played.map((p) => [p.playerId, s.z(p)]));
-  const valued = new Map(played.map((p) => [p.playerId, durantValue(byCategory(s.durant(p)), weights)]));
   const ds = new Map(played.map((p) => [p.playerId, s.durant(p)]));
+  const valued = new Map(played.map((p) => [p.playerId, methodValue(method, byCategory(ds.get(p.playerId)!), byCategory(zs.get(p.playerId)!), weights)]));
   const scored = byValue(played.map((p) => ({ p, value: valued.get(p.playerId)!.value })));
 
   // Season totals by category, higher is better (TO negated). FG%/FT% are total impact against the pool's percentage.
@@ -241,9 +273,14 @@ export function valuePlayers(players: SeasonTotals[], weights: CategoryWeights =
   const poolTotals = Object.fromEntries(CATS.map((c) => [c, desc(pool.map((p) => totals(p)[c]))])) as Record<Cat, number[]>;
   const poolValues = desc(pool.map((p) => valued.get(p.playerId)!.value));
 
-  // Step 6: DURANT over the pool's totals, valued and ranked.
-  const totalDurant = durantScorer(pool.map(totals));
-  const totalValues = new Map(played.map((p) => [p.playerId, durantValue(byCategory(totalDurant(totals(p))), weights).value]));
+  // Step 6: the same over the pool's totals, valued and ranked.
+  const totalDurant = method === "durant" ? durantScorer(pool.map(totals)) : null;
+  const totalZ = zScorer(pool.map(totals));
+  const totalValue = (p: SeasonTotals) => {
+    const t = totals(p);
+    return methodValue(method, totalDurant ? byCategory(totalDurant(t)) : ({} as Record<Category, number>), byCategory(totalZ(t)), weights).value;
+  };
+  const totalValues = new Map(played.map((p) => [p.playerId, totalValue(p)]));
   const totalRanks = new Map(
     byValue(played.map((p) => ({ p, value: totalValues.get(p.playerId)! }))).map((x, i) => [x.p.playerId, i + 1]),
   );

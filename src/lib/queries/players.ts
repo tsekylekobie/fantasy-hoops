@@ -29,7 +29,7 @@ import type {
   StatMode,
   StatRange,
 } from "../types";
-import { DEFAULT_WEIGHTS } from "../types";
+import { DEFAULT_WEIGHTS, type RankMethod } from "../types";
 import { nameMatches, positionMatches, type PlayersQuery } from "./params";
 import { valuePlayers, type SeasonTotals, type Valuation } from "./value";
 import { playDates, streamDates, clearsByTomorrow } from "./streaming";
@@ -322,7 +322,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     getCurrentWeek(db, q.season),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
-  const values = valuePlayers(rows.map(toTotals), q.weights);
+  const values = valuePlayers(rows.map(toTotals), q.weights, q.method);
 
   // Streaming filters, in the league's time zone.
   const now = new Date();
@@ -431,6 +431,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     nba: q.nba,
     teamOptions,
     weights: q.weights,
+    method: q.method,
     page: q.page,
     perPage: q.perPage,
     total: matching.length,
@@ -443,14 +444,16 @@ function seasonRow(season: number, t: TotalsRow): SeasonRow {
   return { season, gp: t.gp, ...categoryLine(t, "avg") };
 }
 
-/** His 9CAT rank among every player with a game in each range, as the Players page ranks them with `weights`. */
-async function getRanks(db: Pool, playerId: number, season: number, weights: CategoryWeights): Promise<PlayerRanks> {
+/** His rank among every player with a game in each range, as the Players page ranks them with `weights` and `method`. */
+async function getRanks(
+  db: Pool, playerId: number, season: number, weights: CategoryWeights, method: RankMethod,
+): Promise<PlayerRanks> {
   const rank = async (range: StatRange) => {
     const days = RANGE_DAYS[range];
     const window = days === null ? null : await statWindow(db, season, days);
     if (days !== null && window === null) return null;
     const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
-    return valuePlayers(rows.map(toTotals), weights).get(playerId)?.rank ?? null;
+    return valuePlayers(rows.map(toTotals), weights, method).get(playerId)?.rank ?? null;
   };
   const [all, last30, last14] = await Promise.all([rank("season"), rank("last30"), rank("last14")]);
   return { season: all, last30, last14 };
@@ -458,26 +461,28 @@ async function getRanks(db: Pool, playerId: number, season: number, weights: Cat
 
 // Ranks for finished seasons barely change (only a stats backfill moves them), so keep each season's for a while.
 const PAST_RANKS_TTL_MS = 6 * 60 * 60 * 1000;
-const pastRanksCache = new Map<number, { at: number; ranks: Promise<Map<number, number>> }>();
+const pastRanksCache = new Map<string, { at: number; ranks: Promise<Map<number, number>> }>();
 
-/** Every player's 9CAT rank in a finished `season`, at DEFAULT_WEIGHTS. */
-function pastSeasonRanks(db: Pool, season: number): Promise<Map<number, number>> {
-  const hit = pastRanksCache.get(season);
+/** Every player's rank by `method` in a finished `season`, at DEFAULT_WEIGHTS. */
+function pastSeasonRanks(db: Pool, season: number, method: RankMethod): Promise<Map<number, number>> {
+  const key = `${season}:${method}`;
+  const hit = pastRanksCache.get(key);
   if (hit && Date.now() - hit.at < PAST_RANKS_TTL_MS) return hit.ranks;
   const ranks = db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, null, null, null]).then(({ rows }) => {
     const out = new Map<number, number>();
-    for (const [id, v] of valuePlayers(rows.map(toTotals), DEFAULT_WEIGHTS)) out.set(id, v.rank);
+    for (const [id, v] of valuePlayers(rows.map(toTotals), DEFAULT_WEIGHTS, method)) out.set(id, v.rank);
     return out;
   });
-  ranks.catch(() => pastRanksCache.delete(season));
-  pastRanksCache.set(season, { at: Date.now(), ranks });
+  ranks.catch(() => pastRanksCache.delete(key));
+  pastRanksCache.set(key, { at: Date.now(), ranks });
   return ranks;
 }
 
 /** Everything but `thisWeek`, which comes from the league (getPlayerWeek in ./lineup).
- *  Ranks use `weights`. Returns null when the player id does not exist. */
+ *  Ranks use `weights` and `method`. Returns null when the player id does not exist. */
 export async function getPlayerDetail(
   db: Pool, playerId: number, season: number, userId: number | null, weights: CategoryWeights,
+  method: RankMethod = "durant",
 ): Promise<Omit<PlayerDetailResponse, "thisWeek" | "transactions"> | null> {
   const [playerRes, seasonsRes, logRes, owners, waivers, injuries, watched, ranks] = await Promise.all([
     db.query<{
@@ -532,7 +537,7 @@ export async function getPlayerDetail(
     getWaiverStatus(db, season),
     getInjuries(db, [playerId]),
     getWatchedIds(db, userId, [playerId]),
-    getRanks(db, playerId, season, weights),
+    getRanks(db, playerId, season, weights, method),
   ]);
 
   const p = playerRes.rows[0];
@@ -540,7 +545,7 @@ export async function getPlayerDetail(
 
   const current = seasonsRes.rows.find((r) => r.season === season);
   const past = seasonsRes.rows.filter((r) => r.season < season);
-  const pastRanks = await Promise.all(past.map((r) => pastSeasonRanks(db, r.season)));
+  const pastRanks = await Promise.all(past.map((r) => pastSeasonRanks(db, r.season, method)));
   const pastSeasons: PastSeasonRow[] = past.map((r, i) => ({
     ...seasonRow(r.season, r),
     rank: pastRanks[i].get(playerId) ?? null,

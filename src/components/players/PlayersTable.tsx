@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Avatar from "@/components/Avatar";
-import type { Category, PlayerRow, PlayersResponse, RankTier, SortDir, SortKey, StatMode } from "@/lib/types";
+import type { Category, PlayerRow, PlayersResponse, RankMethod, RankTier, SortDir, SortKey, StatMode } from "@/lib/types";
 import { fmtAvg, fmtInjuryStatus, fmtInt, fmtPct, fmtUpcomingGame, fmtValue, fmtWaiverTime, fullName, teamPos, todayIn, waiverTooltip } from "./format";
 import StickyHeadTable from "@/components/table/StickyHeadTable";
 import ScrollName from "./ScrollName";
@@ -22,8 +22,15 @@ const COLUMNS: { label: string; sort: SortKey; title?: string }[] = [
   { label: "STL", sort: "stl" },
   { label: "BLK", sort: "blk" },
   { label: "TO", sort: "tov", title: "Turnovers (fewer is better)" },
-  { label: "Value", sort: "value", title: "DURANT H2H value (Josh Lloyd): each category power-transformed and standardized, weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6, turnovers and your punts left out, the worst remaining category dropped. 0 is about an average rostered player" },
+  { label: "Value", sort: "value" },
 ];
+
+/** The Value column's and the # column's tooltips, by how the page ranks. */
+const VALUE_TITLE: Record<RankMethod, string> = {
+  durant: "DURANT H2H value (Josh Lloyd): categories weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6, without turnovers, your punts and each player's worst category. 0 is about an average rostered player",
+  "9cat": "9CAT value: the average of the nine category z-scores, turnovers at 0.3, without your punts. 0 is an average rostered player",
+};
+const RANK_TITLE: Record<RankMethod, string> = { durant: "DURANT H2H rank", "9cat": "9CAT rank" };
 
 const TIER_CLASS: Record<RankTier, string | undefined> = {
   top10: styles.top10, top25: styles.top25, top40: styles.top40, mid: undefined, bottom25: styles.bottom25, bottom10: styles.bottom10,
@@ -94,6 +101,7 @@ export default function PlayersTable({
   // The data's own mode decides formatting, so stale rows shown while the
   // other mode loads keep their correct decimals.
   const rowMode = data?.mode ?? mode;
+  const method = data?.method ?? "durant";
   const num = rowMode === "total" ? fmtInt : fmtAvg;
 
   let message: ReactNode = null;
@@ -138,13 +146,16 @@ export default function PlayersTable({
       head={(copy) => (
         <thead>
           <tr>
-            <th scope="col" title="DURANT H2H rank">#</th>
+            <th scope="col" title={RANK_TITLE[method]}>#</th>
             <SortHeader label="Player" sortKey="name" sort={sort} dir={dir} onSort={onSort} copy={copy} />
             <th scope="col" className={styles.week}>
               <abbr className={styles.abbr} title="Games remaining / total in this matchup week">Gms</abbr>
             </th>
             {COLUMNS.map((c) => (
-              <SortHeader key={c.sort} {...c} sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} copy={copy} />
+              <SortHeader
+                key={c.sort} {...c} title={c.sort === "value" ? VALUE_TITLE[method] : c.title}
+                sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} copy={copy}
+              />
             ))}
             {onAddPlayer && (
               <th scope="col" className={styles.n}>

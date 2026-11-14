@@ -9,6 +9,7 @@ import TeamLink from "@/components/TeamLink";
 import { useSignedIn } from "@/components/SessionProvider";
 import type {
   PlayerDetailResponse, PlayerNewsItem, PlayerNewsResponse, PlayerRanks, PastSeasonRow, PlayerTransaction, PlayerWeek,
+  RankMethod,
 } from "@/lib/types";
 import { CURRENT_SEASON, seasonLabel } from "@/lib/types";
 import { fetchJson, fmtAvg, fmtGameDate, fmtGameStatus, fmtInt, fmtOpponent, fmtPct, fmtInjuryLine, fmtInjuryStatus, fmtWaiverTime, fullName, todayIn } from "./format";
@@ -27,6 +28,8 @@ interface Props {
   refreshKey?: number;
   /** His watchlist star was toggled, for a page that shows stars too. */
   onWatch?: (id: number, watched: boolean) => void;
+  /** How his ranks are computed: the Players page's DURANT / 9CAT switch; DURANT elsewhere. */
+  method?: RankMethod;
 }
 
 type Load =
@@ -35,7 +38,7 @@ type Load =
   | { status: "ready"; id: number; data: PlayerDetailResponse }
   | { status: "error"; id: number; message: string };
 
-export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0, onWatch }: Props) {
+export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0, onWatch, method = "durant" }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const closingFromProp = useRef(false);
@@ -85,14 +88,14 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
     const ctrl = new AbortController();
     // A refresh keeps the loaded player on screen until the new data arrives.
     setLoad((prev) => (prev.status === "ready" && prev.id === playerId ? prev : { status: "loading", id: playerId }));
-    fetchJson<PlayerDetailResponse>(`/api/players/${playerId}?season=${CURRENT_SEASON}`, ctrl.signal)
+    fetchJson<PlayerDetailResponse>(`/api/players/${playerId}?season=${CURRENT_SEASON}&method=${method}`, ctrl.signal)
       .then((data) => setLoad({ status: "ready", id: playerId, data }))
       .catch((err: unknown) => {
         if (ctrl.signal.aborted) return;
         setLoad({ status: "error", id: playerId, message: err instanceof Error ? err.message : "Something went wrong." });
       });
     return () => ctrl.abort();
-  }, [playerId, retryKey, refreshKey]);
+  }, [playerId, retryKey, refreshKey, method]);
 
   const requestClose = () => onCloseRef.current();
 
@@ -123,6 +126,7 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
           {data ? (
             <DetailHead
               data={data}
+              method={method}
               onAdd={onAdd}
               myTeamId={myTeamId}
               onWatch={(id, watched) => {
@@ -141,7 +145,7 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
           <CloseButton onClose={requestClose} />
         </div>
         {data ? (
-          <Detail key={data.player.id} data={data} onClose={requestClose} myTeamId={myTeamId} />
+          <Detail key={data.player.id} data={data} onClose={requestClose} myTeamId={myTeamId} method={method} />
         ) : (
           <>
             <div className={styles.state} role={current?.status === "error" ? "alert" : "status"}>
@@ -201,9 +205,10 @@ function InjuryNote({ note }: { note: string }) {
 }
 
 function DetailHead({
-  data, onAdd, myTeamId, onWatch,
+  data, onAdd, myTeamId, onWatch, method,
 }: {
   data: PlayerDetailResponse;
+  method: RankMethod;
   onAdd?: (id: number) => void;
   myTeamId: number | null;
   onWatch: (id: number, watched: boolean) => void;
@@ -235,7 +240,7 @@ function DetailHead({
             </>
           )}
         </p>
-        <Ranks ranks={data.ranks} />
+        <Ranks ranks={data.ranks} method={method} />
         {injury && (injuryLine || injury.note) && (
           <div className={styles.injury}>
             {injuryLine && <p className={styles.injuryLine}>{injuryLine}</p>}
@@ -267,8 +272,8 @@ function DetailHead({
   );
 }
 
-/** DURANT H2H rank for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
-function Ranks({ ranks }: { ranks: PlayerRanks }) {
+/** Rank (DURANT H2H or 9CAT) for the season and the last 30 and 14 days; the recent ones say whether he's trending up or down. */
+function Ranks({ ranks, method }: { ranks: PlayerRanks; method: RankMethod }) {
   if (ranks.season === null && ranks.last30 === null && ranks.last14 === null) return null;
   const items = [
     { label: "Season", rank: ranks.season },
@@ -278,7 +283,7 @@ function Ranks({ ranks }: { ranks: PlayerRanks }) {
   const trend = (rank: number | null) =>
     rank === null || ranks.season === null || rank === ranks.season ? null : rank < ranks.season ? "up" : "down";
   return (
-    <dl className={styles.ranks} aria-label="DURANT H2H rank">
+    <dl className={styles.ranks} aria-label={method === "durant" ? "DURANT H2H rank" : "9CAT rank"}>
       {items.map(({ label, rank }, i) => {
         const t = i === 0 ? null : trend(rank);
         return (
@@ -309,7 +314,9 @@ type Tab = (typeof TABS)[number]["value"];
 /** A game's box score (the box scores page opens on ?game). */
 const boxScoreHref = (date: string, gameId: number) => `/box-scores?date=${date}&game=${gameId}`;
 
-function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClose: () => void; myTeamId: number | null }) {
+function Detail({ data, onClose, myTeamId, method }: {
+  data: PlayerDetailResponse; onClose: () => void; myTeamId: number | null; method: RankMethod;
+}) {
   const { season, seasonAverages: avg, gameLog, pastSeasons } = data;
   const label = seasonLabel(season);
   // Remounted per player (keyed by id), so each player opens on the game log; a refresh keeps the tab.
@@ -471,7 +478,7 @@ function Detail({ data, onClose, myTeamId }: { data: PlayerDetailResponse; onClo
                 <thead>
                   <tr>
                     <th scope="col">Season</th>
-                    <th scope="col" className={styles.n} title="DURANT H2H rank that season (default weights)">
+                    <th scope="col" className={styles.n} title={`${method === "durant" ? "DURANT H2H" : "9CAT"} rank that season (no punts)`}>
                       Rank
                     </th>
                     {["GP", "MIN", "FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"].map((c) => (

@@ -81,6 +81,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   (Minus 1). `Valuation.z` and the cell tiers stay plain z-scores. Punts are checkboxes (`PuntWeights.tsx`, every
   category but TO), still stored as `CategoryWeights` (0 = punted, anything above 0 counts fully; old saved slider
   weights read that way).
+  The Players page's DURANT / 9CAT switch (`?method=9cat`, `RankMethod`; on `/api/players` and `/api/players/[id]`
+  for the modal's ranks) brings back the old valuation: `valuePlayers(..., "9cat")`, the weighted average of all nine
+  z-scores, TO at its stored weight (0.3), no Minus 1. Box scores and the trade analyzer stay DURANT.
 - Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and
   colors as My team's chip (`getWeekGames` in `queries/weekGames.ts`, run for the page's rows only; not sortable).
 - Players page filters: a name search (`q`) ignores them all and looks across every player (`getPlayers`); the filters apply only when not searching. A search also lists players with no game in the range (active ones: a game this season or last, on a roster or on the injury report, e.g. hurt since opening night; not `players.team_id`, which retired players keep) after the ranked ones, with no rank, stats or value; without a search they never show. Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's

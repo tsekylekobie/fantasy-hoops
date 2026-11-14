@@ -178,7 +178,7 @@ async function main() {
       const res = await getPlayers(db, {
         season: CURRENT_SEASON - 1, range: "season", dates: null, sort: "value", dir: "desc",
         mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null,
-        weights: EQUAL_WEIGHTS, page, perPage: 100,
+        weights: EQUAL_WEIGHTS, method: "durant", page, perPage: 100,
       }, null);
       if (res.players.length === 0) break;
       board.push(...res.players.map((p) => ({ id: p.id, position: p.position })));
