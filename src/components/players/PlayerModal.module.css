@@ -79,12 +79,68 @@
   color: var(--ink-muted);
 }
 
-/* 9CAT rank: season, last 30, last 14 days */
+/* Rank: season, last 30, last 14 days, then the "i" explaining the two numbers */
 .ranks {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px 18px;
   margin: 10px 0 0;
+}
+
+.rankList {
+  display: contents;
+}
+
+.rankInfo {
+  display: inline-flex;
+}
+
+.rankInfoBtn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font: italic 700 12px/1 Georgia, serif;
+  cursor: pointer;
+}
+
+.rankInfoBtn:hover,
+.rankInfoBtn[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--surface-muted);
+}
+
+.rankInfoBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Below the ranks row, from its left edge, so it stays inside the dialog on phones. */
+.rankInfoNote {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, 100%);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .rank {

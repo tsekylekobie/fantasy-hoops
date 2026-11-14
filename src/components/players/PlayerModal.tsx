@@ -284,7 +284,8 @@ function Ranks({ ranks, otherRanks, method }: { ranks: PlayerRanks; otherRanks: 
   const trend = (rank: number | null) =>
     rank === null || ranks.season === null || rank === ranks.season ? null : rank < ranks.season ? "up" : "down";
   return (
-    <dl className={styles.ranks} aria-label={method === "durant" ? "DURANT H2H rank" : "9CAT rank"}>
+    <div className={styles.ranks}>
+    <dl className={styles.rankList} aria-label={method === "durant" ? "DURANT H2H rank" : "9CAT rank"}>
       {items.map(({ label, rank, other }, i) => {
         const t = i === 0 ? null : trend(rank);
         return (
@@ -309,6 +310,62 @@ function Ranks({ ranks, otherRanks, method }: { ranks: PlayerRanks; otherRanks: 
         );
       })}
     </dl>
+    <RanksInfo method={method} />
+    </div>
+  );
+}
+
+/** What the two rank numbers mean: an "i" that opens a note (tap on phones, where there's no hover). */
+function RanksInfo({ method }: { method: RankMethod }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  const [mine, other] = method === "durant" ? ["DURANT", "9CAT"] : ["9CAT", "DURANT"];
+  return (
+    <span ref={ref} className={styles.rankInfo}>
+      <button
+        type="button"
+        className={styles.rankInfoBtn}
+        aria-label="What the two ranks mean"
+        aria-expanded={open}
+        aria-controls="player-rank-info"
+        title="What the two ranks mean"
+        onClick={() => setOpen((v) => !v)}
+        // Escape closes the note first, not the whole player dialog.
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(false);
+          }
+        }}
+      >
+        i
+      </button>
+      {open && (
+        <span id="player-rank-info" role="note" className={styles.rankInfoNote}>
+          <span>
+            The big number is his rank by {mine}, the Players page&rsquo;s setting; the small one is his rank by {other}.
+            Both count your punts.
+          </span>
+          <span>
+            <strong>DURANT</strong> (Josh Lloyd&rsquo;s DURANT H2H) weights points and rebounds most, leaves out
+            turnovers, and drops each player&rsquo;s worst category, so a player with one big weakness ranks higher.
+          </span>
+          <span>
+            <strong>9CAT</strong> is the plain average of all nine categories, turnovers included, so balanced
+            players rank higher.
+          </span>
+        </span>
+      )}
+    </span>
   );
 }
 
