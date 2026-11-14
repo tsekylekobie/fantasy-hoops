@@ -219,11 +219,13 @@
   color: var(--ink-muted);
 }
 
+/* Fills what's left of the toolbar row (280px at most), so the controls stay on one line on desktop. */
 .searchBox {
   position: relative;
   display: inline-flex;
-  width: 280px;
-  max-width: 100%;
+  flex: 1 1 150px;
+  min-width: 150px;
+  max-width: 280px;
 }
 
 .search {
@@ -348,7 +350,8 @@
   }
 
   .searchBox {
-    width: 100%;
+    flex-basis: 100%;
+    max-width: none;
   }
 
   .dates {

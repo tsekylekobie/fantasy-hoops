@@ -26,6 +26,21 @@ test("better counting stats raise value; turnovers don't count (DURANT H2H)", ()
   assert.equal(v.get(3)!.value, v.get(1)!.value);
 });
 
+test("9cat method: the weighted average of all nine z-scores, TO at its stored weight, punts out", () => {
+  const players = [player(1), player(2, { pts: 300 }), player(3, { tov: 60 }), player(4, { pts: 90, reb: 30 })];
+  const v = valuePlayers(players, DEFAULT_WEIGHTS, "9cat");
+  assert.ok(v.get(3)!.value < v.get(1)!.value); // turnovers count again
+  assert.equal(v.get(2)!.rank, 1);
+  assert.equal(v.get(1)!.dropped, null); // no Minus 1
+  // Value = sum(w * z) / sum(w) over the nine plain z-scores, TO at 0.3.
+  const z = v.get(4)!.z;
+  const expected = (z.fgPct + z.ftPct + z.fg3m + z.pts + z.reb + z.ast + z.stl + z.blk + 0.3 * z.tov) / 8.3;
+  assert.ok(Math.abs(v.get(4)!.value - expected) < 1e-12);
+  // Punting points leaves it out; any other weight above 0 counts 1.
+  const punted = valuePlayers(players, { ...DEFAULT_WEIGHTS, pts: 0, reb: 0.5 }, "9cat").get(4)!;
+  assert.ok(Math.abs(punted.value - (z.fgPct + z.ftPct + z.fg3m + z.reb + z.ast + z.stl + z.blk + 0.3 * z.tov) / 7.3) < 1e-12);
+});
+
 const scores = (over: Partial<Record<keyof typeof EQUAL_WEIGHTS, number>>) => ({ ...Object.fromEntries(Object.keys(EQUAL_WEIGHTS).map((c) => [c, 0])), ...over }) as typeof EQUAL_WEIGHTS;
 const H2H_SUM = 1 + 0.94 + 0.75 + 5 * 0.6;
 
@@ -156,13 +171,14 @@ test("position filter matches any letter in a combined position", () => {
 
 test("parsePlayersQuery: defaults and validation", () => {
   const d = parsePlayersQuery(new URLSearchParams(""));
-  assert.deepEqual(d, { season: 2026, range: "season", dates: null, sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null, weights: DEFAULT_WEIGHTS, page: 1, perPage: 50 });
+  assert.deepEqual(d, { season: 2026, range: "season", dates: null, sort: "value", dir: "desc", mode: "avg", scope: "all", q: "", pos: "all", plays: [], waivers: "any", hideInjured: false, team: null, nba: null, weights: DEFAULT_WEIGHTS, method: "durant", page: 1, perPage: 50 });
   const p = parsePlayersQuery(new URLSearchParams("season=2025&range=last14&sort=tov&mode=total&scope=fa&pos=g&page=3&perPage=100&q=%20jo%20&plays=tomorrow&waivers=on&team=7&nba=bos"));
-  assert.deepEqual(p, { season: 2025, range: "last14", dates: null, sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", hideInjured: false, team: 7, nba: "BOS", weights: DEFAULT_WEIGHTS, page: 3, perPage: 100 });
+  assert.deepEqual(p, { season: 2025, range: "last14", dates: null, sort: "tov", dir: "asc", mode: "total", scope: "fa", q: "jo", pos: "G", plays: ["tomorrow"], waivers: "on", hideInjured: false, team: 7, nba: "BOS", weights: DEFAULT_WEIGHTS, method: "durant", page: 3, perPage: 100 });
   assert.equal(parsePlayersQuery(new URLSearchParams("scope=watch")).scope, "watch");
   assert.equal(parsePlayersQuery(new URLSearchParams("injured=hide")).hideInjured, true);
+  assert.equal(parsePlayersQuery(new URLSearchParams("method=9cat")).method, "9cat");
   for (const bad of ["mode=x", "range=last7", "sort=rank", "sort=pts&dir=up", "scope=mine", "pos=PG", "page=0", "page=-1", "perPage=101", "season=abc", "season=1800", "page=1.5", "team=0", "team=x", "nba=B", "nba=LA-L",
-    "weights=1,1,1", "weights=1,1,1,1,1,1,1,1,2.5", "weights=1,1,1,1,1,1,1,1,-1", "weights=1,1,1,1,1,1,1,1,x"]) {
+    "weights=1,1,1", "weights=1,1,1,1,1,1,1,1,2.5", "weights=1,1,1,1,1,1,1,1,-1", "weights=1,1,1,1,1,1,1,1,x", "method=9CAT", "method=x"]) {
     assert.throws(() => parsePlayersQuery(new URLSearchParams(bad)), BadRequest, bad);
   }
   assert.equal(parsePlayersQuery(new URLSearchParams("range=last30")).range, "last30");

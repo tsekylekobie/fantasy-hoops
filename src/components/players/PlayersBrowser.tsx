@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
-  CategoryWeights, PlayDay, PlayerScope, PlayersRange, PlayersResponse, PositionFilter, SortDir, SortKey, StatMode, WaiverFilter, WeightsResponse,
+  CategoryWeights, PlayDay, PlayerScope, PlayersRange, PlayersResponse, PositionFilter, RankMethod, SortDir, SortKey, StatMode, WaiverFilter, WeightsResponse,
 } from "@/lib/types";
 import { CURRENT_SEASON, DEFAULT_WEIGHTS, PLAY_DAYS, SORT_KEYS, defaultSortDir } from "@/lib/types";
 import MultiToggle from "@/components/MultiToggle";
@@ -55,6 +55,15 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const METHODS: SegmentedOption<RankMethod>[] = [
+  {
+    value: "durant",
+    label: "DURANT",
+    title: "Josh Lloyd's DURANT H2H: categories weighted PTS 1, REB 0.94, AST 0.75, the rest 0.6, without turnovers and without each player's worst category",
+  },
+  { value: "9cat", label: "9CAT", title: "Plain 9CAT: the average of all nine category z-scores, turnovers included" },
+];
+
 const MODES: SegmentedOption<StatMode>[] = [
   { value: "avg", label: "Per game" },
   { value: "total", label: "Totals" },
@@ -87,6 +96,8 @@ interface UrlState {
   from: string | null;
   to: string | null;
   mode: StatMode;
+  /** How Value and rank are computed. */
+  method: RankMethod;
   plays: PlayDay[];
   waivers: WaiverFilter;
   /** Hide players listed Out (the default; "?injured=show" turns it off). */
@@ -130,6 +141,7 @@ function readUrlState(params: URLSearchParams, signedIn: boolean): UrlState {
     from: customOk ? from : null,
     to: customOk ? to : null,
     mode: params.get("mode") === "total" ? "total" : "avg",
+    method: params.get("method") === "9cat" ? "9cat" : "durant",
     plays: PLAY_DAYS.filter((d) => plays.includes(d)),
     waivers: signedIn && (waivers === "on" || waivers === "clears") ? waivers : "any",
     hideInjured: params.get("injured") !== "show",
@@ -154,6 +166,7 @@ function toQueryString(s: UrlState, signedIn: boolean): string {
     p.set("to", s.to);
   }
   if (s.mode !== "avg") p.set("mode", s.mode);
+  if (s.method !== "durant") p.set("method", s.method);
   if (s.plays.length > 0) p.set("plays", s.plays.join(","));
   if (s.waivers !== "any") p.set("waivers", s.waivers);
   if (!s.hideInjured) p.set("injured", "show");
@@ -205,7 +218,7 @@ export default function PlayersBrowser() {
   const searchParams = useSearchParams();
   const signedIn = useSignedIn();
   const state = readUrlState(new URLSearchParams(searchParams.toString()), signedIn);
-  const { q, scope, pos, range, from, to, mode, plays, waivers, hideInjured, team, nba, sort, dir, page, player } = state;
+  const { q, scope, pos, range, from, to, mode, method, plays, waivers, hideInjured, team, nba, sort, dir, page, player } = state;
   const playsKey = plays.join(",");
 
   const navigate = useCallback(
@@ -332,6 +345,7 @@ export default function PlayersBrowser() {
       range,
       ...(range === "custom" && from && to && { from, to }),
       mode,
+      method,
       sort,
       dir,
       scope,
@@ -357,7 +371,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, from, to, mode, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
+  }, [q, scope, pos, range, from, to, mode, method, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -450,6 +464,7 @@ export default function PlayersBrowser() {
             </span>
           )}
           <SegmentedToggle label="Stat mode" options={MODES} value={mode} onChange={(v) => navigate({ mode: v })} />
+          <SegmentedToggle label="Ranking" options={METHODS} value={method} onChange={(v) => navigate({ method: v })} />
           <span className={styles.searchBox}>
             <input
               ref={searchInput}
@@ -611,6 +626,7 @@ export default function PlayersBrowser() {
 
       <PlayerModal
         playerId={player} onClose={closePlayer} onAdd={signedIn ? setAdding : undefined} myTeamId={myTeamId} refreshKey={movesKey}
+        method={method}
       />
       <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>

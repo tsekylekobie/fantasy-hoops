@@ -8,9 +8,11 @@ import {
   type Category,
   type CategoryWeights,
   PLAY_DAYS,
+  RANK_METHODS,
   SORT_KEYS,
   defaultSortDir,
   type PlayDay,
+  type RankMethod,
   type PlayerScope,
   type PositionFilter,
   type SortDir,
@@ -44,8 +46,17 @@ export interface PlayersQuery {
   /** Players on this NBA team (teams.abbreviation, uppercase); null = any. */
   nba: string | null;
   weights: CategoryWeights;
+  /** How value and rank are computed (value.ts). Omitted = "durant". */
+  method: RankMethod;
   page: number;
   perPage: number;
+}
+
+/** "?method=9cat"; omitted = "durant". */
+export function parseRankMethod(params: URLSearchParams): RankMethod {
+  const m = params.get("method")?.trim() || "durant";
+  if (!(RANK_METHODS as readonly string[]).includes(m)) throw new BadRequest(`method must be ${RANK_METHODS.join(" or ")}`);
+  return m as RankMethod;
 }
 
 export const DEFAULT_PER_PAGE = 50;
@@ -153,6 +164,7 @@ export function parsePlayersQuery(params: URLSearchParams): PlayersQuery {
     team: params.get("team")?.trim() ? intParam(params, "team", 0, 1, 2147483647) : null,
     nba,
     weights: parseWeights(params),
+    method: parseRankMethod(params),
     page: intParam(params, "page", 1, 1, 100000),
     perPage: intParam(params, "perPage", DEFAULT_PER_PAGE, 1, MAX_PER_PAGE),
   };

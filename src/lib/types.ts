@@ -74,6 +74,13 @@ export const DEFAULT_WEIGHTS: CategoryWeights = {
   fgPct: 1, ftPct: 1, fg3m: 1, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: 0.3,
 };
 
+/**
+ * How the Players page values and ranks players: "durant" (Josh Lloyd's DURANT H2H: transformed categories,
+ * no TO, worst category dropped) or "9cat" (the plain average of the nine z-scores, TO included).
+ */
+export const RANK_METHODS = ["durant", "9cat"] as const;
+export type RankMethod = (typeof RANK_METHODS)[number];
+
 /** The categories that can be punted: all but TO. */
 export const PUNTABLE_CATEGORIES = CATEGORIES.filter((c) => c !== "tov");
 
@@ -161,6 +168,7 @@ export interface PlayerUpcomingGame {
 /**
  * GET /api/players?season=2026&range=season&mode=avg&sort=value&dir=desc&scope=all&q=&pos=all&plays=&waivers=any&page=1&perPage=50
  *   &weights=1,1,1,1,1,1,1,1,0.3  (one per CATEGORIES entry, in order; omitted = DEFAULT_WEIGHTS)
+ *   &method=durant|9cat  (how value and rank are computed; omitted = durant)
  *   range=custom takes &from=yyyy-mm-dd&to=yyyy-mm-dd (inclusive, both required, from <= to).
  * GP, stats, value and rank all cover `range`; value and rank use `weights`; rank counts rostered players even when scope=fa. Sorting uses the `mode`'s numbers;
  * players with no attempts sort last for FG%/FT%; ties go to the better 9CAT rank.
@@ -198,6 +206,7 @@ export interface PlayersResponse {
   /** Choices for the team filters: the season league's fantasy teams and the NBA's, by name. */
   teamOptions: { fantasy: PlayersTeamOption[]; nba: PlayersTeamOption[] };
   weights: CategoryWeights;
+  method: RankMethod;
   page: number;
   perPage: number;
   total: number;

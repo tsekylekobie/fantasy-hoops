@@ -8,6 +8,8 @@ import styles from "./SegmentedToggle.module.css";
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
+  /** Tooltip. */
+  title?: string;
 }
 
 interface Props<T extends string> {
@@ -27,6 +29,7 @@ export default function SegmentedToggle<T extends string>({ label, options, valu
           type="button"
           className={styles.segment}
           aria-pressed={o.value === value}
+          title={o.title}
           onClick={() => o.value !== value && onChange(o.value)}
         >
           {o.label}
