@@ -351,18 +351,9 @@ function RanksInfo({ method }: { method: RankMethod }) {
       </button>
       {open && (
         <span id="player-rank-info" role="note" className={styles.rankInfoNote}>
-          <span>
-            The big number is his rank by {mine}, the Players page&rsquo;s setting; the small one is his rank by {other}.
-            Both count your punts.
-          </span>
-          <span>
-            <strong>DURANT</strong> (Josh Lloyd&rsquo;s DURANT H2H) weights points and rebounds most, leaves out
-            turnovers, and drops each player&rsquo;s worst category, so a player with one big weakness ranks higher.
-          </span>
-          <span>
-            <strong>9CAT</strong> is the plain average of all nine categories, turnovers included, so balanced
-            players rank higher.
-          </span>
+          <span>Big: {mine} rank. Small: {other} rank.</span>
+          <span><strong>DURANT</strong>: no turnovers, worst category dropped.</span>
+          <span><strong>9CAT</strong>: all nine categories.</span>
         </span>
       )}
     </span>
