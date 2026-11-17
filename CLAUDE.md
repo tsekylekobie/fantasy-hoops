@@ -106,7 +106,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   keeps the refresh token encrypted (`crypto.ts`, `YAHOO_TOKEN_KEY`), last refresh and last error. `api.ts` calls
   Yahoo (401 refreshes the token, backs off on 999/429 "Request denied"). `GET /api/yahoo/status`, `POST
   /api/yahoo/refresh` (any league member, once a minute per league) and `components/yahoo/YahooRefresh.tsx`
-  ("Updated 4 min ago · Refresh", no props). `fromApi.ts` (pure, tested on `fixtures/`, written from Yahoo's docs;
+  ("Updated 4 min ago · Refresh", no props; under the League page's title and on My team / team pages, with a
+  "Yahoo connection" link, or "Connect Yahoo" before one exists, for the commissioner). `fromApi.ts` (pure, tested on `fixtures/`, written from Yahoo's docs;
   README lists every assumption) builds the `ImportSnapshot` (`parse.ts`); `apply.ts` writes it in place, keyed by
   `fantasy_teams.yahoo_team_key` (first time by name), `yahoo_players` (Yahoo player key -> ours, `matched_by =
   'hand'` to fix one), `transactions.yahoo_key`; a second identical pass changes nothing. `week_results.final`:

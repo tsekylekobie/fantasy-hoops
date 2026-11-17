@@ -12,6 +12,7 @@
 // (components/live); a countdown by the week label shows the next update (pinned
 // to the top of the screen once scrolled off).
 // /team/[id] shows another manager's team with the same layout.
+import YahooRefresh from "@/components/yahoo/YahooRefresh";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -279,6 +280,7 @@ export default function MyTeam({ teamId }: { teamId?: number } = {}) {
           <div className={styles.identText}>
             <h1 className={styles.title}>{data.team.name}</h1>
             {data.team.managerName && <p className={styles.manager}>{data.team.managerName}</p>}
+            <YahooRefresh />
           </div>
         </div>
         {other && (

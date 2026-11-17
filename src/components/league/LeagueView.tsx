@@ -4,6 +4,7 @@
 // opens that matchup. Read-only: the league is run on Yahoo. The
 // Standings card switches to the Playoffs view (PlayoffsBracket): projected
 // from today's standings, or the real bracket once it exists (and then first).
+import YahooRefresh from "@/components/yahoo/YahooRefresh";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
@@ -78,6 +79,9 @@ function Overview({ data }: { data: LeagueOverview }) {
       <p className={styles.sub}>
         {data.name} · {data.teamCount} teams · H2H 9CAT · {season}
       </p>
+      <div className={styles.sync}>
+        <YahooRefresh />
+      </div>
       <div className={styles.cols}>
         <StandingsCard
           standings={<Standings data={data} />}

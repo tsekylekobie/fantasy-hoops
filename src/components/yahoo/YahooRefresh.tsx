@@ -5,7 +5,9 @@
 // transactions and this week's scoreboard; once a minute for the whole league),
 // then re-renders the page with router.refresh(). No props: it fetches
 // /api/yahoo/status itself, and renders nothing when signed out, outside the
-// league, or with no Yahoo connection.
+// league, or with no Yahoo connection (the commissioner then gets a "Connect
+// Yahoo" link; once connected, also a "Yahoo connection" link to /league/yahoo).
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { YahooRefreshResponse, YahooStatusResponse } from "@/lib/types";
@@ -45,7 +47,15 @@ export default function YahooRefresh() {
     };
   }, [load]);
 
-  if (!status?.connected) return null;
+  if (!status) return null;
+  // The commissioner gets a way in before anything is connected; everyone else sees nothing until then.
+  if (!status.connected) {
+    return status.canManage && status.configured ? (
+      <span className={styles.bar}>
+        <Link className={styles.manage} href="/league/yahoo">Connect Yahoo</Link>
+      </span>
+    ) : null;
+  }
 
   async function refresh() {
     setBusy(true);
@@ -75,6 +85,12 @@ export default function YahooRefresh() {
       <button type="button" className={styles.refresh} onClick={refresh} disabled={busy}>
         {busy ? "Refreshing…" : "Refresh"}
       </button>
+      {status.canManage && (
+        <>
+          <span aria-hidden="true">·</span>
+          <Link className={styles.manage} href="/league/yahoo">Yahoo connection</Link>
+        </>
+      )}
       {(message || stale) && (
         <span className={styles.problem} title={status.lastError ?? undefined}>
           {message ?? (status.throttledUntil ? "Yahoo is busy; trying again soon." : "Last sync failed.")}

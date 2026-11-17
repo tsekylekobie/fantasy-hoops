@@ -34,3 +34,14 @@
 .problem {
   color: var(--danger-ink);
 }
+
+.manage {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.manage:hover {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}

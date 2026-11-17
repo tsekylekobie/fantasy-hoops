@@ -145,7 +145,7 @@ function Rankings({ data, teamParam, sort }: { data: View; teamParam: number | n
     CATEGORY_KEYS.map((k) => [k, heatOf(data.rows.map((r) => r.stats[k]), k === "tov")]),
   ) as Record<CategoryKey, Heat>;
   const head = (key: SortKey, label: string, className: string | undefined, title?: string) => (
-    <SortHead key={key} sortKey={key} label={label} className={className} title={title} here={here} />
+    <SortHead key={`${key}-${label}`} sortKey={key} label={label} className={className} title={title} here={here} />
   );
   const teams = data.rows.length;
   const isWeek = data.period === "week";

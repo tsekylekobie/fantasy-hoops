@@ -446,3 +446,11 @@ a.pageBtn:focus-visible {
     padding-left: 14px;
   }
 }
+
+/* "Updated 4 min ago · Refresh" from the Yahoo mirror, under the league line. */
+.sync {
+  margin: -8px 0 16px;
+}
+.sync:empty {
+  display: none;
+}
