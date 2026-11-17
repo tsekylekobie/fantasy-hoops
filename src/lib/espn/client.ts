@@ -14,7 +14,7 @@
 import type { Pool } from "pg";
 import type { DataClient, GamesQuery, ListOptions, StatsQuery } from "../data";
 import type { Game, Injury, Page, Player, StatLine, Team } from "../data/types";
-import { EspnHttp, type EspnHttpOptions } from "./http";
+import { EspnError, EspnHttp, type EspnHttpOptions } from "./http";
 import { espnGameIds, resolveGames, resolvePlayers } from "./ids";
 import {
   boxAthletes,
@@ -154,7 +154,18 @@ export class EspnClient implements DataClient {
 
   /** One game's box score as stat lines (none before tip-off). */
   private async gameStats(espnEventId: number, gameId?: number): Promise<StatLine[]> {
-    const body = await this.http.get<EspnSummaryResponse>("summary", { event: espnEventId });
+    let body: EspnSummaryResponse;
+    try {
+      body = await this.http.get<EspnSummaryResponse>("summary", { event: espnEventId });
+    } catch (err) {
+      // ESPN has the odd game with no summary at all (404 for good, e.g. 401869402, a 2026 playoff
+      // game); skip it rather than stall a whole backfill or live pass on it.
+      if (err instanceof EspnError && err.status === 404) {
+        console.warn(`ESPN has no box score for event ${espnEventId} (404); skipped`);
+        return [];
+      }
+      throw err;
+    }
     const comp = body.header.competitions[0];
     if (!comp || !body.boxscore.players?.length) return [];
     if (comp.competitors.some((c) => ourTeamId(c.team) === null)) return [];

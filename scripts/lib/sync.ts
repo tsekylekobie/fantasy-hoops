@@ -50,7 +50,19 @@ export async function syncTeamsAndPlayers(db: Db, api: DataClient): Promise<{ te
   const teams = (await api.teams()).filter((t) => t.isCurrent);
   await upsertTeams(db, teams);
   let players = 0;
-  for await (const page of api.players()) players += await upsertPlayers(db, page.items);
+  const seen: number[] = [];
+  for await (const page of api.players()) {
+    players += await upsertPlayers(db, page.items);
+    seen.push(...page.items.map((p) => p.id));
+  }
+  // ESPN lists only the 30 rosters: anyone linked to ESPN who's on none of them is a free agent now.
+  if (api.provider === "espn" && seen.length > 300) {
+    await db.query(
+      `UPDATE players SET team_id = NULL, updated_at = now()
+        WHERE espn_id IS NOT NULL AND team_id IS NOT NULL AND id <> ALL($1::int[])`,
+      [seen],
+    );
+  }
   return { teams: teams.length, players };
 }
 
