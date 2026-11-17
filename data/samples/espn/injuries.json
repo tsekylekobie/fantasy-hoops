@@ -1,0 +1,301 @@
+{
+ "injuries": [
+  {
+   "id": "1",
+   "displayName": "Atlanta Hawks",
+   "injuries": [
+    {
+     "id": "-60978",
+     "status": "Day-To-Day",
+     "date": "2026-11-16T14:47Z",
+     "shortComment": "Landale (hip) is out for Sunday's game against Bucks, Brad Rowland of the Locked On Podcast Network reports.",
+     "longComment": "Landale missed four games earlier this month with a left hip issue, and he'll sit out Sunday due to right hip inflammation. Look for Zuby Ejiofor to see more minutes behind starter Onyeke Okongwu with Landale out of commission Sunday.",
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Hip",
+      "location": "Torso",
+      "detail": "Inflammation",
+      "side": "Right",
+      "returnDate": "2026-11-18"
+     },
+     "athlete": {
+      "firstName": "Jock",
+      "lastName": "Landale",
+      "displayName": "Jock Landale",
+      "position": {
+       "abbreviation": "C"
+      },
+      "team": {
+       "id": "1",
+       "abbreviation": "ATL",
+       "name": "Hawks",
+       "displayName": "Atlanta Hawks"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/3146557/jock-landale"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/3146557.png",
+       "alt": "Jock Landale"
+      }
+     }
+    },
+    {
+     "id": "-60976",
+     "status": "Day-To-Day",
+     "date": "2026-11-16T14:47Z",
+     "shortComment": "Flemings (back) has been ruled out for Sunday's game against the Bucks.",
+     "longComment": "Flemings left Friday's 125-117 loss to Chicago with back tightness after playing 17 minutes. The ailment will keep the rookie first-rounder on the sidelines Sunday, with veteran CJ McCollum the likely candidate to join the starting lineup. Flemings' next chance to suit up will come Wednesday versus Oklahoma City.",
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Back",
+      "location": "Torso",
+      "detail": "Strain",
+      "returnDate": "2026-11-18"
+     },
+     "athlete": {
+      "firstName": "Kingston",
+      "lastName": "Flemings",
+      "displayName": "Kingston Flemings",
+      "position": {
+       "abbreviation": "G"
+      },
+      "team": {
+       "id": "1",
+       "abbreviation": "ATL",
+       "name": "Hawks",
+       "displayName": "Atlanta Hawks"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5149077/kingston-flemings"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5149077.png",
+       "alt": "Kingston Flemings"
+      }
+     }
+    },
+    {
+     "id": "538842",
+     "status": "Out",
+     "date": "2026-11-13T00:06Z",
+     "shortComment": "Gueye (foot) is ready to begin on-court activities and will be re-evaluated in four weeks, Brad Rowland of the Locked On Podcast Network reports.",
+     "longComment": "The team stated in July that the big man would remain sidelined for the next 3-to-4 months after undergoing surgery to repair a fractured left foot, and he's continuing to make progress in his rehab. A timetable for Gueye's 2026-27 debut has yet to be established, thought a date could come into focus following his next evaluation in mid-December.",
+     "type": {
+      "id": "4",
+      "name": "INJURY_STATUS_OUT",
+      "description": "out",
+      "abbreviation": "O"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "OUT",
+       "abbreviation": "OUT"
+      },
+      "type": "Foot",
+      "location": "Leg",
+      "detail": "Fracture",
+      "side": "Left",
+      "returnDate": "2026-12-12"
+     },
+     "athlete": {
+      "firstName": "Mouhamed",
+      "lastName": "Gueye",
+      "displayName": "Mouhamed Gueye",
+      "position": {
+       "abbreviation": "F"
+      },
+      "team": {
+       "id": "1",
+       "abbreviation": "ATL",
+       "name": "Hawks",
+       "displayName": "Atlanta Hawks"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4712863/mouhamed-gueye"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4712863.png",
+       "alt": "Mouhamed Gueye"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "2",
+   "displayName": "Boston Celtics",
+   "injuries": [
+    {
+     "id": "-61028",
+     "status": "Day-To-Day",
+     "date": "2026-11-17T03:37Z",
+     "shortComment": "Queta (rest) won't play in Monday's game against the Magic, Taylor Snow of the Celtics' official site reports.",
+     "longComment": "The big man is sitting out the second half of this back-to-back set Monday, but he should be good to go for Wednesday's showdown in Denver. Mitchell Robinson is the most likely choice to replace Queta in the starting lineup, while Luka Garza should see a sizable chunk of the center minutes.",
+     "type": {
+      "id": "6",
+      "name": "INJURY_STATUS_DAYTODAY",
+      "description": "day-to-day",
+      "abbreviation": "DD"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "GTD",
+       "abbreviation": "GTD"
+      },
+      "type": "Rest",
+      "location": "Other",
+      "returnDate": "2026-11-18"
+     },
+     "athlete": {
+      "firstName": "Neemias",
+      "lastName": "Queta",
+      "displayName": "Neemias Queta",
+      "position": {
+       "abbreviation": "C"
+      },
+      "team": {
+       "id": "2",
+       "abbreviation": "BOS",
+       "name": "Celtics",
+       "displayName": "Boston Celtics"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/4397424/neemias-queta"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/4397424.png",
+       "alt": "Neemias Queta"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "30",
+   "displayName": "Charlotte Hornets",
+   "injuries": [
+    {
+     "id": "538194",
+     "status": "Out",
+     "date": "2026-11-08T22:31Z",
+     "shortComment": "Knueppel (hamstring) was diagnosed with a left hamstring strain Sunday and will be re-evaluated in four weeks.",
+     "longComment": "Knueppel missed the first eight games of the 2026-27 campaign. He returned for the 114-104 loss to Brooklyn on Wednesday, though he exited the contest after just six minutes of work and didn't return. With Knueppel out of commission for at least a month, Grayson Allen and Sion James are candidates to replace him in the starting lineup, especially with Dennis Schroder (hamstring) sidelined for a minimum of two weeks.",
+     "type": {
+      "id": "4",
+      "name": "INJURY_STATUS_OUT",
+      "description": "out",
+      "abbreviation": "O"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "OUT",
+       "abbreviation": "OUT"
+      },
+      "type": "Hamstring",
+      "location": "Leg",
+      "detail": "Strain",
+      "side": "Left",
+      "returnDate": "2026-12-12"
+     },
+     "athlete": {
+      "firstName": "Kon",
+      "lastName": "Knueppel",
+      "displayName": "Kon Knueppel",
+      "position": {
+       "abbreviation": "G"
+      },
+      "team": {
+       "id": "30",
+       "abbreviation": "CHA",
+       "name": "Hornets",
+       "displayName": "Charlotte Hornets"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/5061575/kon-knueppel"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/5061575.png",
+       "alt": "Kon Knueppel"
+      }
+     }
+    },
+    {
+     "id": "538192",
+     "status": "Out",
+     "date": "2026-11-08T22:26Z",
+     "shortComment": "Schroder has been diagnosed with a left hamstring strain and will be reevaluated in two weeks, Michael Scotto of HoopsHype.com reports.",
+     "longComment": "Schroder, who missed Friday's game due to what was described as a left thigh injury, has been diagnosed with a hamstring strain. He is set to be reevaluated in two weeks, suggesting he will miss at least the next five games. Christian Anderson and Sion James could see extra minutes with Schroder sidelined.",
+     "type": {
+      "id": "4",
+      "name": "INJURY_STATUS_OUT",
+      "description": "out",
+      "abbreviation": "O"
+     },
+     "details": {
+      "fantasyStatus": {
+       "description": "OUT",
+       "abbreviation": "OUT"
+      },
+      "type": "Hamstring",
+      "location": "Leg",
+      "detail": "Strain",
+      "side": "Left",
+      "returnDate": "2026-11-25"
+     },
+     "athlete": {
+      "firstName": "Dennis",
+      "lastName": "Schroder",
+      "displayName": "Dennis Schroder",
+      "position": {
+       "abbreviation": "G"
+      },
+      "team": {
+       "id": "30",
+       "abbreviation": "CHA",
+       "name": "Hornets",
+       "displayName": "Charlotte Hornets"
+      },
+      "links": [
+       {
+        "href": "https://www.espn.com/nba/player/_/id/3032979/dennis-schroder"
+       }
+      ],
+      "headshot": {
+       "href": "https://a.espncdn.com/i/headshots/nba/players/full/3032979.png",
+       "alt": "Dennis Schroder"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

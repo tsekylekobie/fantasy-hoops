@@ -2,7 +2,7 @@
 // long-running worker (scripts/worker.ts). Every pass is an idempotent
 // upsert, so any of them can be re-run or interrupted safely.
 import type { Pool, PoolClient } from "pg";
-import type { DataClient, Injury } from "../../src/lib/bdl";
+import type { DataClient, Injury } from "../../src/lib/data";
 import type { InjuryChange } from "../../src/lib/push/send";
 import { recordInjuries, upsertGames, upsertPlayers, upsertStatLines, upsertTeams } from "./upsert";
 
@@ -45,7 +45,7 @@ export async function seasonIsOpen(db: Db, season: number): Promise<boolean> {
   return rows[0].n > 0;
 }
 
-/** The 30 current teams and every player. About 50 requests. */
+/** The 30 current teams and every player (BALLDONTLIE: about 50 requests; ESPN: the 30 rosters). */
 export async function syncTeamsAndPlayers(db: Db, api: DataClient): Promise<{ teams: number; players: number }> {
   const teams = (await api.teams()).filter((t) => t.isCurrent);
   await upsertTeams(db, teams);

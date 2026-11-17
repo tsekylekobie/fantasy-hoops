@@ -47,6 +47,8 @@ export interface InjuryAlertInput {
   to: string | null;
   returnDate: string | null;
   description: string | null;
+  /** The injury as the provider reports it (ESPN); otherwise it's parsed out of description. */
+  injury?: string | null;
   teamName: string;
 }
 
@@ -81,7 +83,7 @@ export function injuryAlert(a: InjuryAlertInput): PushMessage {
       url: "/my-team",
     };
   }
-  const { injury } = parseInjuryDescription(a.description);
+  const injury = a.injury || parseInjuryDescription(a.description).injury;
   const parts = [injury, a.returnDate ? `est. return ${shortDate(a.returnDate)}` : null].filter(Boolean);
   return {
     title: `${a.playerName}: ${statusLabel(a.from)} → ${a.to}`,

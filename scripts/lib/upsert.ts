@@ -3,7 +3,7 @@
 // jsonb_to_recordset, so a page of 100 rows is a single statement.
 
 import type { PoolClient, Pool } from "pg";
-import type { Game, Injury, Player, StatLine, Team } from "../../src/lib/bdl";
+import type { Game, Injury, Player, StatLine, Team } from "../../src/lib/data";
 import type { InjuryChange } from "../../src/lib/push/send";
 
 type Db = Pool | PoolClient;
@@ -19,17 +19,19 @@ export async function upsertTeams(db: Db, teams: Team[]): Promise<number> {
     full_name: t.fullName,
     conference: t.conference,
     division: t.division,
+    espn_id: t.espnId ?? null,
     raw: t.raw,
   }));
   const res = await db.query(
-    `INSERT INTO teams (id, abbreviation, city, name, full_name, conference, division, raw, updated_at)
-     SELECT id, abbreviation, city, name, full_name, conference, division, raw, now()
+    `INSERT INTO teams (id, abbreviation, city, name, full_name, conference, division, espn_id, raw, updated_at)
+     SELECT id, abbreviation, city, name, full_name, conference, division, espn_id, raw, now()
      FROM jsonb_to_recordset($1::jsonb) AS r(id int, abbreviation text, city text, name text,
-       full_name text, conference text, division text, raw jsonb)
+       full_name text, conference text, division text, espn_id int, raw jsonb)
      ON CONFLICT (id) DO UPDATE SET
        abbreviation = EXCLUDED.abbreviation, city = EXCLUDED.city, name = EXCLUDED.name,
        full_name = EXCLUDED.full_name, conference = EXCLUDED.conference,
-       division = EXCLUDED.division, raw = EXCLUDED.raw, updated_at = now()`,
+       division = EXCLUDED.division, espn_id = coalesce(EXCLUDED.espn_id, teams.espn_id),
+       raw = EXCLUDED.raw, updated_at = now()`,
     [JSON.stringify(rows)],
   );
   return res.rowCount ?? 0;
@@ -70,6 +72,7 @@ function playerRows(players: Player[]) {
     position: p.position,
     team_id: p.teamId,
     jersey_number: p.jerseyNumber,
+    espn_id: p.espnId ?? null,
     raw: p.raw,
   }));
 }
@@ -78,20 +81,21 @@ function playerRows(players: Player[]) {
 // franchises); defunct franchises and free agents become null.
 const PLAYER_SELECT = `
   SELECT r.id, r.first_name, r.last_name, r.position,
-         (SELECT t.id FROM teams t WHERE t.id = r.team_id), r.jersey_number, r.raw, now()
+         (SELECT t.id FROM teams t WHERE t.id = r.team_id), r.jersey_number, r.espn_id, r.raw, now()
   FROM jsonb_to_recordset($1::jsonb) AS r(id int, first_name text, last_name text,
-    position text, team_id int, jersey_number text, raw jsonb)`;
+    position text, team_id int, jersey_number text, espn_id int, raw jsonb)`;
 
 /** Upsert players (full update). Never touches nba_person_id. */
 export async function upsertPlayers(db: Db, players: Player[]): Promise<number> {
   if (!players.length) return 0;
   const res = await db.query(
-    `INSERT INTO players (id, first_name, last_name, position, team_id, jersey_number, raw, updated_at)
+    `INSERT INTO players (id, first_name, last_name, position, team_id, jersey_number, espn_id, raw, updated_at)
      ${PLAYER_SELECT}
      ON CONFLICT (id) DO UPDATE SET
        first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name,
        position = EXCLUDED.position, team_id = EXCLUDED.team_id,
-       jersey_number = EXCLUDED.jersey_number, raw = EXCLUDED.raw, updated_at = now()`,
+       jersey_number = EXCLUDED.jersey_number, espn_id = coalesce(EXCLUDED.espn_id, players.espn_id),
+       raw = EXCLUDED.raw, updated_at = now()`,
     [JSON.stringify(playerRows(players))],
   );
   return res.rowCount ?? 0;
@@ -101,9 +105,9 @@ export async function upsertPlayers(db: Db, players: Player[]): Promise<number> 
 export async function ensurePlayers(db: Db, players: Player[]): Promise<number> {
   if (!players.length) return 0;
   const res = await db.query(
-    `INSERT INTO players (id, first_name, last_name, position, team_id, jersey_number, raw, updated_at)
+    `INSERT INTO players (id, first_name, last_name, position, team_id, jersey_number, espn_id, raw, updated_at)
      ${PLAYER_SELECT}
-     ON CONFLICT (id) DO NOTHING`,
+     ON CONFLICT DO NOTHING`,
     [JSON.stringify(playerRows(players))],
   );
   return res.rowCount ?? 0;
@@ -127,16 +131,17 @@ export async function upsertGames(db: Db, games: Game[]): Promise<number> {
     visitor_team_id: g.visitorTeamId,
     home_team_score: g.homeTeamScore,
     visitor_team_score: g.visitorTeamScore,
+    espn_id: g.espnId ?? null,
     raw: g.raw,
   }));
   const res = await db.query(
     `INSERT INTO games (id, date, season, status, status_state, period, time, postseason, postponed,
-       datetime, home_team_id, visitor_team_id, home_team_score, visitor_team_score, raw, game_type,
+       datetime, home_team_id, visitor_team_id, home_team_score, visitor_team_score, espn_id, raw, game_type,
        updated_at)
      SELECT id, date, season, status, status_state, period, time, postseason, postponed,
        datetime, (SELECT t.id FROM teams t WHERE t.id = r.home_team_id),
        (SELECT t.id FROM teams t WHERE t.id = r.visitor_team_id),
-       home_team_score, visitor_team_score, raw,
+       home_team_score, visitor_team_score, espn_id, raw,
        CASE WHEN postseason THEN 'playoffs'
             WHEN raw->>'ist_stage' = 'Championship' THEN 'cup_final'
             ELSE 'regular' END,
@@ -144,14 +149,15 @@ export async function upsertGames(db: Db, games: Game[]): Promise<number> {
      FROM jsonb_to_recordset($1::jsonb) AS r(id int, date date, season int, status text,
        status_state text, period int, time text, postseason boolean, postponed boolean,
        datetime timestamptz, home_team_id int, visitor_team_id int, home_team_score int,
-       visitor_team_score int, raw jsonb)
+       visitor_team_score int, espn_id int, raw jsonb)
      ON CONFLICT (id) DO UPDATE SET
        date = EXCLUDED.date, season = EXCLUDED.season, status = EXCLUDED.status,
        status_state = EXCLUDED.status_state, period = EXCLUDED.period, time = EXCLUDED.time,
        postseason = EXCLUDED.postseason, postponed = EXCLUDED.postponed,
        datetime = EXCLUDED.datetime, home_team_id = EXCLUDED.home_team_id,
        visitor_team_id = EXCLUDED.visitor_team_id, home_team_score = EXCLUDED.home_team_score,
-       visitor_team_score = EXCLUDED.visitor_team_score, raw = EXCLUDED.raw,
+       visitor_team_score = EXCLUDED.visitor_team_score,
+       espn_id = coalesce(EXCLUDED.espn_id, games.espn_id), raw = EXCLUDED.raw,
        -- play_in is only detectable across a season (classifyGames); keep it.
        game_type = CASE WHEN games.game_type = 'play_in' AND EXCLUDED.game_type = 'regular'
                         THEN 'play_in' ELSE EXCLUDED.game_type END,
@@ -191,7 +197,10 @@ export async function upsertStatLines(db: Db, lines: StatLine[]): Promise<number
     `INSERT INTO player_game_stats (id, player_id, game_id, team_id, season, postseason, min,
        fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, reb, ast, stl, blk, turnover, pf, pts,
        plus_minus, raw, regular_season, updated_at)
-     SELECT id, player_id, game_id, (SELECT t.id FROM teams t WHERE t.id = r.team_id), season,
+     -- No provider id (ESPN): keep the line's id, or take the next from the column default.
+     SELECT coalesce(r.id, (SELECT s.id FROM player_game_stats s WHERE s.player_id = r.player_id AND s.game_id = r.game_id),
+                     nextval('player_game_stats_id_seq')),
+       player_id, game_id, (SELECT t.id FROM teams t WHERE t.id = r.team_id), season,
        postseason, min, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, reb, ast, stl, blk,
        turnover, pf, pts, plus_minus, raw,
        (SELECT g.game_type = 'regular' FROM games g WHERE g.id = r.game_id), now()
@@ -299,36 +308,37 @@ export async function recordInjuries(db: Db, report: Injury[]): Promise<InjuryCh
     status: i.status === "Available" ? null : i.status,
     return_date: i.returnDate,
     description: i.description,
+    injury: i.injury ?? null,
     raw: i.raw,
   }));
   const res = await db.query<InjuryChange>(
     `WITH latest AS (
-       SELECT DISTINCT ON (player_id) player_id, status, return_date, description
+       SELECT DISTINCT ON (player_id) player_id, status, return_date, description, injury
          FROM player_injuries ORDER BY player_id, observed_at DESC, id DESC
      ),
      feed AS (
        SELECT * FROM jsonb_to_recordset($1::jsonb)
-         AS r(player_id int, status text, return_date date, description text, raw jsonb)
+         AS r(player_id int, status text, return_date date, description text, injury text, raw jsonb)
      ),
      changed AS (
-       SELECT f.player_id, f.status, f.return_date, f.description, f.raw
+       SELECT f.player_id, f.status, f.return_date, f.description, f.injury, f.raw
          FROM feed f LEFT JOIN latest l ON l.player_id = f.player_id
         WHERE (l.player_id IS NULL AND f.status IS NOT NULL)
-           OR (l.player_id IS NOT NULL AND (l.status, l.return_date, l.description)
-                 IS DISTINCT FROM (f.status, f.return_date, f.description))
+           OR (l.player_id IS NOT NULL AND (l.status, l.return_date, l.description, l.injury)
+                 IS DISTINCT FROM (f.status, f.return_date, f.description, f.injury))
      ),
      dropped AS (
-       SELECT l.player_id, NULL::text, NULL::date, NULL::text, NULL::jsonb
+       SELECT l.player_id, NULL::text, NULL::date, NULL::text, NULL::text, NULL::jsonb
          FROM latest l
         WHERE l.status IS NOT NULL AND NOT EXISTS (SELECT 1 FROM feed f WHERE f.player_id = l.player_id)
      ),
      inserted AS (
-       INSERT INTO player_injuries (player_id, status, return_date, description, raw)
+       INSERT INTO player_injuries (player_id, status, return_date, description, injury, raw)
        SELECT * FROM changed UNION ALL SELECT * FROM dropped
-       RETURNING player_id, status, return_date, description
+       RETURNING player_id, status, return_date, description, injury
      )
      SELECT i.player_id AS "playerId", l.status AS "from", i.status AS "to",
-            to_char(i.return_date, 'YYYY-MM-DD') AS "returnDate", i.description
+            to_char(i.return_date, 'YYYY-MM-DD') AS "returnDate", i.description, i.injury
        FROM inserted i LEFT JOIN latest l ON l.player_id = i.player_id`,
     [JSON.stringify(rows)],
   );

@@ -35,3 +35,12 @@ test("other report reasons and bare blurbs", () => {
 test("Available means cleared", () => {
   assert.equal(toPlayerInjury("Available", null, "Injury/Illness - Left Finger Sprain (2026-10-24, MIA@CHA)."), null);
 });
+
+test("takes the injury as given when the provider reports it apart (ESPN)", () => {
+  assert.deepEqual(toPlayerInjury("Day-To-Day", "2026-11-18", "Landale (hip) is out for Sunday's game.", "Right Hip Inflammation"), {
+    status: "Day-To-Day",
+    returnDate: "2026-11-18",
+    injury: "Right Hip Inflammation",
+    note: "Landale (hip) is out for Sunday's game.",
+  });
+});
