@@ -2,9 +2,9 @@
 // rest (crypto.ts), a fresh access token on demand, sync bookkeeping, and who
 // may manage it.
 import type { Pool, PoolClient } from "pg";
-import { CURRENT_SEASON } from "../types";
+import { CURRENT_SEASON, type YahooStatusResponse } from "../types";
 import { decryptToken, encryptToken } from "./crypto";
-import { refreshYahooTokens, type FetchFn, type YahooTokens } from "./oauth";
+import { refreshYahooTokens, yahooConfigured, type FetchFn, type YahooTokens } from "./oauth";
 
 type Db = Pool | PoolClient;
 
@@ -62,7 +62,7 @@ export async function saveConnection(db: Db, tokens: YahooTokens, userId: number
     `INSERT INTO yahoo_connection (id, connected_by_user_id, yahoo_guid, redirect_uri, refresh_token_enc, access_token_enc, access_expires_at, connected_at)
      VALUES (1, $1, $2, $3, $4, $5, $6, now())
      ON CONFLICT (id) DO UPDATE SET
-       league_key = CASE WHEN yahoo_connection.yahoo_guid IS NOT DISTINCT FROM EXCLUDED.yahoo_guid THEN yahoo_connection.league_key END,
+       league_key = CASE WHEN yahoo_connection.yahoo_guid IS NULL OR yahoo_connection.yahoo_guid = EXCLUDED.yahoo_guid THEN yahoo_connection.league_key END,
        connected_by_user_id = EXCLUDED.connected_by_user_id, yahoo_guid = EXCLUDED.yahoo_guid,
        redirect_uri = EXCLUDED.redirect_uri, refresh_token_enc = EXCLUDED.refresh_token_enc,
        access_token_enc = EXCLUDED.access_token_enc, access_expires_at = EXCLUDED.access_expires_at,
@@ -151,4 +151,22 @@ export async function claimManualRefresh(db: Db): Promise<{ ok: true } | { ok: f
     `SELECT greatest(1, ceil(extract(epoch FROM manual_refresh_at + interval '1 minute' - now())))::int AS s FROM yahoo_connection WHERE id = 1`,
   );
   return { ok: false, retryInSeconds: r?.s ?? 60 };
+}
+
+/** GET /api/yahoo/status and /league/yahoo: the connection as a league member sees it. */
+export async function statusFor(db: Db, canManage: boolean): Promise<YahooStatusResponse> {
+  const c = await getConnection(db);
+  const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
+  return {
+    configured: yahooConfigured(),
+    connected: !!c,
+    leagueKey: c?.leagueKey ?? null,
+    connectedBy: c?.connectedByName ?? null,
+    connectedAt: iso(c?.connectedAt),
+    lastRefreshAt: iso(c?.lastRefreshAt),
+    lastError: c?.lastError ?? null,
+    lastErrorAt: iso(c?.lastErrorAt),
+    throttledUntil: c?.throttledUntil && c.throttledUntil > new Date() ? c.throttledUntil.toISOString() : null,
+    canManage,
+  };
 }

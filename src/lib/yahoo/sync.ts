@@ -9,7 +9,8 @@
 //   full        daily and when a week ends: also the settings, the weeks, the
 //               standings, every week's scoreboard not yet final here, and all
 //               transactions.
-// No connection, or no league chosen: nothing to do. Every pass records
+// A manual refresh (POST /api/yahoo/refresh) is a rosters pass plus this
+// week's scoreboard. No connection, or no league chosen: nothing to do. Every pass records
 // last_refresh_at or last_error on the connection; when Yahoo throttles, the
 // sync stops calling for 15 minutes (an hour if it happens again soon after).
 import type { Pool } from "pg";
@@ -42,6 +43,8 @@ export interface SyncOptions {
   fetch?: FetchFn;
   /** Milliseconds between Yahoo calls (default 300). */
   minIntervalMs?: number;
+  /** POST /api/yahoo/refresh: a rosters pass also gets this week's scoreboard (live totals). */
+  manual?: boolean;
 }
 
 export interface SyncResult {
@@ -128,6 +131,7 @@ export async function syncYahoo(db: Pool, opts: SyncOptions = {}): Promise<SyncR
     scope = opts.replace ? "full" : RANK[asked] > RANK[due] ? asked : due;
     const full = scope === "full";
     const hourly = scope !== "rosters";
+    const liveScore = hourly || !!opts.manual;
 
     // --- Fetch ---
     const settings = full || !conn.cache ? await api.get(`league/${leagueKey}/settings`) : conn.cache.settings;
@@ -159,7 +163,7 @@ export async function syncYahoo(db: Pool, opts: SyncOptions = {}): Promise<SyncR
         if (w.start <= today) return true;
         return k.pairs === 0 || w.start <= DAY(today, 7);
       }).map((w) => w.week);
-    } else if (hourly && current) {
+    } else if (liveScore && current) {
       scoreWeeks = [current.week];
     }
     for (const w of scoreWeeks) r.scoreboards!.push(await api.get(`league/${leagueKey}/scoreboard;week=${w}`));
