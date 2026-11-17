@@ -1,16 +1,17 @@
-// Upsert the 30 current NBA teams and every player from the provider.
+// Upsert the 30 current NBA teams and every player from the data provider
+// (DATA_PROVIDER; ESPN lists only players on a roster).
 // Usage: npm run sync:players
 // Players on defunct franchises or without a team get team_id null.
 // nba_person_id is never touched (scripts/map-headshots.py owns it).
 // The worker (scripts/worker.ts) runs the same pass twice a day.
 import "dotenv/config";
 import { Pool } from "pg";
-import { createClient } from "../src/lib/bdl";
+import { createClient } from "../src/lib/data";
 import { syncTeamsAndPlayers } from "./lib/sync";
 
 async function main() {
   const db = new Pool({ connectionString: process.env.DATABASE_URL });
-  const api = createClient();
+  const api = createClient(db);
   const started = Date.now();
   try {
     const { teams, players } = await syncTeamsAndPlayers(db, api);

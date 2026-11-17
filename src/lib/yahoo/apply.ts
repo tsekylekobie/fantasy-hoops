@@ -533,7 +533,7 @@ async function applyRosters(
       const id = pid(e.player);
       if (id === null) continue;
       const p = info.get(id);
-      const eligible = eligibleSlots(p?.position ?? null, ilEligibility(injuries.get(id)?.status ?? null, ilRules));
+      const eligible = yahooEligible(e.player.eligiblePositions, p?.position ?? null, ilEligibility(injuries.get(id)?.status ?? null, ilRules));
       let slot = Y.toSlot(e.position) ?? "BN";
       if (Y.toSlot(e.position) === null) warnings.push(`${p?.name}: Yahoo position "${e.position}" has no slot here; on the bench.`);
       // Starters must fit our positions; IL players stay put, like Yahoo, and get flagged below.
@@ -743,4 +743,18 @@ async function applyTransactions(
       `${api ? "" : `, ${failed} failed waiver claims`}; ${acquired} rostered players' acquired dates; ` +
       `${onWaivers.length} newly on waivers${onWaivers.length > 0 ? ` (${onWaivers.map((w) => `${w.name} until ${w.clears}`).join(", ")})` : ""}.`);
   }
+}
+
+const SLOT_ORDER = ["PG", "SG", "G", "SF", "PF", "F", "C", "UTIL", "BN", "IL", "IL+"] as const;
+
+/**
+ * The slots a player may fill: Yahoo's eligible positions when it lists any (Yahoo runs the league, and our
+ * provider's positions can be coarser: ESPN only says G, F or C), else ours from players.position. IL slots
+ * always follow our IL rule (ilSlots); UTIL and BN are always open.
+ */
+export function yahooEligible(yahooPositions: string[], position: string | null, ilSlots: LineupSlot[]): LineupSlot[] {
+  const fromYahoo = yahooPositions.map(Y.toSlot).filter((s): s is LineupSlot => s !== null && s !== "IL" && s !== "IL+");
+  if (fromYahoo.length === 0) return eligibleSlots(position, ilSlots);
+  const out = new Set<LineupSlot>([...fromYahoo, ...ilSlots, "UTIL", "BN"]);
+  return SLOT_ORDER.filter((s) => out.has(s));
 }

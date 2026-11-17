@@ -28,7 +28,7 @@
 // keeps fresh; the only lineup writes are the lineups task's (freezeLineups).
 import "dotenv/config";
 import { Pool } from "pg";
-import { createClient } from "../src/lib/bdl";
+import { createClient } from "../src/lib/data";
 import { freezeSeasonLineups } from "../src/lib/queries/lineup";
 import { notifyInjuryChanges } from "../src/lib/push/send";
 import { syncYahoo } from "../src/lib/yahoo/sync";
@@ -49,7 +49,7 @@ const TICK_MS = 5_000;
 const RECENT_FINAL_HOURS = 5;
 
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
-const api = createClient();
+const api = createClient(db);
 const season = CURRENT_SEASON;
 
 /** yyyy-mm-dd and hour of `t` in the league's time zone. */
@@ -229,7 +229,7 @@ async function runTask(t: Task): Promise<void> {
 
 async function main() {
   const once = process.argv.includes("--once");
-  log(`worker: season ${season}, ${TZ}, live every ${fmtMs(LIVE_MS)}${once ? ", once" : ""}`);
+  log(`worker: season ${season}, ${TZ}, data from ${api.provider}, live every ${fmtMs(LIVE_MS)}${once ? ", once" : ""}`);
   try {
     if (once) {
       for (const t of TASKS) if (!stopping) await runTask(t);

@@ -117,6 +117,8 @@ export interface InjuryChange {
   to: string | null;
   returnDate: string | null;
   description: string | null;
+  /** The injury when the provider reports it apart from description (ESPN); null otherwise. */
+  injury?: string | null;
 }
 
 /**

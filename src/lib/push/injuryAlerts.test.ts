@@ -73,3 +73,11 @@ test("a cleared player's message says he's off the report", () => {
   const a = injuryAlert({ playerId: 7, playerName: "Derrick White", from: "Day-To-Day", to: "Available", returnDate: null, description: "x", teamName: "T" });
   assert.equal(a.title, "Derrick White: Day-To-Day → Healthy");
 });
+
+test("uses the provider's injury when it reports one (ESPN)", () => {
+  const m = injuryAlert({
+    playerId: 3, playerName: "Jock Landale", from: null, to: "Day-To-Day", returnDate: "2026-11-18",
+    description: "Landale (hip) is out for Sunday's game.", injury: "Right Hip Inflammation", teamName: "T",
+  });
+  assert.equal(m.body, "Right Hip Inflammation, est. return Nov 18. On T.");
+});

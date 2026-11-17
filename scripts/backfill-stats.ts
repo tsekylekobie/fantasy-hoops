@@ -7,7 +7,9 @@
 //
 // Idempotent and resumable:
 // - Every page is upserted in one transaction, then the next cursor is saved in
-//   sync_state, so an interrupted run resumes where it stopped.
+//   sync_state, so an interrupted run resumes where it stopped. With ESPN
+//   (DATA_PROVIDER, src/lib/data) a page is one date's games and the cursor is
+//   the next date (yyyymmdd); stats need the season's games stored first.
 // - A season whose stats finished and whose games are all final is skipped.
 // - A season that is still in progress gets an incremental pass from two days
 //   before the last completed run (catches stat corrections).
@@ -17,7 +19,7 @@
 // postseason = false); see classifyGames.
 import "dotenv/config";
 import { Pool } from "pg";
-import { createClient, type DataClient } from "../src/lib/bdl";
+import { createClient, type DataClient } from "../src/lib/data";
 import { getState, log, saveState, seasonIsOpen } from "./lib/sync";
 import { classifyGames, upsertGames, upsertStatLines } from "./lib/upsert";
 
@@ -129,7 +131,7 @@ async function backfillStats(db: Pool, api: DataClient, season: number, args: Ar
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const db = new Pool({ connectionString: process.env.DATABASE_URL });
-  const api = createClient();
+  const api = createClient(db);
   const t0 = Date.now();
   try {
     for (const season of args.seasons) {

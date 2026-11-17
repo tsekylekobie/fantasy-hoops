@@ -24,17 +24,30 @@ export function parseInjuryDescription(description: string | null): { injury: st
   return { injury: injury || null, note };
 }
 
-export function toPlayerInjury(status: string | null, returnDate: string | null, description: string | null): PlayerInjury | null {
+/**
+ * A report row as the app shows it. `injury` is set when the provider reports it
+ * apart (ESPN: player_injuries.injury, and description is just the news blurb);
+ * otherwise (BALLDONTLIE) it's parsed out of description.
+ */
+export function toPlayerInjury(
+  status: string | null,
+  returnDate: string | null,
+  description: string | null,
+  injury: string | null = null,
+): PlayerInjury | null {
   // "Available": still listed on the report but cleared to play.
   if (!status || status === "Available") return null;
+  if (injury) return { status, returnDate, injury, note: description?.trim() || null };
   return { status, returnDate, ...parseInjuryDescription(description) };
 }
 
 /** Current injuries by player id: for `playerIds`, or everyone on the report when omitted. */
 export async function getInjuries(db: Pool | PoolClient, playerIds?: number[]): Promise<Map<number, PlayerInjury>> {
-  const { rows } = await db.query<{ player_id: number; status: string | null; return_date: string | null; description: string | null }>(
+  const { rows } = await db.query<{
+    player_id: number; status: string | null; return_date: string | null; description: string | null; injury: string | null;
+  }>(
     `SELECT * FROM (
-       SELECT DISTINCT ON (player_id) player_id, status, to_char(return_date, 'YYYY-MM-DD') AS return_date, description
+       SELECT DISTINCT ON (player_id) player_id, status, to_char(return_date, 'YYYY-MM-DD') AS return_date, description, injury
          FROM player_injuries
         WHERE $1::int[] IS NULL OR player_id = ANY($1)
         ORDER BY player_id, observed_at DESC, id DESC
@@ -42,6 +55,6 @@ export async function getInjuries(db: Pool | PoolClient, playerIds?: number[]): 
     [playerIds ?? null],
   );
   const out = new Map<number, PlayerInjury>();
-  for (const r of rows) out.set(r.player_id, toPlayerInjury(r.status, r.return_date, r.description)!);
+  for (const r of rows) out.set(r.player_id, toPlayerInjury(r.status, r.return_date, r.description, r.injury)!);
   return out;
 }

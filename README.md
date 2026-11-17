@@ -8,14 +8,15 @@ Pages: Players (season stats, DURANT H2H value with punt weights, a watchlist, p
 (each team's lineup as set on Yahoo, with live stats), Matchup (live and projected), League (standings, scoreboard, playoff
 bracket, recent transactions, waiver order), Rankings (power rankings), Box scores, and League rules (read-only).
 
-Stats come from [BALLDONTLIE](https://www.balldontlie.io) into our Postgres database; the app only reads the
-database, and a background worker keeps it current. Player news comes from ESPN's public fantasy endpoints.
+Stats come from ESPN's public JSON endpoints (no key) into our Postgres database; the app only reads the
+database, and a background worker keeps it current. [BALLDONTLIE](https://www.balldontlie.io) is still supported
+(see "Data provider"). Player news comes from ESPN's public fantasy endpoints.
 
 ## Requirements
 
 - Node.js 20+
 - PostgreSQL 16 (Postgres.app, Homebrew, or Docker via the included `docker-compose.yml`)
-- A BALLDONTLIE API key on the ALL-STAR tier or higher (`/stats` returns 401 on the free tier)
+- Optional: a BALLDONTLIE API key on the ALL-STAR tier or higher, only with `DATA_PROVIDER=bdl`
 - Python 3 (optional, only for headshots)
 
 ## 1. Install
@@ -25,8 +26,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and set `BALLDONTLIE_API_KEY`. Leave `BALLDONTLIE_RPM=60` for ALL-STAR (use `5` on the trial).
-Never commit `.env`.
+Edit `.env` (the NBA data needs nothing: `DATA_PROVIDER=espn` is the default). Never commit `.env`.
 
 ## 2. Start Postgres and create the schema
 
@@ -61,6 +61,32 @@ npm run backfill -- --seasons 2024,2023   # optional: more past seasons for the 
 
 The backfill is resumable: re-run the same command after an interruption and it continues where it stopped.
 Finished seasons are skipped. Options: `--since YYYY-MM-DD`, `--force` (reload a season), `--skip-games`.
+
+With ESPN, `sync:players` reads the 30 team rosters (players not on one aren't listed until they show up in a
+box score or on the injury report), and a season's backfill reads every game's box score, about one request a
+second (~25 minutes for a full season).
+
+### Data provider
+
+`DATA_PROVIDER` picks where NBA data comes from: `espn` (default) or `bdl` (BALLDONTLIE, needs
+`BALLDONTLIE_API_KEY` and the ALL-STAR tier for `/stats` and `/player_injuries`). `src/lib/data` has the shared
+client interface; `src/lib/espn` and `src/lib/bdl` implement it. ESPN is undocumented and keyless; requests are
+paced at `ESPN_RPS` (default 1 per second) and retried with backoff.
+
+Our ids stay BALLDONTLIE's: `teams`, `players` and `games` carry ESPN's id in `espn_id`, and players or games only
+ESPN has get new ids from 2,000,000,000 up. Switching a database that was filled from BALLDONTLIE:
+
+```sh
+npm run espn:compare -- --date 2026-11-16         # read-only: ESPN's box scores against our stored stat lines
+npm run espn:match-ids                            # dry run: link teams, players and games to ESPN ids
+npm run espn:match-ids -- --box-scores-since 2026-10-20 --apply
+npm run espn:match-ids -- --link <our id>=<ESPN id> --apply   # anything it lists as ambiguous
+```
+
+Then set `DATA_PROVIDER=espn` on the worker. Until at least one player is linked the ESPN client refuses to add
+players (every one would come back as a duplicate). Differences from BALLDONTLIE: minutes are whole minutes;
+injury statuses are ESPN's (`Out`, `Day-To-Day`, `Suspension`), with the injury itself in
+`player_injuries.injury`; backfill cursors are dates (yyyymmdd).
 
 For local testing, `npm run db:seed:league` (after the backfill) creates a 12-team league with mock
 managers and drafted rosters. Re-run it to reset the rosters; `-- --seed=7` gives a different draft.
@@ -113,7 +139,7 @@ It keeps the database current on its own, logging one line per pass:
 Ctrl-C stops it after the current pass, and restarting is safe: each task's last run is saved in
 `sync_state` (`worker:<task>`), so a restart doesn't redo the slow passes. `npm run worker -- --once`
 runs every task once and exits. All tasks share one API client, so together they stay under
-`BALLDONTLIE_RPM`. Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 30),
+`ESPN_RPS` (or `BALLDONTLIE_RPM`). Optional settings in `.env`: `WORKER_LIVE_SECONDS` (default 30),
 `WORKER_CORRECTIONS_HOUR` (default 9) and `WORKER_TIME_ZONE` (default `America/New_York`).
 In production it runs as its own process (the `worker` service under Deploying).
 

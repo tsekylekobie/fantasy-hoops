@@ -1,12 +1,12 @@
 // BALLDONTLIE client: the only module that talks to the data provider.
-// Callers get provider-neutral types (./types); swapping providers means
-// reimplementing this module with the same exports.
+// Callers get provider-neutral types (../data/types). Dormant unless
+// DATA_PROVIDER=bdl (src/lib/data picks the provider; ESPN is the default).
 
 import { BdlHttp, type BdlHttpOptions } from "./http";
 import type { BdlGame, BdlInjury, BdlNestedGame, BdlNestedPlayer, BdlPlayer, BdlStat, BdlTeam } from "./raw";
-import type { Game, Injury, Page, Player, StatLine, Team } from "./types";
+import type { Game, Injury, Page, Player, StatLine, Team } from "../data/types";
 
-export type { Game, Injury, Page, Player, StatLine, Team } from "./types";
+export type { Game, Injury, Page, Player, StatLine, Team } from "../data/types";
 export { BdlError } from "./http";
 
 const PER_PAGE = 100; // API maximum
@@ -147,6 +147,7 @@ export interface StatsQuery extends ListOptions {
 }
 
 export class DataClient {
+  readonly provider = "bdl" as const;
   readonly http: BdlHttp;
 
   constructor(opts: BdlHttpOptions = {}) {

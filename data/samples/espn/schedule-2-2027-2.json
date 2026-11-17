@@ -1,0 +1,226 @@
+{
+ "events": [
+  {
+   "id": "401909088",
+   "date": "2026-10-20T19:00Z",
+   "name": "Boston Celtics at Detroit Pistons",
+   "season": {
+    "year": 2027,
+    "displayName": "2026-27"
+   },
+   "competitions": [
+    {
+     "id": "401909088",
+     "date": "2026-10-20T19:00Z",
+     "type": {
+      "id": "1",
+      "text": "Standard",
+      "abbreviation": "STD",
+      "slug": "standard",
+      "type": "standard"
+     },
+     "notes": [],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0.0",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "competitors": [
+      {
+       "id": "8",
+       "homeAway": "home",
+       "score": {
+        "value": 121.0,
+        "displayValue": "121"
+       },
+       "team": {
+        "id": "8",
+        "abbreviation": "DET",
+        "location": "Detroit",
+        "displayName": "Detroit Pistons",
+        "shortDisplayName": "Pistons"
+       }
+      },
+      {
+       "id": "2",
+       "homeAway": "away",
+       "score": {
+        "value": 113.0,
+        "displayValue": "113"
+       },
+       "team": {
+        "id": "2",
+        "abbreviation": "BOS",
+        "location": "Boston",
+        "displayName": "Boston Celtics",
+        "shortDisplayName": "Celtics"
+       }
+      }
+     ]
+    }
+   ],
+   "status": null,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   }
+  },
+  {
+   "id": "401909095",
+   "date": "2026-10-23T23:00Z",
+   "name": "New York Knicks at Boston Celtics",
+   "season": {
+    "year": 2027,
+    "displayName": "2026-27"
+   },
+   "competitions": [
+    {
+     "id": "401909095",
+     "date": "2026-10-23T23:00Z",
+     "type": {
+      "id": "1",
+      "text": "Standard",
+      "abbreviation": "STD",
+      "slug": "standard",
+      "type": "standard"
+     },
+     "notes": [],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0.0",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "competitors": [
+      {
+       "id": "2",
+       "homeAway": "home",
+       "score": {
+        "value": 107.0,
+        "displayValue": "107"
+       },
+       "team": {
+        "id": "2",
+        "abbreviation": "BOS",
+        "location": "Boston",
+        "displayName": "Boston Celtics",
+        "shortDisplayName": "Celtics"
+       }
+      },
+      {
+       "id": "18",
+       "homeAway": "away",
+       "score": {
+        "value": 103.0,
+        "displayValue": "103"
+       },
+       "team": {
+        "id": "18",
+        "abbreviation": "NY",
+        "location": "New York",
+        "displayName": "New York Knicks",
+        "shortDisplayName": "Knicks"
+       }
+      }
+     ]
+    }
+   ],
+   "status": null,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   }
+  },
+  {
+   "id": "401910937",
+   "date": "2027-04-11T22:00Z",
+   "name": "Milwaukee Bucks at Boston Celtics",
+   "season": {
+    "year": 2027,
+    "displayName": "2026-27"
+   },
+   "competitions": [
+    {
+     "id": "401910937",
+     "date": "2027-04-11T22:00Z",
+     "type": {
+      "id": "1",
+      "text": "Standard",
+      "abbreviation": "STD",
+      "slug": "standard",
+      "type": "standard"
+     },
+     "notes": [],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0.0",
+      "period": 0,
+      "type": {
+       "id": "1",
+       "name": "STATUS_SCHEDULED",
+       "state": "pre",
+       "completed": false,
+       "description": "Scheduled",
+       "detail": "Sun, April 11th at 6:00 PM EDT",
+       "shortDetail": "4/11 - 6:00 PM EDT"
+      }
+     },
+     "competitors": [
+      {
+       "id": "2",
+       "homeAway": "home",
+       "score": null,
+       "team": {
+        "id": "2",
+        "abbreviation": "BOS",
+        "location": "Boston",
+        "displayName": "Boston Celtics",
+        "shortDisplayName": "Celtics"
+       }
+      },
+      {
+       "id": "15",
+       "homeAway": "away",
+       "score": null,
+       "team": {
+        "id": "15",
+        "abbreviation": "MIL",
+        "location": "Milwaukee",
+        "displayName": "Milwaukee Bucks",
+        "shortDisplayName": "Bucks"
+       }
+      }
+     ]
+    }
+   ],
+   "status": null,
+   "seasonType": {
+    "id": "2",
+    "type": 2,
+    "name": "Regular Season",
+    "abbreviation": "reg"
+   }
+  }
+ ]
+}

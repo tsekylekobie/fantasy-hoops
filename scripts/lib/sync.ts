@@ -2,7 +2,7 @@
 // long-running worker (scripts/worker.ts). Every pass is an idempotent
 // upsert, so any of them can be re-run or interrupted safely.
 import type { Pool, PoolClient } from "pg";
-import type { DataClient, Injury } from "../../src/lib/bdl";
+import type { DataClient, Injury } from "../../src/lib/data";
 import type { InjuryChange } from "../../src/lib/push/send";
 import { recordInjuries, upsertGames, upsertPlayers, upsertStatLines, upsertTeams } from "./upsert";
 
@@ -45,12 +45,24 @@ export async function seasonIsOpen(db: Db, season: number): Promise<boolean> {
   return rows[0].n > 0;
 }
 
-/** The 30 current teams and every player. About 50 requests. */
+/** The 30 current teams and every player (BALLDONTLIE: about 50 requests; ESPN: the 30 rosters). */
 export async function syncTeamsAndPlayers(db: Db, api: DataClient): Promise<{ teams: number; players: number }> {
   const teams = (await api.teams()).filter((t) => t.isCurrent);
   await upsertTeams(db, teams);
   let players = 0;
-  for await (const page of api.players()) players += await upsertPlayers(db, page.items);
+  const seen: number[] = [];
+  for await (const page of api.players()) {
+    players += await upsertPlayers(db, page.items);
+    seen.push(...page.items.map((p) => p.id));
+  }
+  // ESPN lists only the 30 rosters: anyone linked to ESPN who's on none of them is a free agent now.
+  if (api.provider === "espn" && seen.length > 300) {
+    await db.query(
+      `UPDATE players SET team_id = NULL, updated_at = now()
+        WHERE espn_id IS NOT NULL AND team_id IS NOT NULL AND id <> ALL($1::int[])`,
+      [seen],
+    );
+  }
   return { teams: teams.length, players };
 }
 

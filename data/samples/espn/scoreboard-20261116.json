@@ -1,0 +1,258 @@
+{
+ "leagues": [
+  {
+   "season": {
+    "year": 2027,
+    "startDate": "2026-09-30T07:00Z",
+    "endDate": "2027-06-26T06:59Z",
+    "displayName": "2026-27",
+    "type": {
+     "id": "2",
+     "type": 2,
+     "name": "Regular Season",
+     "abbreviation": "reg"
+    }
+   },
+   "calendar": [
+    "2026-10-03T07:00Z",
+    "2026-10-04T07:00Z",
+    "2026-10-05T07:00Z",
+    "2026-10-06T07:00Z",
+    "2026-10-07T07:00Z"
+   ]
+  }
+ ],
+ "events": [
+  {
+   "id": "401909994",
+   "date": "2026-11-17T00:00Z",
+   "name": "Orlando Magic at Boston Celtics",
+   "season": {
+    "year": 2027,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "competitions": [
+    {
+     "id": "401909994",
+     "date": "2026-11-17T00:00Z",
+     "type": {
+      "id": "1",
+      "abbreviation": "STD"
+     },
+     "notes": [],
+     "status": {
+      "clock": 720.0,
+      "displayClock": "12:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "competitors": [
+      {
+       "id": "2",
+       "homeAway": "home",
+       "score": "105",
+       "team": {
+        "id": "2",
+        "abbreviation": "BOS",
+        "location": "Boston",
+        "name": "Celtics",
+        "displayName": "Boston Celtics",
+        "shortDisplayName": "Celtics"
+       }
+      },
+      {
+       "id": "19",
+       "homeAway": "away",
+       "score": "115",
+       "team": {
+        "id": "19",
+        "abbreviation": "ORL",
+        "location": "Orlando",
+        "name": "Magic",
+        "displayName": "Orlando Magic",
+        "shortDisplayName": "Magic"
+       }
+      }
+     ]
+    }
+   ],
+   "status": {
+    "clock": 720.0,
+    "displayClock": "12:00",
+    "period": 4,
+    "type": {
+     "id": "3",
+     "name": "STATUS_FINAL",
+     "state": "post",
+     "completed": true,
+     "description": "Final",
+     "detail": "Final",
+     "shortDetail": "Final"
+    }
+   }
+  },
+  {
+   "id": "401909995",
+   "date": "2026-11-17T00:00Z",
+   "name": "Chicago Bulls at Cleveland Cavaliers",
+   "season": {
+    "year": 2027,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "competitions": [
+    {
+     "id": "401909995",
+     "date": "2026-11-17T00:00Z",
+     "type": {
+      "id": "1",
+      "abbreviation": "STD"
+     },
+     "notes": [],
+     "status": {
+      "clock": 720.0,
+      "displayClock": "12:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "competitors": [
+      {
+       "id": "5",
+       "homeAway": "home",
+       "score": "126",
+       "team": {
+        "id": "5",
+        "abbreviation": "CLE",
+        "location": "Cleveland",
+        "name": "Cavaliers",
+        "displayName": "Cleveland Cavaliers",
+        "shortDisplayName": "Cavaliers"
+       }
+      },
+      {
+       "id": "4",
+       "homeAway": "away",
+       "score": "115",
+       "team": {
+        "id": "4",
+        "abbreviation": "CHI",
+        "location": "Chicago",
+        "name": "Bulls",
+        "displayName": "Chicago Bulls",
+        "shortDisplayName": "Bulls"
+       }
+      }
+     ]
+    }
+   ],
+   "status": {
+    "clock": 720.0,
+    "displayClock": "12:00",
+    "period": 4,
+    "type": {
+     "id": "3",
+     "name": "STATUS_FINAL",
+     "state": "post",
+     "completed": true,
+     "description": "Final",
+     "detail": "Final",
+     "shortDetail": "Final"
+    }
+   }
+  },
+  {
+   "id": "401909996",
+   "date": "2026-11-17T00:00Z",
+   "name": "Memphis Grizzlies at Washington Wizards",
+   "season": {
+    "year": 2027,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "competitions": [
+    {
+     "id": "401909996",
+     "date": "2026-11-17T00:00Z",
+     "type": {
+      "id": "1",
+      "abbreviation": "STD"
+     },
+     "notes": [],
+     "status": {
+      "clock": 720.0,
+      "displayClock": "12:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "competitors": [
+      {
+       "id": "27",
+       "homeAway": "home",
+       "score": "120",
+       "team": {
+        "id": "27",
+        "abbreviation": "WSH",
+        "location": "Washington",
+        "name": "Wizards",
+        "displayName": "Washington Wizards",
+        "shortDisplayName": "Wizards"
+       }
+      },
+      {
+       "id": "29",
+       "homeAway": "away",
+       "score": "136",
+       "team": {
+        "id": "29",
+        "abbreviation": "MEM",
+        "location": "Memphis",
+        "name": "Grizzlies",
+        "displayName": "Memphis Grizzlies",
+        "shortDisplayName": "Grizzlies"
+       }
+      }
+     ]
+    }
+   ],
+   "status": {
+    "clock": 720.0,
+    "displayClock": "12:00",
+    "period": 4,
+    "type": {
+     "id": "3",
+     "name": "STATUS_FINAL",
+     "state": "post",
+     "completed": true,
+     "description": "Final",
+     "detail": "Final",
+     "shortDetail": "Final"
+    }
+   }
+  }
+ ]
+}
