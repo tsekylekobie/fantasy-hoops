@@ -249,8 +249,8 @@ async function main() {
 
     // Recent moves, newest first: hours ago, and whether the team also added
     // someone. Each drops its last-drafted bench player and adds the best
-    // player left on the draft board; dropped players go on waivers the way
-    // runRosterMove does it (src/lib/queries/transactions.ts).
+    // player left on the draft board; dropped players go on waivers until the
+    // first waiver run at least waiver_days after the drop (as Yahoo does).
     const MOVES = [{ hoursAgo: 2, add: true }, { hoursAgo: 6, add: true }, { hoursAgo: 19, add: false }, { hoursAgo: 27, add: true }];
     const movers = MANAGERS.map((_, i) => i).sort(() => rand() - 0.5).slice(0, MOVES.length);
     for (const [k, move] of MOVES.entries()) {

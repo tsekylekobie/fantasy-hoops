@@ -20,12 +20,8 @@ interface Props {
   /** The player to show; null keeps the dialog closed. */
   playerId: number | null;
   onClose: () => void;
-  /** Free agents get an Add button that calls this. */
-  onAdd?: (id: number) => void;
   /** The signed-in manager's team, to say "On your team". */
   myTeamId?: number | null;
-  /** Bump to refetch (e.g. after an add changed his owner). */
-  refreshKey?: number;
   /** His watchlist star was toggled, for a page that shows stars too. */
   onWatch?: (id: number, watched: boolean) => void;
   /** How his ranks are computed: the Players page's DURANT / 9CAT switch; DURANT elsewhere. */
@@ -38,7 +34,7 @@ type Load =
   | { status: "ready"; id: number; data: PlayerDetailResponse }
   | { status: "error"; id: number; message: string };
 
-export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null, refreshKey = 0, onWatch, method = "durant" }: Props) {
+export default function PlayerModal({ playerId, onClose, myTeamId = null, onWatch, method = "durant" }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const closingFromProp = useRef(false);
@@ -95,7 +91,7 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
         setLoad({ status: "error", id: playerId, message: err instanceof Error ? err.message : "Something went wrong." });
       });
     return () => ctrl.abort();
-  }, [playerId, retryKey, refreshKey, method]);
+  }, [playerId, retryKey, method]);
 
   const requestClose = () => onCloseRef.current();
 
@@ -127,7 +123,6 @@ export default function PlayerModal({ playerId, onClose, onAdd, myTeamId = null,
             <DetailHead
               data={data}
               method={method}
-              onAdd={onAdd}
               myTeamId={myTeamId}
               onWatch={(id, watched) => {
                 setLoad((prev) =>
@@ -205,11 +200,10 @@ function InjuryNote({ note }: { note: string }) {
 }
 
 function DetailHead({
-  data, onAdd, myTeamId, onWatch, method,
+  data, myTeamId, onWatch, method,
 }: {
   data: PlayerDetailResponse;
   method: RankMethod;
-  onAdd?: (id: number) => void;
   myTeamId: number | null;
   onWatch: (id: number, watched: boolean) => void;
 }) {
@@ -262,11 +256,6 @@ function DetailHead({
         <WatchStar
           playerId={player.id} name={fullName(player)} watched={data.watched} onChange={onWatch} size="modal" className={styles.watch}
         />
-      )}
-      {owner === null && onAdd && (
-        <button type="button" className={`${styles.add} ${waiver ? styles.claim : ""}`} onClick={() => onAdd(player.id)}>
-          {waiver ? `Claim (${fmtWaiverTime(waiver.clearsAt, data.timeZone, "date")})` : "Add"}
-        </button>
       )}
     </>
   );

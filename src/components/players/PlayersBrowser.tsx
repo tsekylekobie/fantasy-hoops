@@ -15,7 +15,6 @@ import { isIsoDate } from "@/lib/queries/params";
 import { fetchJson, fmtGameDate, todayIn } from "./format";
 import PlayerModal from "./PlayerModal";
 import PuntWeights, { isDefaultWeights, puntsSummary, readCachedWeights, weightsParam, writeCachedWeights } from "./PuntWeights";
-import AddDropSheet, { fetchMyTeamId } from "@/components/transactions/AddDropSheet";
 import styles from "./PlayersBrowser.module.css";
 
 const PER_PAGE = 50;
@@ -263,19 +262,6 @@ export default function PlayersBrowser() {
 
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Add sheet (over the table or the modal), and the manager's team for "mine" chips.
-  const [adding, setAdding] = useState<number | null>(null);
-  const [myTeamId, setMyTeamId] = useState<number | null>(null);
-  const [movesKey, setMovesKey] = useState(0);
-  useEffect(() => {
-    if (!signedIn) return;
-    const ctrl = new AbortController();
-    fetchMyTeamId(ctrl.signal).then((id) => {
-      if (!ctrl.signal.aborted) setMyTeamId(id);
-    });
-    return () => ctrl.abort();
-  }, [signedIn]);
-
   // Punt weights: per user, not in the URL. `weights` follows the sliders;
   // `applied` (what the table is fetched with, cached and saved) trails it by
   // a pause. The browser cache lets the table load with them right away;
@@ -371,7 +357,7 @@ export default function PlayersBrowser() {
         }));
       });
     return () => ctrl.abort();
-  }, [q, scope, pos, range, from, to, mode, method, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, movesKey, appliedKey]);
+  }, [q, scope, pos, range, from, to, mode, method, playsKey, waivers, hideInjured, team, nba, sort, dir, page, retryKey, appliedKey]);
 
   // Modal: the open player lives in the URL. Remember whether we pushed the
   // entry ourselves, so closing can go back instead of stacking history.
@@ -394,6 +380,8 @@ export default function PlayersBrowser() {
 
   const data = load.data;
   const teamOptions = data?.teamOptions ?? null;
+  // The manager's team, for "mine" chips; kept while the next page loads.
+  const myTeamId = data?.myTeamId ?? null;
   const total = data?.total ?? 0;
   const shown = data?.players.length ?? 0;
   const first = data ? (data.page - 1) * data.perPage + 1 : 0;
@@ -607,7 +595,7 @@ export default function PlayersBrowser() {
           errorMessage={load.status === "error" ? load.message : null}
           onRetry={() => setRetryKey((k) => k + 1)}
           onOpenPlayer={openPlayer}
-          onAddPlayer={signedIn ? setAdding : null}
+          showOwner={signedIn}
           myTeamId={myTeamId}
         />
 
@@ -625,10 +613,8 @@ export default function PlayersBrowser() {
       </div>
 
       <PlayerModal
-        playerId={player} onClose={closePlayer} onAdd={signedIn ? setAdding : undefined} myTeamId={myTeamId} refreshKey={movesKey}
-        method={method}
+        playerId={player} onClose={closePlayer} myTeamId={myTeamId} method={method}
       />
-      <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => setMovesKey((k) => k + 1)} />
     </div>
   );
 }

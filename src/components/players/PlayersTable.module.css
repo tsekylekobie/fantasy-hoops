@@ -362,7 +362,7 @@
   color: var(--ink-subtle);
 }
 
-/* Owner column: Add for free agents, the team's abbreviation otherwise. */
+/* Owner column: the team's abbreviation, FA, or W and the day he clears waivers. */
 .own {
   font-size: 12px;
   font-weight: 600;
@@ -381,53 +381,10 @@
   color: var(--surface);
 }
 
-.add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0 0 2px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--on-ink);
-  font: 600 20px/1 var(--font-body);
-  cursor: pointer;
-}
-
-.add:hover {
-  background: var(--accent-ink);
-}
-
-.add:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Players on waivers: the day he clears, then an outlined + (a claim). */
-.claimWrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .clears {
   font-weight: 600;
   letter-spacing: 0;
   color: var(--ink-muted);
-}
-
-.claim {
-  white-space: nowrap;
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.claim:hover {
-  background: var(--accent);
-  color: var(--on-ink);
 }
 
 
@@ -517,16 +474,6 @@
     min-width: 32px;
     padding: 2px 5px;
     font-size: 11px;
-  }
-
-  .add {
-    width: 28px;
-    height: 28px;
-    font-size: 18px;
-  }
-
-  .claimWrap {
-    gap: 6px;
   }
 
   .clears {

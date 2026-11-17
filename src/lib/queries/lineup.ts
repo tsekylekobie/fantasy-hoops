@@ -1,15 +1,14 @@
-// Daily lineups behind /api/team/lineup.
+// Daily lineups behind /api/team/lineup and /api/teams/:id/lineup, read-only:
+// lineups are set on Yahoo and mirrored here by the Yahoo sync.
 //
-// Storage (db/migrations/0004_league_play.sql): lineup_slots holds the lineup
-// a team set for a date. A day without rows uses the most recent earlier day
-// that has them, so a change carries forward until the next day the manager
-// set explicitly. Before a team has any rows, its standing lineup
-// (roster_players.slot) is used; roster_players.slot mirrors the latest lineup.
+// Storage (db/migrations/0004_league_play.sql): lineup_slots holds a team's
+// lineup for a date. A day without rows uses the most recent earlier day
+// that has them. Before a team has any rows, its standing lineup
+// (roster_players.slot) is used.
 //
-// The past never changes: freezeLineups saves every day through today as rows
-// of its own, so a past day no longer depends on the current roster or on
-// roster_players.slot. It runs before every lineup read and write, from the
-// sync worker, and MUST run before any roster change (add, drop, trade).
+// The past never changes: freezeLineups (the sync worker's lineups task) saves
+// every day through today as rows of its own, so a past day no longer depends
+// on the current roster or on roster_players.slot.
 //
 // A past day with its own rows shows exactly those rows: they're the record
 // of who was on the team and where. Today and later follow the current
@@ -17,16 +16,7 @@
 // rows for players who have left are ignored.
 import type { Pool, PoolClient } from "pg";
 import { gameDayToday } from "../gameDay";
-import {
-  autoLineup,
-  describeIlRule,
-  eligibleSlots,
-  ilEligibility,
-  rosterProblems,
-  validateLineup,
-  type IlRules,
-  type SlotCounts,
-} from "../lineup/rules";
+import { describeIlRule, eligibleSlots, ilEligibility, type IlRules, type SlotCounts } from "../lineup/rules";
 import {
   LINEUP_SLOTS,
   type LineupGame,
@@ -218,8 +208,6 @@ export interface DayState {
   players: DayPlayer[];
   /** Whether this exact date has its own rows (vs. carrying an earlier day forward). */
   hasOwnRows: boolean;
-  /** Why the roster is illegal on this date (rules.rosterProblems); always empty for past days. */
-  problems: string[];
 }
 
 export async function loadDay(db: Db, team: TeamContext, date: string, values: Values): Promise<DayState> {
@@ -284,10 +272,7 @@ export async function loadDay(db: Db, team: TeamContext, date: string, values: V
   // Display order: by slot, then best value first.
   const order = (s: LineupSlot) => LINEUP_SLOTS.indexOf(s);
   players.sort((a, b) => order(a.slot) - order(b.slot) || playerValue(values, b.id) - playerValue(values, a.id));
-  const problems = isPast
-    ? []
-    : rosterProblems(players.map((p) => ({ ...p, name: `${p.firstName} ${p.lastName}`.trim() })), team.rosterSlots);
-  return { date, players, hasOwnRows, problems };
+  return { date, players, hasOwnRows };
 }
 
 /**
@@ -334,35 +319,9 @@ export async function freezeSeasonLineups(pool: Pool, season: number): Promise<{
   return { teams: teams.length, rows };
 }
 
-/** Writes `date`'s lineup. Call inside a transaction holding the team lock. */
-async function writeDay(db: PoolClient, team: TeamContext, date: string, slots: Map<number, LineupSlot>): Promise<void> {
-  // Pin today and earlier first, so updating roster_players.slot below can't
-  // change them (they'd otherwise still fall back to it).
-  await freezeLineups(db, team.teamId);
-  const { rows: [state] } = await db.query<{ later_rows: boolean }>(
-    `SELECT EXISTS (SELECT 1 FROM lineup_slots WHERE fantasy_team_id = $1 AND date > $2) AS later_rows`,
-    [team.teamId, date],
-  );
-  await db.query(`DELETE FROM lineup_slots WHERE fantasy_team_id = $1 AND date = $2`, [team.teamId, date]);
-  const ids = [...slots.keys()];
-  await db.query(
-    `INSERT INTO lineup_slots (league_id, fantasy_team_id, date, player_id, slot)
-     SELECT $1, $2, $3, u.player_id, u.slot FROM unnest($4::int[], $5::text[]) AS u(player_id, slot)`,
-    [team.leagueId, team.teamId, date, ids, ids.map((id) => slots.get(id)!)],
-  );
-  if (!state.later_rows) {
-    await db.query(
-      `UPDATE roster_players rp SET slot = u.slot
-         FROM unnest($2::int[], $3::text[]) AS u(player_id, slot)
-        WHERE rp.fantasy_team_id = $1 AND rp.player_id = u.player_id`,
-      [team.teamId, ids, ids.map((id) => slots.get(id)!)],
-    );
-  }
-}
-
 /**
  * Runs `fn` in a transaction that holds the team's row lock, so two tabs (or
- * the worker) can't interleave lineup writes. Roster changes should take it too.
+ * the worker) can't interleave lineup writes.
  */
 export async function withTeamLock<T>(pool: Pool, teamId: number, fn: (db: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -380,58 +339,6 @@ export async function withTeamLock<T>(pool: Pool, teamId: number, fn: (db: PoolC
   }
 }
 
-function assertEditable(team: TeamContext, date: string): void {
-  if (date < team.today) throw new LineupError("Past days are locked.", 409);
-}
-
-function rulePlayers(day: DayState) {
-  return day.players.map((p) => ({ id: p.id, slot: p.slot, eligible: p.eligible, locked: p.lock !== null }));
-}
-
-/** Saves a manager's lineup for one day after checking it against the rules. */
-export async function setLineup(
-  pool: Pool, team: TeamContext, date: string, next: Map<number, LineupSlot>, values: Values,
-): Promise<void> {
-  assertEditable(team, date);
-  await withTeamLock(pool, team.teamId, async (db) => {
-    const day = await loadDay(db, team, date, values);
-    const names = new Map(day.players.map((p) => [p.id, `${p.firstName} ${p.lastName}`.trim()]));
-    const error = validateLineup(rulePlayers(day), next, team.rosterSlots, names);
-    if (error) throw new LineupError(error, 409);
-    if (day.players.every((p) => next.get(p.id) === p.slot)) return;
-    await writeDay(db, team, date, next);
-  });
-}
-
-/**
- * Sets the best lineup for `date`, or for each day from `date` to the end of
- * `weekEnd`. Days run in order, so each starts from the one before it.
- * Returns the days that changed.
- */
-export async function autoSetLineup(
-  pool: Pool, team: TeamContext, dates: string[], values: Values,
-): Promise<string[]> {
-  for (const d of dates) assertEditable(team, d);
-  return withTeamLock(pool, team.teamId, async (db) => {
-    const changed: string[] = [];
-    for (const date of dates) {
-      const day = await loadDay(db, team, date, values);
-      const next = autoLineup(
-        day.players.map((p) => ({
-          id: p.id, slot: p.slot, eligible: p.eligible, locked: p.lock !== null,
-          plays: p.game !== null && p.injury?.status !== "Out",
-          value: playerValue(values, p.id),
-        })),
-        team.rosterSlots,
-      );
-      if (day.players.every((p) => next.get(p.id) === p.slot)) continue;
-      await writeDay(db, team, date, next);
-      changed.push(date);
-    }
-    return changed;
-  });
-}
-
 const addDays = (iso: string, n: number) => {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -447,15 +354,6 @@ export async function getWeek(db: Db, team: TeamContext, date: string): Promise<
   );
   const r = rows[0];
   return r ? { week: r.week, startsOn: r.starts_on, endsOn: r.ends_on, isPlayoffs: r.is_playoffs } : null;
-}
-
-/** Days from `date` (or today, if later) through the end of `date`'s week. */
-export async function remainingWeekDays(db: Db, team: TeamContext, date: string): Promise<string[]> {
-  const week = await getWeek(db, team, date);
-  const end = week?.endsOn ?? date;
-  const out: string[] = [];
-  for (let d = date < team.today ? team.today : date; d <= end; d = addDays(d, 1)) out.push(d);
-  return out;
 }
 
 /**
@@ -493,7 +391,6 @@ export async function getPlayerWeek(db: Db, playerId: number, season: number): P
 
 /** The full response for one date. */
 export async function getTeamLineup(pool: Pool, team: TeamContext, date: string, values: Values): Promise<TeamLineupResponse> {
-  await withTeamLock(pool, team.teamId, (db) => freezeLineups(db, team.teamId));
   const [day, week] = await Promise.all([loadDay(pool, team, date, values), getWeek(pool, team, date)]);
   let start = week?.startsOn;
   let end = week?.endsOn;
@@ -532,7 +429,6 @@ export async function getTeamLineup(pool: Pool, team: TeamContext, date: string,
         .filter((s) => (team.rosterSlots[s] ?? 0) > 0)
         .map((s) => ({ slot: s, text: describeIlRule(s === "IL" ? ilRules(team).il : ilRules(team).ilPlus) })),
     },
-    rosterProblems: day.problems,
     date,
     today: gameDayToday(),
     lockedBefore: team.today,

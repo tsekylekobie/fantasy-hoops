@@ -40,17 +40,6 @@
   margin: 4px 0 8px;
 }
 
-.pill {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--accent-ink);
-  background: var(--accent-soft);
-  border-radius: 999px;
-  padding: 4px 10px;
-}
-
 .sub {
   color: var(--ink-muted);
   font-size: 15px;
@@ -423,32 +412,6 @@ select.inp {
   line-height: 1.45;
 }
 
-.lock {
-  font-size: 13px;
-  color: var(--ink-muted);
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 8px 0;
-  line-height: 1.45;
-}
-
-.clear {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.clear:hover {
-  border-color: var(--ink);
-}
-
 /* Regular season vs playoff weeks under the start week. */
 .bracket {
   display: flex;
@@ -485,84 +448,6 @@ select.inp {
   color: var(--bg);
 }
 
-/* Save bar: stays in view at the bottom while the form scrolls. */
-.save {
-  position: sticky;
-  bottom: 16px;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  align-items: center;
-  padding: 16px 20px;
-  border-radius: var(--radius-card);
-  background: var(--ink);
-  color: var(--bg);
-  box-shadow: 0 12px 32px rgba(22, 24, 29, 0.24);
-}
-
-.what {
-  flex: 1 1 360px;
-  min-width: 0;
-}
-
-.what b {
-  display: block;
-  font-size: 15px;
-}
-
-.what ul {
-  margin: 6px 0 0;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.5;
-  opacity: 0.85;
-}
-
-.ok {
-  font-size: 14px;
-}
-
-.error {
-  margin: 8px 0 0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.45;
-  background: var(--danger-soft);
-  color: var(--danger-ink);
-}
-
-.bt {
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.primary {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: #fff;
-}
-
-.primary:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.ghost {
-  background: transparent;
-  border: 1px solid var(--ink-subtle);
-  color: inherit;
-}
-
-.bt:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
 
 .page :is(a, button, input, select):focus-visible {
   outline: 2px solid var(--accent);
@@ -578,7 +463,7 @@ select.inp {
   opacity: 0.55;
 }
 
-/* The form's sections, in one fieldset so read-only mode (non-commissioners) can disable them all. */
+/* The sections, in one disabled fieldset: the rules are read-only. */
 .sections {
   display: flex;
   flex-direction: column;
@@ -632,20 +517,5 @@ select.inp {
 
   .hint.text {
     margin-top: 0;
-  }
-
-  /* Above the phone tab bar (body padding-bottom in globals.css). */
-  .save {
-    bottom: calc(66px + env(safe-area-inset-bottom));
-    padding: 12px 16px;
-  }
-
-  .what ul {
-    max-height: 30vh;
-    overflow-y: auto;
-  }
-
-  .bt {
-    flex: 1;
   }
 }

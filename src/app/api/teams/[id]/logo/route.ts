@@ -1,8 +1,8 @@
 // GET /api/teams/:id/logo?v=<version>  the team's logo image (404 without one).
 // Links carry ?v= (fantasy_teams.logo_updated_at), so a given URL never changes
-// and can be cached for good (privately: signed in only, as league data is private); a new upload gets a new URL.
+// and can be cached for good (privately: signed in only, as league data is private).
 import { pool } from "@/lib/db";
-import { getTeamLogo } from "@/lib/queries/teamProfile";
+import { getTeamLogo } from "@/lib/queries/teamLogo";
 import { errorResponse, handleError, sessionUserId } from "../../../team/lineup/shared";
 
 export const dynamic = "force-dynamic";

@@ -213,6 +213,8 @@ export interface PlayersResponse {
   players: PlayerRow[];
   /** The league's time zone, for showing each player's `waiver.clearsAt`. */
   timeZone: string;
+  /** The signed-in viewer's team in the league (their players get a dark chip); null signed out or without one. */
+  myTeamId: number | null;
 }
 
 export interface GameLogRow {
@@ -811,12 +813,6 @@ export interface TeamLineupResponse {
     /** Who may use each IL slot the league has, e.g. "Out or Day-To-Day". */
     ilRules: { slot: LineupSlot; text: string }[];
   };
-  /**
-   * Why the roster is illegal on this date: a player on IL who no longer
-   * qualifies, or too many active players. Empty when legal (and for past
-   * days). While illegal the team can't add players or place claims.
-   */
-  rosterProblems: string[];
   /** The lineup's date and today (Pacific, GAME_DAY_TZ: what the page labels "Today"), yyyy-mm-dd. */
   date: string;
   today: string;
@@ -833,36 +829,13 @@ export interface TeamLineupResponse {
   live: boolean;
 }
 
-/** PUT /api/team/lineup: the whole lineup for one day (today or later). Responds with TeamLineupResponse. */
-export interface LineupUpdateRequest {
-  date: string;
-  slots: { playerId: number; slot: LineupSlot }[];
-}
-
-/**
- * POST /api/team/lineup/auto: best lineup for `date`, or for every day from
- * `date` (today or later) to the end of its week.
- */
-export interface AutoLineupRequest {
-  date: string;
-  scope: "day" | "week";
-}
-
-export interface AutoLineupResponse extends TeamLineupResponse {
-  /** Days whose lineup changed, yyyy-mm-dd. */
-  changed: string[];
-}
-
-// Add / drop (/api/team/transactions)
+// Players' league status
 
 /** The fantasy team a player is on. */
 export interface PlayerOwner {
   teamId: number;
   abbreviation: string;
 }
-
-/** Immediate: rosters change now (free agents). Waiver: a pending claim that runs at the league's waiver time. */
-export type AddMode = "immediate" | "waiver";
 
 /** A free agent on waivers: adding him is a claim that processes at `clearsAt`. */
 export interface PlayerWaiver {
@@ -877,307 +850,10 @@ export interface PlayerWaiver {
   droppedBy: FantasyTeamSummary | null;
 }
 
-/** Per-game averages over one StatRange (MIN and GP beside the categories). */
-export interface RangeAverages extends CategoryLine {
-  /** 9CAT rank over the range, as the Players page ranks him with the user's punt weights. */
-  rank: number;
-  gp: number;
-  min: number;
-}
-
-/** A player's averages over each StatRange; null where he has no games in it. */
-export type AveragesByRange = Record<StatRange, RangeAverages | null>;
-
-/** One of the manager's players, as the drop table shows him. */
-export interface RosterMoveOption extends PlayerSummary {
-  /** His slot today. IL and IL+ don't count against the roster limit. */
-  slot: LineupSlot;
-  injury: PlayerInjury | null;
-  averages: AveragesByRange;
-  /** Why he can't be dropped right now (e.g. locked in today's lineup); null when he can. */
-  dropBlocked: string | null;
-  /** The roster is illegal and dropping him (with an add) would make it legal and leave room. */
-  fixesIllegalRoster: boolean;
-}
-
-/** The player being added, as the add sheet shows him. */
-export interface AddCandidate extends PlayerSummary {
-  owner: PlayerOwner | null;
-  mode: AddMode;
-  /** Set when mode is "waiver". */
-  waiver: PlayerWaiver | null;
-  averages: AveragesByRange;
-  /** Why he can't be added (rostered, adds limit reached); null when he can. */
-  addBlocked: string | null;
-}
-
-/**
- * GET /api/team/transactions?add=<playerId>: the signed-in manager's roster
- * and limits, for the add/drop sheet. `add` is filled in when ?add= is given.
- */
-export interface RosterMovesContext {
-  team: FantasyTeamSummary & { waiverPriority: number | null };
-  teamCount: number;
-  /** The league's today, yyyy-mm-dd. */
-  today: string;
-  /** The league's time zone, for showing waiver times. */
-  timeZone: string;
-  /** Whether a dropped player goes on waivers, and for how many days. */
-  dropsToWaivers: boolean;
-  waiverDays: number;
-  /** Players counted against the limit (everyone not on IL/IL+ today), and the limit (non-IL slots). */
-  rosterCount: number;
-  rosterLimit: number;
-  /**
-   * Why the roster is illegal today (see TeamLineupResponse.rosterProblems).
-   * While it's non-empty, adds are refused unless the drop fixes it.
-   */
-  rosterProblems: string[];
-  /** Adds (free agents and waiver claims) this matchup week and season; null limit = unlimited. */
-  addsThisWeek: number;
-  maxAddsPerWeek: number | null;
-  addsThisSeason: number;
-  maxAddsPerSeason: number | null;
-  /** In lineup order, like My team: starters by slot, bench, IL. */
-  roster: RosterMoveOption[];
-  add: AddCandidate | null;
-  /** The team's budget when the league runs FAAB waivers; null otherwise. */
-  faab: FaabBudget | null;
-}
-
-/**
- * POST /api/team/transactions: add a free agent, drop a player, or both at
- * once (one DB transaction). At least one id is required; an add that would
- * overfill the roster needs a drop. Responds with RosterMoveResult.
- */
-export interface RosterMoveRequest {
-  addPlayerId?: number;
-  dropPlayerId?: number;
-  /** FAAB leagues, waiver claims only: the blind bid, whole dollars from the minimum bid to the team's balance. */
-  faabBid?: number;
-}
-
-export interface RosterMoveResult {
-  transactionId: number;
-  type: "add" | "drop" | "add_drop" | "waiver_claim";
-  /** completed = rosters changed; pending = waiver claim waiting for processAt. */
-  status: "completed" | "pending";
-  processAt: string | null;
-  added: PlayerSummary | null;
-  dropped: PlayerSummary | null;
-  /** The claim's FAAB bid; null for immediate moves and non-FAAB leagues. */
-  faabBid: number | null;
-}
-
-// Trades (/team/[id]/trade, and the trades panels on /my-team and /league)
-
-/**
- * Where a trade stands. `offered`: waiting on the other manager. `review`:
- * accepted, in the league's review window (the rest of the league can vote
- * to veto, or the commissioner can, depending on the league). The rest are final.
- */
-export type TradeStatus = "offered" | "review" | "completed" | "rejected" | "cancelled" | "vetoed" | "failed";
-
 /** How the league reviews accepted trades (leagues.trade_review). */
 export type TradeReview = "none" | "commissioner" | "league_vote";
 
-export interface TradeSettings {
-  review: TradeReview;
-  /** Length of the review window. */
-  reviewDays: number;
-  /** Veto votes that kill a trade (league_vote only). */
-  vetoVotes: number;
-  /** Last day trades can be proposed or accepted (yyyy-mm-dd); null = none. */
-  deadline: string | null;
-  /** Most players a team may carry outside IL/IL+ (the league's non-IL slots). */
-  activeLimit: number;
-}
-
-export interface Trade {
-  id: number;
-  status: TradeStatus;
-  /** The team that proposed it, and the team it was offered to. */
-  proposer: FantasyTeamSummary;
-  partner: FantasyTeamSummary;
-  /** Players going from the proposer to the partner, and back. */
-  sends: PlayerSummary[];
-  receives: PlayerSummary[];
-  /** Players each team drops when it goes through: the proposer's chosen when proposing, the partner's when accepting. */
-  proposerDrops: PlayerSummary[];
-  partnerDrops: PlayerSummary[];
-  note: string | null;
-  /** ISO timestamps. */
-  createdAt: string;
-  acceptedAt: string | null;
-  /** When the review window ends (it processes then, or as soon as its players unlock). */
-  processAt: string | null;
-  /** When it completed, or was rejected, cancelled, vetoed or failed. */
-  closedAt: string | null;
-  /** Why it failed or who vetoed it; null otherwise. */
-  reason: string | null;
-  vetoVotes: number;
-  /** The signed-in manager's relation to it. */
-  role: "proposer" | "partner" | "league" | null;
-  myVote: boolean;
-  can: { accept: boolean; reject: boolean; cancel: boolean; vote: boolean; veto: boolean };
-}
-
-/** GET /api/trades: open trades (offered or in review) and the latest closed ones. Due trades process first. */
-export interface TradesResponse {
-  settings: TradeSettings;
-  myTeam: FantasyTeamSummary | null;
-  isCommissioner: boolean;
-  open: Trade[];
-  /** Newest first, up to 10. */
-  recent: Trade[];
-}
-
-/** A rostered player as the trade builder shows him. */
-export interface TradeRosterPlayer extends PlayerSummary {
-  slot: LineupSlot;
-  injury: PlayerInjury | null;
-  /** Season per-game line and 9CAT value; null before his first game. */
-  gp: number;
-  stats: CategoryLine | null;
-  value: number | null;
-  /** In another open trade (it would fail if that one processes first). */
-  inOpenTrade: boolean;
-}
-
-/** GET /api/trades/builder?team=ID: both rosters for a trade with team ID. */
-export interface TradeBuilderResponse {
-  settings: TradeSettings;
-  myTeam: FantasyTeamSummary & { players: TradeRosterPlayer[] };
-  partner: FantasyTeamSummary & { players: TradeRosterPlayer[] };
-  /** The league's today, yyyy-mm-dd. */
-  today: string;
-}
-
-/** POST /api/trades: propose. Responds with the new Trade. */
-export interface TradeProposal {
-  partnerTeamId: number;
-  /** From the proposer's roster. */
-  sendPlayerIds: number[];
-  /** From the partner's roster. */
-  receivePlayerIds: number[];
-  /** The proposer's own players to drop when it goes through (to stay within the active limit). */
-  dropPlayerIds?: number[];
-  note?: string;
-}
-
-/**
- * POST /api/trades/:id { action }. accept/reject: the partner. cancel: the
- * proposer, before it processes. vote/unvote: other teams, during league-vote
- * review. veto: the commissioner, during review. Responds with the Trade.
- */
-export type TradeAction = "accept" | "reject" | "cancel" | "vote" | "unvote" | "veto";
-
-/** POST /api/trades/:id body. `dropPlayerIds`: accept only, the partner's own players to drop when it goes through. */
-export interface TradeActionRequest {
-  action: TradeAction;
-  dropPlayerIds?: number[];
-}
-
-// Trade analyzer (the builder and pending trades): GET /api/trades/analysis
-
-/** Per-game counting stats, unrounded. FG%/FT% come from the makes and attempts. */
-export type PerGameLine = Record<"fgm" | "fga" | "ftm" | "fta" | "fg3m" | "pts" | "reb" | "ast" | "stl" | "blk" | "tov", number>;
-
-/** Stats windows the analyzer offers: season averages or the last 14 days (as on the Players page). */
-export type TradeWindow = "season" | "last14";
-
-export interface TradeAnalysisWindowLine {
-  gp: number;
-  perGame: PerGameLine;
-  /** 9CAT value in this window: with the viewer's punt weights, and with the default weights. */
-  value: number;
-  defaultValue: number;
-}
-
-export interface TradeAnalysisPlayer extends PlayerSummary {
-  slot: LineupSlot;
-  /** Null when he hasn't played in that window. */
-  season: TradeAnalysisWindowLine | null;
-  last14: TradeAnalysisWindowLine | null;
-}
-
-/**
- * GET /api/trades/analysis?teams=A,B: what the analyzer needs to price any
- * trade between teams A and B on the client: both rosters with per-game lines
- * and values, and every league team's active per-game totals for the ranks.
- */
-export interface TradeAnalysisResponse {
-  /** Most players a team may carry outside IL/IL+. */
-  activeLimit: number;
-  /** Starting slot counts, in display order (zeros left out). */
-  slots: { slot: LineupSlot; count: number }[];
-  /** The viewer's punt weights, and whether they're the defaults (then there's nothing to switch). */
-  weights: CategoryWeights;
-  weightsAreDefault: boolean;
-  teams: (FantasyTeamSummary & { players: TradeAnalysisPlayer[] })[];
-  /** Every team in the league: the per-game sum of its active (non-IL) players, by window. */
-  league: { teamId: number; season: PerGameLine; last14: PerGameLine }[];
-  /** The last-14-days window, yyyy-mm-dd; null before the first game. */
-  last14: { from: string; to: string } | null;
-}
-
-// Waivers (/api/team/claims, the League page's waiver order)
-
-/**
- * A team's FAAB (free agent acquisition budget), whole dollars. Bids are blind,
- * from minBid up to balance; the winning bid comes off the balance when the
- * claim completes. Pending bids don't hold money: they're checked against the
- * balance again when the run reaches them.
- */
-export interface FaabBudget {
-  /** The league's season budget per team. */
-  budget: number;
-  minBid: number;
-  /** What the team has left. */
-  balance: number;
-}
-
-/** One of the manager's pending waiver claims. */
-export interface WaiverClaim {
-  id: number;
-  /** The team's preference order among its pending claims, 1 = first. */
-  rank: number;
-  /** FAAB bid; null when the league isn't FAAB. */
-  bid: number | null;
-  add: PlayerSummary;
-  drop: PlayerSummary | null;
-  /** ISO UTC: when it processes. */
-  processAt: string;
-  createdAt: string;
-}
-
-/**
- * GET /api/team/claims: the signed-in manager's pending claims in the order the
- * waiver run tries them.
- */
-export interface MyClaimsResponse {
-  timeZone: string;
-  /** Local run time, "HH:MM". */
-  waiverTime: string;
-  /** ISO weekdays waivers run on (1 = Mon ... 7 = Sun). */
-  waiverDaysOfWeek: number[];
-  nextRunAt: string;
-  waiverPriority: number | null;
-  teamCount: number;
-  /** Set when the league runs FAAB waivers: bids decide claims, the waiver priority breaks ties. */
-  faab: FaabBudget | null;
-  pending: WaiverClaim[];
-}
-
-/**
- * PUT /api/team/claims { order: claimIds } reorders all pending claims (in FAAB
- * leagues the order only breaks ties between your own equal bids).
- * PATCH /api/team/claims/:id { bid } changes a pending claim's FAAB bid.
- * DELETE /api/team/claims/:id cancels one. All respond MyClaimsResponse.
- */
-export interface ClaimOrderRequest {
-  order: number[];
-}
+// Waivers (the League page's waiver order)
 
 /** The League page's waiver order and settings. */
 export interface WaiverOrder {
@@ -1194,7 +870,7 @@ export interface WaiverOrder {
   faabBudget: number;
   faabMinBid: number;
   /** First claim first (in FAAB leagues: first on tied bids). faabBalance is null unless the league is FAAB. */
-  teams: (FantasyTeamSummary & { priority: number; pendingClaims: number; faabBalance: number | null })[];
+  teams: (FantasyTeamSummary & { priority: number; faabBalance: number | null })[];
 }
 
 // --- League settings (commissioner only) ---
@@ -1310,29 +986,14 @@ export interface LeagueSettingsResponse {
   gameLimitsFromWeek?: number | null;
 }
 
-// Team profile (/api/team/profile)
+// Team names (the Yahoo import checks them)
 
-/** Limits on a team's name and abbreviation; the server enforces them, the Edit team form mirrors them. */
+/** Limits on a team's name and abbreviation. */
 export const TEAM_NAME_LENGTH = { min: 2, max: 32 } as const;
 /** 2–4 uppercase letters or digits, at least one letter. */
 export const TEAM_ABBREVIATION = /^(?=.*[A-Z])[A-Z0-9]{2,4}$/;
-/** Logo uploads: PNG, JPEG or WebP, up to 1 MB (the form uploads a ~256px square). */
+/** Team logo images (team_logos.content_type). */
 export const TEAM_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
-export const TEAM_LOGO_MAX_BYTES = 1024 * 1024;
-
-/**
- * PATCH /api/team/profile: rename a team or change its abbreviation. `teamId`
- * defaults to your own team; the commissioner may name any team in the league.
- * Responds with the updated FantasyTeamSummary.
- *
- * PUT /api/team/profile/logo?team=<id>  body: the image bytes, Content-Type its type.
- * DELETE /api/team/profile/logo?team=<id>  removes it. Both respond with the FantasyTeamSummary.
- */
-export interface TeamProfileUpdate {
-  teamId?: number;
-  name?: string;
-  abbreviation?: string;
-}
 
 // Box scores (/box-scores)
 

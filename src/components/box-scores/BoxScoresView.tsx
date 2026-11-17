@@ -7,7 +7,7 @@
 // scoreboard scrolls off, a compact copy pins to the top of the page and marks the
 // game you're reading; the tables' pinned headers sit just under it.
 // Keyed by date and ?game (page.tsx): ?game jumps to that game on load.
-// Signed out there's no Owner column and no Add/Claim (league data is private).
+// Signed out there's no Owner column (league data is private).
 // While games are live the page refreshes every minute (useLiveRefresh; the countdown
 // floats at the top once scrolled off, then sits in the pinned bar): changed stats,
 // scores and statuses flash, counts show the change ("+1") and ranks the move
@@ -19,7 +19,6 @@ import type { BoxRank, BoxRankKey, BoxScoreGame, BoxScorePlayer, BoxScoresRespon
 import SiteHeader from "@/components/SiteHeader";
 import { useSignedIn } from "@/components/SessionProvider";
 import PlayerModalHost, { PlayerButton } from "@/components/players/PlayerModalHost";
-import AddDropSheet from "@/components/transactions/AddDropSheet";
 import { useLiveRefresh } from "@/components/live/LiveRefresh";
 import LiveCountdown from "@/components/live/LiveCountdown";
 import Flash from "@/components/live/Flash";
@@ -109,8 +108,7 @@ function tipTime(g: BoxScoreGame, timeZone: string): string {
 
 export default function BoxScoresView({ data, initialGame = null }: { data: BoxScoresResponse; initialGame?: number | null }) {
   const router = useRouter();
-  const [adding, setAdding] = useState<number | null>(null);
-  const onAdd = useSignedIn() ? setAdding : null;
+  const showOwner = useSignedIn();
   const { sbRef, pinned, active } = usePinnedBar(data.games);
   const live = useLiveRefresh(data.live);
   const pick = useCallback((id: number) => jumpTo(id), []);
@@ -183,13 +181,12 @@ export default function BoxScoresView({ data, initialGame = null }: { data: BoxS
               </div>
 
               {data.games.map((g) => (
-                <Box key={g.id} g={g} data={data} onAdd={onAdd} />
+                <Box key={g.id} g={g} data={data} showOwner={showOwner} />
               ))}
             </>
           )}
 
         </PlayerModalHost>
-        {onAdd && <AddDropSheet playerId={adding} onClose={() => setAdding(null)} onDone={() => router.refresh()} />}
       </div>
     </div>
   );
@@ -307,7 +304,7 @@ function PinnedBar({ games, shown, active, timeZone, onPick, live }: {
   );
 }
 
-function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onAdd: ((id: number) => void) | null }) {
+function Box({ g, data, showOwner }: { g: BoxScoreGame; data: BoxScoresResponse; showOwner: boolean }) {
   const started = g.away.score !== null && g.home.score !== null;
   const title = started
     ? `${g.away.abbreviation} ${g.away.score} @ ${g.home.abbreviation} ${g.home.score}`
@@ -338,15 +335,15 @@ function Box({ g, data, onAdd }: { g: BoxScoreGame; data: BoxScoresResponse; onA
         </p>
       ) : (
         [g.away, g.home].map((t) => (
-          <TeamTable key={t.id} t={t} other={t === g.away ? g.home : g.away} g={g} data={data} onAdd={onAdd} />
+          <TeamTable key={t.id} t={t} other={t === g.away ? g.home : g.away} g={g} data={data} showOwner={showOwner} />
         ))
       )}
     </section>
   );
 }
 
-function TeamTable({ t, other, g, data, onAdd }: {
-  t: BoxScoreTeam; other: BoxScoreTeam; g: BoxScoreGame; data: BoxScoresResponse; onAdd: ((id: number) => void) | null;
+function TeamTable({ t, other, g, data, showOwner }: {
+  t: BoxScoreTeam; other: BoxScoreTeam; g: BoxScoreGame; data: BoxScoresResponse; showOwner: boolean;
 }) {
   const result = g.state === "final" && t.score !== null && other.score !== null && t.score !== other.score
     ? (t.score > other.score ? "Won" : "Lost") : null;
@@ -363,13 +360,13 @@ function TeamTable({ t, other, g, data, onAdd }: {
         {result && <span className={styles.result}>{result}</span>}
       </h3>
       <StickyHeadTable
-        tableClassName={`${styles.table} ${onAdd ? "" : styles.noOwner}`}
+        tableClassName={`${styles.table} ${showOwner ? "" : styles.noOwner}`}
         head={() => (
           <thead>
             <tr>
               <th scope="col" className={styles.rk} title="Rank by Value among every player who played on this date">Rank</th>
               <th scope="col" className={styles.pl}>Player</th>
-              {onAdd && <th scope="col" className={styles.own}>Owner</th>}
+              {showOwner && <th scope="col" className={styles.own}>Owner</th>}
               <th scope="col" className={styles.n}>MIN</th>
               <th scope="col" className={styles.n}>FG%</th>
               <th scope="col" className={styles.n}>FT%</th>
@@ -385,14 +382,14 @@ function TeamTable({ t, other, g, data, onAdd }: {
       >
         <tbody ref={bodyRef}>
           {t.players.map((p) => (
-            <PlayerRow key={p.id} p={p} data={data} onAdd={onAdd} />
+            <PlayerRow key={p.id} p={p} data={data} showOwner={showOwner} />
           ))}
         </tbody>
         <tfoot>
           <tr>
             <td className={styles.rk} />
             <th scope="row" className={styles.pl}>Team totals</th>
-            {onAdd && <td />}
+            {showOwner && <td />}
             <td className={styles.n}>{tot.min}</td>
             <td className={styles.n}>
               <Flash className={styles.c} value={`${tot.fgm}/${tot.fga}`} scope={t.id} delta={shotsDelta(tot.fgm, tot.fga)}>
@@ -446,7 +443,7 @@ function Cell({ k, r, of, value, scope, delta, children }: {
   );
 }
 
-function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresResponse; onAdd: ((id: number) => void) | null }) {
+function PlayerRow({ p, data, showOwner }: { p: BoxScorePlayer; data: BoxScoresResponse; showOwner: boolean }) {
   const mine = p.owner !== null && p.owner.teamId === data.myTeamId;
   const l = p.line;
   const of = data.playerCount;
@@ -466,21 +463,11 @@ function PlayerRow({ p, data, onAdd }: { p: BoxScorePlayer; data: BoxScoresRespo
           </span>
         </PlayerButton>
       </th>
-      {onAdd && <td className={styles.own}>
+      {showOwner && <td className={styles.own}>
         {p.owner === null && p.waiver ? (
-          <button
-            type="button"
-            className={`${styles.add} ${styles.claim}`}
-            aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, data.timeZone)})`}
-            title={waiverTooltip(p.waiver, data.timeZone)}
-            onClick={() => onAdd(p.id)}
-          >
-            Claim
-          </button>
+          <span title={waiverTooltip(p.waiver, data.timeZone)}>W</span>
         ) : p.owner === null ? (
-          <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} onClick={() => onAdd(p.id)}>
-            Add
-          </button>
+          <span title="Free agent">FA</span>
         ) : mine ? (
           <span className={styles.mp}><TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={data.myTeamId} /></span>
         ) : (

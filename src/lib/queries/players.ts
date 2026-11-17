@@ -11,7 +11,6 @@
 import type { Pool } from "pg";
 import type {
   CategoryLine,
-  AveragesByRange,
   CategoryWeights,
   GameLogRow,
   PlayDay,
@@ -23,7 +22,6 @@ import type {
   PlayerUpcomingGame,
   PlayersResponse,
   PlayersTeamOption,
-  RangeAverages,
   SeasonRow,
   SortKey,
   StatMode,
@@ -260,41 +258,6 @@ export async function getTotalsFor(
   return new Map(rows.map((r) => [r.player_id, toTotals(r)]));
 }
 
-/**
- * Per-game averages and 9CAT rank of `playerIds` over each StatRange; every range is null without games.
- * Ranks are the Players page's: among every player with a game in the range, with `weights`.
- */
-export async function getAveragesByRange(
-  db: Pool, season: number, playerIds: number[], weights: CategoryWeights,
-): Promise<Map<number, AveragesByRange>> {
-  if (playerIds.length === 0) return new Map();
-  const over = async (range: StatRange) => {
-    const days = RANGE_DAYS[range];
-    const window = days === null ? null : await statWindow(db, season, days);
-    if (days !== null && window === null) return () => null;
-    const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, window?.from ?? null, null, null]);
-    const values = valuePlayers(rows.map(toTotals), weights);
-    const byId = new Map(rows.map((r) => [r.player_id, r]));
-    return (id: number): RangeAverages | null => {
-      const r = byId.get(id);
-      return r ? { gp: r.gp, rank: values.get(id)!.rank, ...categoryLine(r, "avg") } : null;
-    };
-  };
-  const [all, last30, last14] = await Promise.all([over("season"), over("last30"), over("last14")]);
-  return new Map(playerIds.map((id) => [id, { season: all(id), last30: last30(id), last14: last14(id) }]));
-}
-
-/** The last-14-days window for `season` (see WINDOW_SQL); null before any game is played. */
-export async function getLast14Window(db: Pool, season: number): Promise<{ from: string; to: string } | null> {
-  return statWindow(db, season, 14);
-}
-
-/** Totals (finished regular-season games) for every player with a game in `season` on or after `from`. */
-export async function getTotalsSince(db: Pool, season: number, from: string): Promise<SeasonTotals[]> {
-  const { rows } = await db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [season, from, null, null]);
-  return rows.map(toTotals);
-}
-
 /** Season totals and 9CAT valuation for every player with a regular-season game in `season`. */
 export async function getSeasonValues(
   db: Pool,
@@ -311,7 +274,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
   const days = q.range === "custom" ? null : RANGE_DAYS[q.range];
   const window = q.range === "custom" ? q.dates : days === null ? null : await statWindow(db, q.season, days);
   // No played games yet: a null bound returns no rows for the windows either way.
-  const [{ rows }, owners, waivers, injuries, teamOptions, watched, bounds, week] = await Promise.all([
+  const [{ rows }, owners, waivers, injuries, teamOptions, watched, bounds, week, myTeam] = await Promise.all([
     db.query<SeasonPlayerRow>(SEASON_TOTALS_SQL, [q.season, window?.from ?? null, null, q.range === "custom" ? window!.to : null]),
     getOwners(db, q.season),
     getWaiverStatus(db, q.season),
@@ -320,6 +283,11 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     getWatchedIds(db, userId),
     db.query<{ first: string | null; last: string | null }>(SEASON_BOUNDS_SQL, [q.season]),
     getCurrentWeek(db, q.season),
+    userId === null ? null : db.query<{ id: number }>(
+      `SELECT ft.id::int FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id
+        WHERE ft.owner_user_id = $1 AND l.season = $2 ORDER BY l.id DESC LIMIT 1`,
+      [userId, q.season],
+    ),
   ]);
   // Value and rank over every player with a game in the range, before scope/q/pos, with the request's punt weights.
   const values = valuePlayers(rows.map(toTotals), q.weights, q.method);
@@ -437,6 +405,7 @@ export async function getPlayers(db: Pool, q: PlayersQuery, userId: number | nul
     total: matching.length,
     players,
     timeZone: waivers.timeZone,
+    myTeamId: myTeam?.rows[0]?.id ?? null,
   };
 }
 

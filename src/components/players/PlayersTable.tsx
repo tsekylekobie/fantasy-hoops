@@ -85,17 +85,14 @@ interface Props {
   errorMessage: string | null;
   onRetry: () => void;
   onOpenPlayer: (id: number) => void;
-  /**
-   * Free agents get an Add button (Claim for players on waivers) that calls this.
-   * Null when signed out: no league to add to, and no Owner column (league data is private).
-   */
-  onAddPlayer: ((id: number) => void) | null;
+  /** The Owner column (the team's abbreviation, FA, or W and the day he clears waivers); off when signed out (league data is private). */
+  showOwner: boolean;
   /** The signed-in manager's team, whose players get a dark chip. */
   myTeamId: number | null;
 }
 
 export default function PlayersTable({
-  data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer, onAddPlayer, myTeamId,
+  data, mode, sort, dir, onSort, status, errorMessage, onRetry, onOpenPlayer, showOwner, myTeamId,
 }: Props) {
   const rows = data?.players ?? [];
   // The data's own mode decides formatting, so stale rows shown while the
@@ -125,7 +122,7 @@ export default function PlayersTable({
   return (
     <StickyHeadTable
       className={styles.card}
-      tableClassName={`${styles.table} ${onAddPlayer ? "" : styles.noOwner} ${status === "loading" && data ? styles.stale : ""}`}
+      tableClassName={`${styles.table} ${showOwner ? "" : styles.noOwner} ${status === "loading" && data ? styles.stale : ""}`}
       busy={status === "loading"}
       cols={(
         <colgroup>
@@ -140,7 +137,7 @@ export default function PlayersTable({
             <col key={i} className={styles.cStat} />
           ))}
           <col className={styles.cValue} />
-          {onAddPlayer && <col className={styles.cOwner} />}
+          {showOwner && <col className={styles.cOwner} />}
         </colgroup>
       )}
       head={(copy) => (
@@ -157,7 +154,7 @@ export default function PlayersTable({
                 sortKey={c.sort} numeric sort={sort} dir={dir} onSort={onSort} copy={copy}
               />
             ))}
-            {onAddPlayer && (
+            {showOwner && (
               <th scope="col" className={styles.n}>
                 Owner
               </th>
@@ -169,7 +166,7 @@ export default function PlayersTable({
       <tbody>
         {message ? (
           <tr className={styles.messageRow}>
-            <td colSpan={COLUMNS.length + (onAddPlayer ? 4 : 3)}>
+            <td colSpan={COLUMNS.length + (showOwner ? 4 : 3)}>
               <div className={styles.message} role={status === "error" ? "alert" : "status"}>
                 {message}
               </div>
@@ -178,7 +175,7 @@ export default function PlayersTable({
         ) : (
           rows.map((p) => (
             <Row
-              key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} onAdd={onAddPlayer} myTeamId={myTeamId}
+              key={p.id} p={p} num={num} mode={rowMode} onOpen={onOpenPlayer} showOwner={showOwner} myTeamId={myTeamId}
               timeZone={data?.timeZone ?? "America/New_York"}
             />
           ))
@@ -193,7 +190,7 @@ function Row({
   num,
   mode,
   onOpen,
-  onAdd,
+  showOwner,
   myTeamId,
   timeZone,
 }: {
@@ -201,7 +198,7 @@ function Row({
   num: (v: number) => string;
   mode: StatMode;
   onOpen: (id: number) => void;
-  onAdd: ((id: number) => void) | null;
+  showOwner: boolean;
   myTeamId: number | null;
   timeZone: string;
 }) {
@@ -262,24 +259,13 @@ function Row({
       <Shaded mode={mode} k="blk" tier={t.blk}>{stat(s.blk)}</Shaded>
       <Shaded mode={mode} k="tov" tier={t.tov}>{stat(s.tov)}</Shaded>
       <td className={`${styles.n} ${styles.value}`}>{p.value === null ? "—" : fmtValue(p.value)}</td>
-      {onAdd && <td className={`${styles.n} ${styles.own}`}>
+      {showOwner && <td className={`${styles.n} ${styles.own}`}>
         {p.owner === null && p.waiver ? (
-          <span className={styles.claimWrap}>
-            <span className={styles.clears}>{fmtWaiverTime(p.waiver.clearsAt, timeZone, "day")}</span>
-            <button
-              type="button"
-              className={`${styles.add} ${styles.claim}`}
-              aria-label={`Claim ${fullName(p)} (${waiverTooltip(p.waiver, timeZone)})`}
-              title={`Claim · ${waiverTooltip(p.waiver, timeZone)}`}
-              onClick={() => onAdd(p.id)}
-            >
-              +
-            </button>
+          <span className={styles.clears} title={waiverTooltip(p.waiver, timeZone)}>
+            W · {fmtWaiverTime(p.waiver.clearsAt, timeZone, "day")}
           </span>
         ) : p.owner === null ? (
-          <button type="button" className={styles.add} aria-label={`Add ${fullName(p)}`} title="Add" onClick={() => onAdd(p.id)}>
-            +
-          </button>
+          <span title="Free agent">FA</span>
         ) : p.owner.teamId === myTeamId ? (
           <span className={styles.mine}><TeamLink team={{ id: p.owner.teamId, name: p.owner.abbreviation }} myTeamId={myTeamId} /></span>
         ) : (

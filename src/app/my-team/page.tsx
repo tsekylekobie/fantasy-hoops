@@ -6,7 +6,7 @@ import MyTeam from "@/components/my-team/MyTeam";
 export const metadata: Metadata = { title: "Roster · Fantasy Hoops" };
 export const dynamic = "force-dynamic";
 
-// Client-side: the lineup loads from /api/team/lineup and saves on each move. Signed in only.
+// Client-side: the lineup loads from /api/team/lineup, read-only (set on Yahoo). Signed in only.
 export default async function MyTeamPage() {
   await requireSignedInPage();
   return (

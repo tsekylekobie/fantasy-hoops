@@ -15,16 +15,7 @@
 //   rosters      Every 12 h: teams, players, and the season's schedule.
 //   lineups      Every 15 min and just after midnight (league time): saves each
 //                team's lineup for every day through today, so past days stay
-//                fixed even if the roster changes later. Then processes trades whose
-//                review window has ended (they wait while a player is locked today).
-//                Database only, no API.
-//   waivers      At the league's waiver time (leagues.waiver_time in its time zone):
-//                processes due claims and clears waivers (queries/waivers.ts). Each
-//                daily run is recorded in waiver_runs, so it happens exactly once
-//                even across restarts; a worker that was down runs the missed one.
-//   playoffs     Every 15 min and just after midnight (league time): once the regular
-//                season has ended, creates the playoff and toilet bowl rounds that are
-//                due and records finished bracket weeks (queries/playoffs.ts). Database only.
+//                fixed even if the roster changes later. Database only, no API.
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
@@ -35,9 +26,6 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { createClient } from "../src/lib/bdl";
 import { freezeSeasonLineups } from "../src/lib/queries/lineup";
-import { syncPlayoffs } from "../src/lib/queries/playoffs";
-import { processDueTrades } from "../src/lib/queries/trades";
-import { processDueWaivers } from "../src/lib/queries/waivers";
 import { notifyInjuryChanges } from "../src/lib/push/send";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
@@ -167,39 +155,12 @@ async function rosters(): Promise<Result> {
   return { summary: `${teams} teams, ${players} players, ${games} games in the ${season} schedule`, nextInMs: 12 * HOUR };
 }
 
-/** Saves every team's lineup through today (league time), then processes due trades; see freezeLineups. */
+/** Saves every team's lineup through today (league time); see freezeLineups. */
 async function lineups(): Promise<Result> {
   const { teams, rows } = await freezeSeasonLineups(db, season);
-  const trades = await processDueTrades(db);
   // Right after midnight too, so a new day is pinned before anyone changes a roster.
   const nextInMs = Math.min(15 * MIN, msUntilLocalHour(0) + MIN);
-  return {
-    summary: `${rows} lineup rows saved for ${teams} teams; trades: ${trades.completed} processed, ` +
-      `${trades.failed} failed, ${trades.waiting} waiting on locks`,
-    nextInMs,
-  };
-}
-
-/** The latest daily waiver run, if it hasn't happened; then sleeps until the next. */
-async function waivers(): Promise<Result> {
-  const { run, nextRunAt } = await processDueWaivers(db, season);
-  // Re-check at least every 15 min in case the league's waiver time changes.
-  const nextInMs = nextRunAt ? Math.min(15 * MIN, Math.max(5_000, nextRunAt.getTime() - Date.now() + 5_000)) : HOUR;
-  const summary = !nextRunAt
-    ? "no league"
-    : run
-      ? `${run.claims} claims, ${run.won} won, ${run.failed} failed, ${run.cleared} cleared${run.log.length ? ` (${run.log.join("; ")})` : ""}`
-      : "already ran";
-  return { summary, nextInMs };
-}
-
-/** Creates due playoff and toilet bowl rounds; see syncPlayoffs. */
-async function playoffs(): Promise<Result> {
-  const { log: lines, waiting } = await syncPlayoffs(db, season);
-  return {
-    summary: waiting ?? (lines.length ? lines.join("; ") : "nothing due"),
-    nextInMs: Math.min(15 * MIN, msUntilLocalHour(0) + MIN),
-  };
+  return { summary: `${rows} lineup rows saved for ${teams} teams`, nextInMs };
 }
 
 interface Task {
@@ -227,8 +188,6 @@ const TASKS: Task[] = [
   },
   { name: "rosters", run: rosters, firstDue: (last) => (last ? last.getTime() + 12 * HOUR : now()), nextAt: 0 },
   { name: "lineups", run: lineups, firstDue: () => now(), nextAt: 0 },
-  { name: "waivers", run: waivers, firstDue: () => now(), nextAt: 0 },
-  { name: "playoffs", run: playoffs, firstDue: () => now(), nextAt: 0 },
 ];
 
 let stopping = false;

@@ -1,7 +1,7 @@
 // The /league page: docs/design/league.mockup.html (standings), plus a
 // scoreboard that pages through the season's weeks (?week=N, default this
 // week). Team names open that team's roster (yours is /my-team); a score
-// opens that matchup. Trades in review (and yours) sit below. The
+// opens that matchup. Read-only: the league is run on Yahoo. The
 // Standings card switches to the Playoffs view (PlayoffsBracket): projected
 // from today's standings, or the real bracket once it exists (and then first).
 import Link from "next/link";
@@ -9,7 +9,6 @@ import type { ReactNode } from "react";
 import type { FantasyTeamSummary, LeagueOverview, MatchupScore, OtherMatchup } from "@/lib/types";
 import SiteHeader from "@/components/SiteHeader";
 import { SignInButton } from "@/components/UserMenu";
-import TradesPanel from "@/components/trades/TradesPanel";
 import { fmtGameDate } from "@/components/players/format";
 import TeamBadge from "@/components/TeamBadge";
 import TeamLink from "@/components/TeamLink";
@@ -32,16 +31,14 @@ function fmtRange(from: string, to: string): string {
 
 /**
  * `children` render below standings and the scoreboard (Recent transactions).
- * Links to /league/settings ("League settings" for the commissioner, "League rules", read-only, for everyone else).
+ * Links to /league/settings ("League rules", read-only).
  */
-export default function LeagueView({
-  data, isCommissioner = false, children,
-}: { data: LeagueOverview | null; isCommissioner?: boolean; children?: ReactNode }) {
+export default function LeagueView({ data, children }: { data: LeagueOverview | null; children?: ReactNode }) {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <SiteHeader />
-        {data ? <><Overview data={data} isCommissioner={isCommissioner} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
+        {data ? <><Overview data={data} />{children}</> : <p className={styles.empty}>No league for this season yet.</p>}
       </div>
     </div>
   );
@@ -58,7 +55,7 @@ export function SignedOutLeague() {
           <p className={styles.lead}>Nothing to see here yet.</p>
           <p>
             Standings, matchups, rosters and transactions are private to the league&rsquo;s managers. Sign in with Google
-            to see your league and manage your team.
+            to see your league and your team.
           </p>
           <SignInButton />
           <p className={styles.fine}>
@@ -70,13 +67,13 @@ export function SignedOutLeague() {
   );
 }
 
-function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommissioner: boolean }) {
+function Overview({ data }: { data: LeagueOverview }) {
   const season = `${data.season}–${String(data.season + 1).slice(2)}`;
   return (
     <>
       <div className={styles.head}>
         <h1 className={styles.title}>League</h1>
-        <Link href="/league/settings" className={styles.settings}>{isCommissioner ? "League settings" : "League rules"}</Link>
+        <Link href="/league/settings" className={styles.settings}>League rules</Link>
       </div>
       <p className={styles.sub}>
         {data.name} · {data.teamCount} teams · H2H 9CAT · {season}
@@ -89,7 +86,6 @@ function Overview({ data, isCommissioner }: { data: LeagueOverview; isCommission
         />
         <Scoreboard data={data} />
       </div>
-      <TradesPanel scope="league" />
     </>
   );
 }

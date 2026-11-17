@@ -1,11 +1,8 @@
 "use client";
 
-// /league/settings: the commissioner's form for the league's rules
-// (docs/design/league-settings.mockup.html). A section nav on the left with each
-// section's current draft value, one card per section, and a sticky save bar
-// that lists what saving will do (mirroring updateLeagueSettings in
-// src/lib/queries/settings.ts). Saves the whole form with PUT /api/league/settings.
-// `readOnly` (every other manager): the same page with every control disabled and no save bar.
+// /league/settings: the league's rules, read-only (docs/design/league-settings.mockup.html,
+// minus its save bar). A section nav on the left with each section's value, one card per
+// section, every control disabled. The rules change on Yahoo; the Yahoo sync stores them.
 import { useEffect, useState, type ReactNode } from "react";
 import { fmtGameDate, fmtWaiverDays, fmtWaiverTime } from "@/components/players/format";
 import { bracketRounds } from "@/lib/playoffs/bracket";
@@ -41,15 +38,14 @@ const WAIVER_TYPES: { value: WaiverType; label: string; short: string; help: str
   },
 ];
 
-const TRADE_REVIEWS: { value: TradeReview; label: string; help: string; viewHelp?: string }[] = [
+const TRADE_REVIEWS: { value: TradeReview; label: string; help: string }[] = [
   { value: "none", label: "None", help: "Trades go through as soon as they’re accepted." },
   {
-    value: "commissioner", label: "Commissioner", help: "You can veto a trade during the review period.",
-    viewHelp: "The commissioner can veto a trade during the review period.",
+    value: "commissioner", label: "Commissioner", help: "The commissioner can veto a trade during the review period.",
   },
   {
-    value: "league_vote", label: "League vote", help: "Other managers can vote to veto during the review period; you can veto too.",
-    viewHelp: "Other managers can vote to veto during the review period; the commissioner can veto too.",
+    value: "league_vote", label: "League vote",
+    help: "Other managers can vote to veto during the review period; the commissioner can veto too.",
   },
 ];
 
@@ -86,37 +82,11 @@ const toDraft = ({ gameLimits, ...s }: LeagueSettings): Draft => ({
   gameSlots: Object.fromEntries(Object.entries(gameLimits?.slots ?? {}).map(([k, v]) => [k, String(v)])),
 });
 
-const optionalInt = (v: string) => (v.trim() === "" ? null : Number(v));
-
-function draftLimits(d: Draft): GameLimits | null {
-  if (!d.gameLimitsOn) return null;
-  const slots: GameLimits["slots"] = {};
-  for (const s of STARTING_SLOTS) {
-    const v = optionalInt(d.gameSlots[s] ?? "");
-    if (v !== null) slots[s] = v;
-  }
-  // A blank total goes as null for the server to refuse.
-  return { total: optionalInt(d.gameTotal) as number, slots };
-}
-
-function fromDraft(d: Draft): LeagueSettings {
-  const { gameLimitsOn: _on, gameTotal: _total, gameSlots: _slots, ...rest } = d;
-  return {
-    ...rest,
-    maxAddsPerWeek: optionalInt(d.maxAddsPerWeek),
-    maxAddsPerSeason: optionalInt(d.maxAddsPerSeason),
-    tradeDeadline: d.tradeDeadline || null,
-    gameLimits: draftLimits(d),
-  };
-}
-
-/** When a game limits change starts (LeagueSettingsResponse.gameLimitsFromWeek). */
-const fromWeek = (week: number | null | undefined) =>
-  week == null ? "No weeks are left to start, so it won’t apply this season." : `Starts next week, week ${week}; this week keeps its current limits.`;
-
 function toggle<T>(list: T[], item: T, order: readonly T[]): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : order.filter((x) => x === item || list.includes(x));
 }
+
+const label = <T extends { value: string; label: string }>(list: T[], v: string) => list.find((x) => x.value === v)?.label ?? v;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -131,96 +101,6 @@ function fmtClock(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) return hhmm;
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
-}
-
-const label = <T extends { value: string; label: string }>(list: T[], v: string) => list.find((x) => x.value === v)?.label ?? v;
-
-/** One line per change, saying what saving it does. Mirrors updateLeagueSettings. */
-function changeEffects(d: LeagueSettings, s: LeagueSettings, teamCount: number, limitsFrom: number | null | undefined): string[] {
-  const out: string[] = [];
-  const toFaab = d.waiverType === "faab" && s.waiverType !== "faab";
-  if (d.waiverType !== s.waiverType) {
-    const name = label(WAIVER_TYPES, d.waiverType);
-    out.push(
-      toFaab
-        ? `Waiver type: FAAB. Every team gets the full $${d.faabBudget}; pending claims bid $${d.faabMinBid} until their managers change them.`
-        : s.waiverType === "faab"
-          ? `Waiver type: ${name}. Pending claims lose their bids; FAAB balances stay as they are.`
-          : `Waiver type: ${name}, from the next run.`,
-    );
-  }
-  if (d.waiverType === "faab" && !toFaab) {
-    if (d.faabBudget !== s.faabBudget) {
-      const diff = d.faabBudget - s.faabBudget;
-      out.push(
-        `FAAB budget $${d.faabBudget}: every team’s remaining balance goes ${diff > 0 ? "up" : "down"} $${Math.abs(diff)}` +
-          `${diff < 0 ? " (never below $0)" : ""}; money already spent stays spent.`,
-      );
-    }
-    if (d.faabMinBid !== s.faabMinBid) out.push(`Minimum bid $${d.faabMinBid}, for bids placed or changed from now on.`);
-  }
-  if (d.waiverDaysOfWeek.join() !== s.waiverDaysOfWeek.join() || d.waiverTime !== s.waiverTime || d.timeZone !== s.timeZone) {
-    out.push(
-      `Waivers run ${fmtWaiverDays(d.waiverDaysOfWeek)} at ${fmtClock(d.waiverTime)} (${d.timeZone.replace(/_/g, " ")}). ` +
-        "Pending claims and players on waivers move to the first new run at or after their old time.",
-    );
-  }
-  if (d.waiverDays !== s.waiverDays) out.push(`Days on waivers: ${d.waiverDays}, for players dropped from now on.`);
-  if (d.waiversAfterGameStart !== s.waiversAfterGameStart) {
-    out.push(d.waiversAfterGameStart
-      ? "Free agents go on waivers once their game starts, until the next run."
-      : "Free agents stay free agents after their game starts.");
-  }
-  if (d.allAddsByClaim !== s.allAddsByClaim) {
-    out.push(d.allAddsByClaim
-      ? "Every add is a claim at the next waiver run, free agents included."
-      : "Free agents can be added right away again. Pending claims still wait for their run.");
-  }
-  for (const [name, slots, statuses] of [
-    ["IL", "ilSlots", "ilStatuses"],
-    ["IL+", "ilPlusSlots", "ilPlusStatuses"],
-  ] as const) {
-    if (d[slots] !== s[slots] || d[statuses].join() !== s[statuses].join()) {
-      out.push(d[slots] === 0
-        ? `No ${name} slots.`
-        : `${name}: ${plural(d[slots], "slot")} for ${d[statuses].join(", ") || "no status"}, checked on every move from now on.`);
-    }
-  }
-  if (d.claimsIgnoreIlStatus !== s.claimsIgnoreIlStatus) {
-    out.push(d.claimsIgnoreIlStatus
-      ? "Waiver claims go through when someone on the team’s IL no longer qualifies, including claims pending now."
-      : "Waiver claims fail while someone on the team’s IL no longer qualifies, including claims pending now.");
-  }
-  if (JSON.stringify(d.gameLimits) !== JSON.stringify(s.gameLimits)) {
-    const g = d.gameLimits;
-    const caps = g ? Object.keys(g.slots).length : 0;
-    out.push(g
-      ? `Game limits: ${g.total} games a week${caps ? `, ${plural(caps, "position cap")}` : ""}. ${fromWeek(limitsFrom)}`
-      : `No game limits. ${fromWeek(limitsFrom)}`);
-  }
-  for (const [key, per] of [["maxAddsPerWeek", "week"], ["maxAddsPerSeason", "season"]] as const) {
-    if (d[key] !== s[key]) out.push(d[key] === null ? `No limit on adds per ${per}.` : `Adds per ${per}: ${d[key]}, from the next add on.`);
-  }
-  if (d.tradeReview !== s.tradeReview) {
-    out.push(`Trade review: ${label(TRADE_REVIEWS, d.tradeReview).toLowerCase()}, for trades accepted from now on.`);
-  }
-  if (d.tradeReview !== "none" && d.tradeReviewDays !== s.tradeReviewDays) {
-    out.push(`Review period: ${plural(d.tradeReviewDays, "day")}, for trades accepted from now on; trades in review keep their end date.`);
-  }
-  if (d.tradeReview === "league_vote" && d.tradeVetoVotes !== s.tradeVetoVotes) {
-    out.push(`${plural(d.tradeVetoVotes, "veto vote")} of ${teamCount - 2} block a trade, including trades in review now.`);
-  }
-  if (d.tradeDeadline !== s.tradeDeadline) {
-    out.push(d.tradeDeadline ? `Trade deadline ${fmtGameDate(d.tradeDeadline)}: no trades proposed after it.` : "No trade deadline.");
-  }
-  if (d.playoffTeams !== s.playoffTeams || d.playoffStartWeek !== s.playoffStartWeek) {
-    const rounds = bracketRounds(d.playoffTeams);
-    out.push(`Playoffs: ${d.playoffTeams} teams, weeks ${d.playoffStartWeek}–${d.playoffStartWeek + rounds - 1}.`);
-  }
-  if (d.toiletBowl !== s.toiletBowl || (d.toiletBowl && d.toiletBowlTeams !== s.toiletBowlTeams)) {
-    out.push(d.toiletBowl ? `Toilet bowl for the bottom ${d.toiletBowlTeams}.` : "No toilet bowl.");
-  }
-  return out;
 }
 
 function Row({ label, help, htmlFor, children }: { label: string; help?: ReactNode; htmlFor?: string; children: ReactNode }) {
@@ -259,13 +139,10 @@ function Section({ id, title, lede, children }: { id: string; title: string; led
   );
 }
 
-export default function LeagueSettingsForm({
-  initial, readOnly = false,
-}: { initial: LeagueSettingsResponse; readOnly?: boolean }) {
-  const [saved, setSaved] = useState(initial);
+export default function LeagueSettingsForm({ initial }: { initial: LeagueSettingsResponse }) {
+  const saved = initial;
+  // The controls are disabled; the draft only keeps them controlled.
   const [draft, setDraft] = useState(() => toDraft(initial.settings));
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [active, setActive] = useState<string>(SECTIONS[0].id);
 
   // Highlights the section nearest the top of the screen.
@@ -284,21 +161,16 @@ export default function LeagueSettingsForm({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
-    setStatus(null);
   };
   const num = (key: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) =>
     set(key, (e.target.value === "" ? "" : Number(e.target.value)) as never);
 
-  const current = fromDraft(draft);
-  const effects = changeEffects(current, saved.settings, saved.teamCount, saved.gameLimitsFromWeek);
-  const dirty = JSON.stringify(current) !== JSON.stringify(saved.settings);
   const noDays = draft.waiverDaysOfWeek.length === 0;
   const zones = TIME_ZONES.includes(draft.timeZone) ? TIME_ZONES : [draft.timeZone, ...TIME_ZONES];
   const maxVotes = Math.max(1, saved.teamCount - 2);
   const isFaab = draft.waiverType === "faab";
-  const toFaab = isFaab && saved.settings.waiverType !== "faab";
   const review = TRADE_REVIEWS.find((r) => r.value === draft.tradeReview);
-  const reviewHelp = (readOnly && review?.viewHelp) || review?.help;
+  const reviewHelp = review?.help;
 
   // Playoffs: one week per round, ending by the schedule's last week.
   const weeks = saved.weeks ?? [];
@@ -306,7 +178,6 @@ export default function LeagueSettingsForm({
   const lastStart = weeks.length - rounds + 1;
   const startWeeks = weeks.filter((w) => w.week >= 2 && (w.week <= lastStart || w.week === draft.playoffStartWeek));
   const endWeek = draft.playoffStartWeek + rounds - 1;
-  const startsOn = weeks.find((w) => w.week === draft.playoffStartWeek)?.startsOn;
   const locked = saved.playoffsStarted ?? false;
   const regularWeeks = draft.playoffStartWeek - 1;
   const afterWeeks = Math.max(0, weeks.length - endWeek);
@@ -330,36 +201,7 @@ export default function LeagueSettingsForm({
     playoffs: `${draft.playoffTeams} teams`,
   };
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (readOnly || noDays) return;
-    setSaving(true);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/league/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(current),
-      });
-      const body = (await res.json().catch(() => ({}))) as LeagueSettingsResponse & { error?: string };
-      if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status}).`);
-      const limitsChanged = JSON.stringify(body.settings.gameLimits) !== JSON.stringify(saved.settings.gameLimits);
-      setSaved(body);
-      setDraft(toDraft(body.settings));
-      setStatus({
-        ok: true,
-        text: "Saved. Managers see the new rules now." +
-          (limitsChanged ? ` ${body.settings.gameLimits ? "New game limits" : "No game limits"}: ${fromWeek(body.gameLimitsFromWeek).toLowerCase()}` : ""),
-      });
-    } catch (err) {
-      setStatus({ ok: false, text: err instanceof Error ? err.message : "Save failed." });
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const nextRun = fmtWaiverTime(saved.nextRunAt, saved.settings.timeZone, "long").replace(" · ", ", ");
-  const lastSaved = new Date(saved.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
     <div className={styles.cols}>
@@ -380,8 +222,8 @@ export default function LeagueSettingsForm({
         </p>
       </nav>
 
-      <form onSubmit={save} className={styles.main}>
-        <fieldset className={`${styles.fields} ${styles.sections}${readOnly ? ` ${styles.view}` : ""}`} disabled={readOnly}>
+      <div className={styles.main}>
+        <fieldset className={`${styles.fields} ${styles.sections} ${styles.view}`} disabled>
         <Section id="waivers" title="Waivers" lede={<>How dropped players and claims are handled. Next run: <b>{nextRun}</b>.</>}>
           <Row label="Waiver type" help="Who wins when two teams claim the same player.">
             <Segmented label="Waiver type" options={WAIVER_TYPES} value={draft.waiverType} onChange={(v) => set("waiverType", v)} />
@@ -405,17 +247,6 @@ export default function LeagueSettingsForm({
                   </span>
                 </label>
               </div>
-              {toFaab ? (
-                <p className={styles.warn}>
-                  Switching to FAAB gives every team the full ${draft.faabBudget}, and pending claims a bid of ${draft.faabMinBid}{" "}
-                  until their managers change them.
-                </p>
-              ) : (
-                <p className={styles.hint}>
-                  Changing the budget adds the difference to every team’s remaining balance (never below $0); money already spent stays
-                  spent. A new minimum applies to bids placed or changed from then on.
-                </p>
-              )}
             </Row>
           )}
           <Row label="Run days" help="Claims are processed and waivers clear only on these days.">
@@ -602,9 +433,6 @@ export default function LeagueSettingsForm({
           )}
           <Row label="Trade deadline" help="Blank = no deadline." htmlFor="set-deadline">
             <input id="set-deadline" className={styles.inp} type="date" value={draft.tradeDeadline} onChange={(e) => set("tradeDeadline", e.target.value)} />
-            {draft.tradeDeadline && !readOnly && (
-              <button type="button" className={styles.clear} onClick={() => set("tradeDeadline", "")}>Clear</button>
-            )}
           </Row>
         </Section>
 
@@ -683,43 +511,10 @@ export default function LeagueSettingsForm({
               )}
             </Row>
           </fieldset>
-          <p className={styles.lock}>
-            {locked
-              ? "The playoffs have started, so these are fixed for the season."
-              : `Playoff settings lock once week ${draft.playoffStartWeek}’s bracket is made${startsOn ? ` (${fmtGameDate(startsOn)})` : ""}.`}
-          </p>
         </Section>
         </fieldset>
 
-        {!readOnly && <div className={styles.save} role="region" aria-label="Save changes">
-          <div className={styles.what} aria-live="polite">
-            {dirty ? (
-              <>
-                <b>{effects.length === 0 ? "Unsaved changes" : plural(effects.length, "change")}</b>
-                {effects.length > 0 && <ul>{effects.map((e) => <li key={e}>{e}</li>)}</ul>}
-              </>
-            ) : status?.ok ? (
-              <span className={styles.ok} role="status">{status.text}</span>
-            ) : (
-              <span className={styles.ok}>No unsaved changes. Last saved {lastSaved}.</span>
-            )}
-            {status && !status.ok && <p className={styles.error} role="alert">{status.text}</p>}
-          </div>
-          {dirty && (
-            <button
-              type="button"
-              className={`${styles.bt} ${styles.ghost}`}
-              disabled={saving}
-              onClick={() => { setDraft(toDraft(saved.settings)); setStatus(null); }}
-            >
-              Discard
-            </button>
-          )}
-          <button type="submit" className={`${styles.bt} ${styles.primary}`} disabled={!dirty || saving || noDays}>
-            {saving ? "Saving…" : "Save settings"}
-          </button>
-        </div>}
-      </form>
+      </div>
     </div>
   );
 }

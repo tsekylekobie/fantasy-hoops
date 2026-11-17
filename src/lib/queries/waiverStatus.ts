@@ -1,8 +1,7 @@
-// Who's on waivers, for the Players table and the player modal (and the
-// league's waiver settings, shared with queries/waivers.ts). Kept apart from
-// waivers.ts so players.ts can use it without importing the roster-move code.
+// Who's on waivers, for the Players table, Box scores and the player modal (and
+// the league's waiver settings, shared with queries/waivers.ts).
 import type { Pool, PoolClient } from "pg";
-import type { FaabBudget, PlayerWaiver, WaiverOrder } from "../types";
+import type { PlayerWaiver, WaiverOrder } from "../types";
 import { teamLogoUrl } from "./teamLogo";
 
 type Db = Pool | PoolClient;
@@ -45,17 +44,6 @@ export async function getWaiverLeague(db: Db, where: { season: number } | { leag
     allAddsByClaim: r.all_adds_by_claim, nextRunAt: r.next_run_at,
     faabBudget: r.faab_budget, faabMinBid: r.faab_min_bid,
   };
-}
-
-/** The team's FAAB budget, or null when its league doesn't run FAAB waivers. A missing balance counts as the full budget. */
-export async function getTeamFaab(db: Db, teamId: number): Promise<FaabBudget | null> {
-  const { rows: [r] } = await db.query<{ waiver_type: WaiverOrder["type"]; budget: number; min_bid: number; balance: number }>(
-    `SELECT l.waiver_type, l.faab_budget AS budget, l.faab_min_bid AS min_bid, coalesce(ft.faab_balance, l.faab_budget) AS balance
-       FROM fantasy_teams ft JOIN leagues l ON l.id = ft.league_id WHERE ft.id = $1`,
-    [teamId],
-  );
-  if (!r || r.waiver_type !== "faab") return null;
-  return { budget: r.budget, minBid: r.min_bid, balance: r.balance };
 }
 
 /**

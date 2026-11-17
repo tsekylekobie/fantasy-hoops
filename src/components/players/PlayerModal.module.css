@@ -249,40 +249,11 @@
   border-radius: 4px;
 }
 
-/* Add (free agents): sits before the close button. */
-.add {
-  margin-left: auto;
-  flex: none;
-  height: 44px;
-  min-width: 88px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--on-ink);
-  font: 600 14px var(--font-body);
-  cursor: pointer;
-}
-
-.add:hover {
-  background: var(--accent-ink);
-}
-
-.add:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.add + .close {
-  margin-left: 0;
-}
-
-/* The watchlist star leads the header's buttons: Star, Add, Close. */
+/* The watchlist star leads the header's buttons: Star, Close. */
 .watch {
   margin-left: auto;
 }
 
-.watch + .add,
 .watch + .close {
   margin-left: 0;
 }
@@ -801,11 +772,6 @@
     font-size: 28px;
   }
 
-  .add {
-    min-width: 0;
-    padding: 0 16px;
-  }
-
   .injury {
     max-width: none;
   }
@@ -900,15 +866,4 @@
   background: var(--surface);
   color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.claim {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.claim:hover {
-  background: var(--accent);
-  color: var(--on-ink);
 }

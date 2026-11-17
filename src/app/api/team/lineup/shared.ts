@@ -1,4 +1,4 @@
-// Shared by the lineup routes: who's asking, and which date.
+// Shared by the API routes: who's asking, and which date.
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/config";
@@ -22,7 +22,7 @@ export async function sessionUserId(): Promise<number | null> {
 /** The signed-in user's team, or an error response to return instead. */
 export async function requireTeam(): Promise<TeamContext | NextResponse> {
   const session = await getSession((await cookies()).get(SESSION_COOKIE)?.value);
-  if (!session) return errorResponse("Sign in to manage your team.", 401);
+  if (!session) return errorResponse("Sign in to see your team.", 401);
   const team = await getUserTeam(pool, session.user.id, CURRENT_SEASON);
   if (!team) return errorResponse("You don't have a team in this league.", 404);
   return team;

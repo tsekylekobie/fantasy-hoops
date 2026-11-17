@@ -22,21 +22,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `${team?.teamName ?? "Team"} · Fantasy Hoops` };
 }
 
-// Another manager's team, read-only. Your own team is /my-team, where it can be edited. Signed in only.
+// Another manager's team, read-only like every team here. Your own team is /my-team. Signed in only.
 export default async function TeamPage({ params }: Props) {
   const session = await requireSignedInPage();
   const team = await load(params);
   if (!team) notFound();
   if (team.ownerUserId === session.user.id) redirect("/my-team");
-  // The commissioner may edit any team's name and logo.
-  const { rows: [league] } = await pool.query<{ commissioner_user_id: number | null }>(
-    `SELECT commissioner_user_id::int FROM leagues WHERE id = $1`,
-    [team.leagueId],
-  );
-  const isCommissioner = league?.commissioner_user_id === session.user.id;
   return (
     <Suspense fallback={null}>
-      <MyTeam teamId={team.teamId} canEditProfile={isCommissioner} />
+      <MyTeam teamId={team.teamId} />
     </Suspense>
   );
 }

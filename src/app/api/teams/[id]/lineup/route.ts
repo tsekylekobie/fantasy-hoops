@@ -5,7 +5,6 @@ import { gameDayToday } from "@/lib/gameDay";
 import { pool } from "@/lib/db";
 import { getTeamLineup, loadValues } from "@/lib/queries/lineup";
 import { getTeamById } from "@/lib/queries/teams";
-import { processDueTrades } from "@/lib/queries/trades";
 import { CURRENT_SEASON } from "@/lib/types";
 import { NO_STORE, errorResponse, handleError, parseDate, sessionUserId } from "../../../team/lineup/shared";
 
@@ -21,7 +20,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const raw = new URL(req.url).searchParams.get("date");
     const date = raw === null ? gameDayToday() : parseDate(raw);
     if (!date) return errorResponse("date must be yyyy-mm-dd", 400);
-    await processDueTrades(pool, team.leagueId);
     const values = await loadValues(pool, team.season);
     return NextResponse.json(await getTeamLineup(pool, team, date, values), { headers: NO_STORE });
   } catch (err) {
