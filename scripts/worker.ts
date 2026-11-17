@@ -25,6 +25,10 @@
 //   playoffs     Every 15 min and just after midnight (league time): once the regular
 //                season has ended, creates the playoff and toilet bowl rounds that are
 //                due and records finished bracket weeks (queries/playoffs.ts). Database only.
+//   yahoo        Every YAHOO_REFRESH_MINUTES (default 5): mirrors the Yahoo league
+//                (src/lib/yahoo/sync.ts): rosters and transactions each pass, this
+//                week's scoreboard hourly, settings, standings and finished weeks daily.
+//                Nothing to do until the commissioner connects Yahoo (/league/yahoo).
 //
 // Safe to restart: every pass is an idempotent upsert, and each task's last
 // run is kept in sync_state ("worker:<task>") so a restart doesn't redo the
@@ -39,6 +43,7 @@ import { syncPlayoffs } from "../src/lib/queries/playoffs";
 import { processDueTrades } from "../src/lib/queries/trades";
 import { processDueWaivers } from "../src/lib/queries/waivers";
 import { notifyInjuryChanges } from "../src/lib/push/send";
+import { syncYahoo } from "../src/lib/yahoo/sync";
 import { CURRENT_SEASON } from "../src/lib/types";
 import { getState, log, saveState, syncGames, syncInjuries, syncStats, syncTeamsAndPlayers } from "./lib/sync";
 import { classifyGames, upsertGames } from "./lib/upsert";
@@ -202,6 +207,12 @@ async function playoffs(): Promise<Result> {
   };
 }
 
+/** Mirrors the Yahoo league; see syncYahoo (which records failures on the connection and paces retries). */
+async function yahoo(): Promise<Result> {
+  const r = await syncYahoo(db);
+  return { summary: `${r.status === "ok" ? "" : `${r.status.toUpperCase()}: `}${r.summary} · ${r.requests} Yahoo calls`, nextInMs: r.nextInMs };
+}
+
 interface Task {
   name: string;
   run: () => Promise<Result>;
@@ -229,6 +240,7 @@ const TASKS: Task[] = [
   { name: "lineups", run: lineups, firstDue: () => now(), nextAt: 0 },
   { name: "waivers", run: waivers, firstDue: () => now(), nextAt: 0 },
   { name: "playoffs", run: playoffs, firstDue: () => now(), nextAt: 0 },
+  { name: "yahoo", run: yahoo, firstDue: () => now(), nextAt: 0 },
 ];
 
 let stopping = false;
