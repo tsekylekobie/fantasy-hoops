@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CategoryLine } from "../types";
-import { addLines, allPlay, categoryRanks } from "./rankings";
+import { addLines, allPlay, categoryRanks, withWeekResults } from "./rankings";
 
 function line(over: Partial<CategoryLine> = {}): CategoryLine {
   return {
@@ -49,4 +49,15 @@ test("category ranks: fewest turnovers is first, ties share a place, no attempts
   assert.deepEqual([r.get(1)!.tov, r.get(3)!.tov, r.get(2)!.tov], [1, 2, 3]);
   assert.deepEqual([r.get(1)!.reb, r.get(2)!.reb, r.get(3)!.reb], [1, 1, 3]);
   assert.equal(r.get(1)!.fgPct, 3);
+});
+
+test("a week with week_results rows ranks on Yahoo's lines; games stay the computed ones", () => {
+  const computed = { lines: new Map([[1, line({ pts: 100 })], [2, line({ pts: 90 })]]), games: new Map([[1, 30], [2, 28]]) };
+  const stored = new Map([[1, line({ pts: 80 })], [2, line({ pts: 95 })]]);
+  const out = withWeekResults(computed, stored);
+  assert.equal(out.lines.get(1)!.pts, 80);
+  assert.equal(out.lines.get(2)!.pts, 95);
+  assert.equal(out.games.get(1), 30);
+  assert.equal(withWeekResults(computed, undefined), computed);
+  assert.equal(withWeekResults(computed, new Map()), computed);
 });

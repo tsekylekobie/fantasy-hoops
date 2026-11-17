@@ -7,6 +7,10 @@
 // The season view adds up every regular-season week played, the live one
 // included (playoff and toilet bowl weeks don't count, as in standings.ts);
 // its category totals are summed lines (FG%/FT% from summed makes / attempts).
+// A week with rows in week_results (Yahoo's totals, which the Yahoo sync
+// writes, final or not) uses those lines; other weeks are computed from the
+// lineups as the Matchup page does (weekLinesWithGames). Games played always
+// come from the lineups.
 import type { Pool } from "pg";
 import type {
   CategoryKey,
@@ -89,6 +93,31 @@ export function categoryRanks(teamIds: number[], lines: Map<number, CategoryLine
   return ranks;
 }
 
+/** Week lines, keyed by team id. */
+type WeekLines = { lines: Map<number, CategoryLine>; games: Map<number, number> };
+
+/**
+ * The lines rankings use for a week: Yahoo's (week_results) when the week has
+ * any rows there, else the computed ones. Games stay the computed ones.
+ */
+export function withWeekResults(computed: WeekLines, stored: Map<number, CategoryLine> | undefined): WeekLines {
+  return stored && stored.size > 0 ? { lines: stored, games: computed.games } : computed;
+}
+
+/** Every week_results row in the league: week -> team id -> line. */
+async function storedWeekLines(db: Pool, leagueId: number): Promise<Map<number, Map<number, CategoryLine>>> {
+  const { rows } = await db.query<{ week: number; team_id: number; line: CategoryLine }>(
+    `SELECT week, fantasy_team_id::int AS team_id, line FROM week_results WHERE league_id = $1`,
+    [leagueId],
+  );
+  const out = new Map<number, Map<number, CategoryLine>>();
+  for (const r of rows) {
+    if (!out.has(r.week)) out.set(r.week, new Map());
+    out.get(r.week)!.set(r.team_id, r.line);
+  }
+  return out;
+}
+
 export interface RankingsOptions {
   period: RankingsPeriod;
   /** Week view: the week to show; null = the week containing today (clamped to the season). */
@@ -107,13 +136,16 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
   if (!league) return null;
   const { today } = league;
 
-  const [{ rows: teams }, { rows: weeks }] = await Promise.all([
+  const [{ rows: teams }, { rows: weeks }, stored] = await Promise.all([
     db.query<TeamRow & { owner_user_id: number | null }>(
       `SELECT id::int, name, abbreviation, logo_updated_at, owner_user_id::int FROM fantasy_teams WHERE league_id = $1 ORDER BY name`,
       [league.id],
     ),
     db.query<WeekRow>(WEEKS_SQL, [league.id]),
+    storedWeekLines(db, league.id),
   ]);
+  const linesOf = async (w: WeekRow): Promise<WeekLines> =>
+    withWeekResults(await weekLinesWithGames(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today), stored.get(w.week));
   if (weeks.length === 0) return null;
   const ids = teams.map((t) => t.id);
   const summary = new Map<number, FantasyTeamSummary>(teams.map((t) => [t.id, toTeamSummary(t)]));
@@ -137,7 +169,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
     const w = (opts.week !== null && weeks.find((x) => x.week === opts.week)) || weeks.find((x) => today <= x.ends_on) || weeks[weeks.length - 1];
     shownWeek = { week: w.week, startsOn: w.starts_on, endsOn: w.ends_on, isPlayoffs: w.is_playoffs, status: status(w) };
     if (w.starts_on <= today) {
-      ({ lines: totals, games } = await weekLinesWithGames(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today));
+      ({ lines: totals, games } = await linesOf(w));
       results = allPlay(ids, totals);
       const { rows: pairs } = await db.query<{ team_a_id: number; team_b_id: number | null }>(
         `SELECT team_a_id::int, team_b_id::int FROM matchups WHERE league_id = $1 AND week = $2`,
@@ -152,9 +184,7 @@ export async function getRankings(db: Pool, season: number, userId: number | nul
   } else {
     const start = playoffStart(weeks, league.playoff_start_week);
     counted = weeks.filter((w) => isRegularWeek(w, start) && w.starts_on <= today);
-    const byWeek = await Promise.all(
-      counted.map((w) => weekLinesWithGames(db, league.id, { startsOn: w.starts_on, endsOn: w.ends_on }, today)),
-    );
+    const byWeek = await Promise.all(counted.map(linesOf));
     for (const { lines, games: gp } of byWeek) {
       for (const [id, n] of gp) games.set(id, (games.get(id) ?? 0) + n);
       for (const [id, l] of lines) totals.set(id, addLines(totals.get(id) ?? emptyLine(), l));
