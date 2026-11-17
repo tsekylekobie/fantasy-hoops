@@ -1,0 +1,476 @@
+{
+ "fantasy_content": {
+  "xml:lang": "en-US",
+  "yahoo:uri": "/fantasy/v2/team",
+  "team": [
+   [
+    {
+     "team_key": "466.l.12345.t.4"
+    },
+    {
+     "team_id": "4"
+    },
+    {
+     "name": "Fast Break Fund"
+    },
+    [],
+    {
+     "url": "https://basketball.fantasysports.yahoo.com/nba/12345/4"
+    },
+    {
+     "team_logos": [
+      {
+       "team_logo": {
+        "size": "large",
+        "url": "https://s.yimg.com/x.png"
+       }
+      }
+     ]
+    },
+    [],
+    {
+     "waiver_priority": 2
+    },
+    {
+     "faab_balance": "92"
+    },
+    {
+     "number_of_moves": "5"
+    },
+    {
+     "number_of_trades": 0
+    },
+    {
+     "roster_adds": {
+      "coverage_type": "week",
+      "coverage_value": "5",
+      "value": "1"
+     }
+    },
+    [],
+    {
+     "league_scoring_type": "head"
+    },
+    [],
+    {
+     "has_draft_grade": 0
+    },
+    [],
+    {
+     "managers": [
+      {
+       "manager": {
+        "manager_id": "4",
+        "nickname": "Lee",
+        "guid": "GUID4",
+        "felo_score": "700",
+        "felo_tier": "gold"
+       }
+      }
+     ]
+    }
+   ],
+   {
+    "roster": {
+     "coverage_type": "date",
+     "date": "2026-11-17",
+     "is_prescoring": false,
+     "is_editable": false,
+     "0": {
+      "players": {
+       "0": {
+        "player": [
+         [
+          {
+           "player_key": "466.p.6700"
+          },
+          {
+           "player_id": "6700"
+          },
+          {
+           "name": {
+            "full": "LaMelo Ball",
+            "first": "LaMelo",
+            "last": "Ball",
+            "ascii_first": "LaMelo",
+            "ascii_last": "Ball"
+           }
+          },
+          {
+           "editorial_player_key": "nba.p.6700"
+          },
+          {
+           "editorial_team_key": "nba.t.1"
+          },
+          {
+           "editorial_team_full_name": "Team"
+          },
+          {
+           "editorial_team_abbr": "Cha"
+          },
+          {
+           "uniform_number": "1"
+          },
+          {
+           "display_position": "PG,SG"
+          },
+          {
+           "headshot": {
+            "url": "https://s.yimg.com/h.png",
+            "size": "small"
+           }
+          },
+          {
+           "image_url": "https://s.yimg.com/h.png"
+          },
+          {
+           "is_undroppable": "0"
+          },
+          {
+           "position_type": "P"
+          },
+          {
+           "primary_position": "PG"
+          },
+          {
+           "eligible_positions": [
+            {
+             "position": "PG"
+            },
+            {
+             "position": "SG"
+            },
+            {
+             "position": "G"
+            },
+            {
+             "position": "Util"
+            }
+           ]
+          },
+          {
+           "has_player_notes": 1
+          },
+          {
+           "player_notes_last_timestamp": 1763300000
+          }
+         ],
+         {
+          "selected_position": [
+           {
+            "coverage_type": "date",
+            "date": "2026-11-17"
+           },
+           {
+            "position": "PG"
+           },
+           {
+            "is_flex": 0
+           }
+          ]
+         },
+         {
+          "is_editable": 0
+         }
+        ]
+       },
+       "1": {
+        "player": [
+         [
+          {
+           "player_key": "466.p.6750"
+          },
+          {
+           "player_id": "6750"
+          },
+          {
+           "name": {
+            "full": "Evan Mobley",
+            "first": "Evan",
+            "last": "Mobley",
+            "ascii_first": "Evan",
+            "ascii_last": "Mobley"
+           }
+          },
+          {
+           "editorial_player_key": "nba.p.6750"
+          },
+          {
+           "editorial_team_key": "nba.t.1"
+          },
+          {
+           "editorial_team_full_name": "Team"
+          },
+          {
+           "editorial_team_abbr": "Cle"
+          },
+          {
+           "uniform_number": "1"
+          },
+          {
+           "display_position": "PF,C"
+          },
+          {
+           "headshot": {
+            "url": "https://s.yimg.com/h.png",
+            "size": "small"
+           }
+          },
+          {
+           "image_url": "https://s.yimg.com/h.png"
+          },
+          {
+           "is_undroppable": "0"
+          },
+          {
+           "position_type": "P"
+          },
+          {
+           "primary_position": "PF"
+          },
+          {
+           "eligible_positions": [
+            {
+             "position": "PF"
+            },
+            {
+             "position": "C"
+            },
+            {
+             "position": "F"
+            },
+            {
+             "position": "Util"
+            }
+           ]
+          },
+          {
+           "has_player_notes": 1
+          },
+          {
+           "player_notes_last_timestamp": 1763300000
+          }
+         ],
+         {
+          "selected_position": [
+           {
+            "coverage_type": "date",
+            "date": "2026-11-17"
+           },
+           {
+            "position": "C"
+           },
+           {
+            "is_flex": 0
+           }
+          ]
+         },
+         {
+          "is_editable": 0
+         }
+        ]
+       },
+       "2": {
+        "player": [
+         [
+          {
+           "player_key": "466.p.6800"
+          },
+          {
+           "player_id": "6800"
+          },
+          {
+           "name": {
+            "full": "Trey Murphy III",
+            "first": "Trey",
+            "last": "Murphy III",
+            "ascii_first": "Trey",
+            "ascii_last": "Murphy III"
+           }
+          },
+          {
+           "editorial_player_key": "nba.p.6800"
+          },
+          {
+           "editorial_team_key": "nba.t.1"
+          },
+          {
+           "editorial_team_full_name": "Team"
+          },
+          {
+           "editorial_team_abbr": "NO"
+          },
+          {
+           "uniform_number": "1"
+          },
+          {
+           "display_position": "SF,PF"
+          },
+          {
+           "headshot": {
+            "url": "https://s.yimg.com/h.png",
+            "size": "small"
+           }
+          },
+          {
+           "image_url": "https://s.yimg.com/h.png"
+          },
+          {
+           "is_undroppable": "0"
+          },
+          {
+           "position_type": "P"
+          },
+          {
+           "primary_position": "SF"
+          },
+          {
+           "eligible_positions": [
+            {
+             "position": "SF"
+            },
+            {
+             "position": "PF"
+            },
+            {
+             "position": "F"
+            },
+            {
+             "position": "Util"
+            }
+           ]
+          },
+          {
+           "has_player_notes": 1
+          },
+          {
+           "player_notes_last_timestamp": 1763300000
+          }
+         ],
+         {
+          "selected_position": [
+           {
+            "coverage_type": "date",
+            "date": "2026-11-17"
+           },
+           {
+            "position": "F"
+           },
+           {
+            "is_flex": 0
+           }
+          ]
+         },
+         {
+          "is_editable": 0
+         }
+        ]
+       },
+       "3": {
+        "player": [
+         [
+          {
+           "player_key": "466.p.6900"
+          },
+          {
+           "player_id": "6900"
+          },
+          {
+           "name": {
+            "full": "Victor Wembanyama",
+            "first": "Victor",
+            "last": "Wembanyama",
+            "ascii_first": "Victor",
+            "ascii_last": "Wembanyama"
+           }
+          },
+          {
+           "editorial_player_key": "nba.p.6900"
+          },
+          {
+           "editorial_team_key": "nba.t.1"
+          },
+          {
+           "editorial_team_full_name": "Team"
+          },
+          {
+           "editorial_team_abbr": "SA"
+          },
+          {
+           "uniform_number": "1"
+          },
+          {
+           "display_position": "PF,C"
+          },
+          {
+           "headshot": {
+            "url": "https://s.yimg.com/h.png",
+            "size": "small"
+           }
+          },
+          {
+           "image_url": "https://s.yimg.com/h.png"
+          },
+          {
+           "is_undroppable": "0"
+          },
+          {
+           "position_type": "P"
+          },
+          {
+           "primary_position": "PF"
+          },
+          {
+           "eligible_positions": [
+            {
+             "position": "PF"
+            },
+            {
+             "position": "C"
+            },
+            {
+             "position": "F"
+            },
+            {
+             "position": "Util"
+            }
+           ]
+          },
+          {
+           "has_player_notes": 1
+          },
+          {
+           "player_notes_last_timestamp": 1763300000
+          }
+         ],
+         {
+          "selected_position": [
+           {
+            "coverage_type": "date",
+            "date": "2026-11-17"
+           },
+           {
+            "position": "C"
+           },
+           {
+            "is_flex": 0
+           }
+          ]
+         },
+         {
+          "is_editable": 0
+         }
+        ]
+       },
+       "count": 4
+      }
+     },
+     "outs_x": 0
+    }
+   }
+  ],
+  "time": "41.2ms",
+  "copyright": "Data provided by Yahoo! and STATS, LLC",
+  "refresh_rate": "60"
+ }
+}
