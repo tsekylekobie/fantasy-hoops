@@ -2,12 +2,20 @@
 
 A self-hosted fantasy basketball app for one 12-team, 9-category league (FG%, FT%, 3PM, PTS, REB, AST, STL, BLK, TO),
 built to replace Yahoo with configurable waivers, IL rules and game limits. README.md covers setup, the worker and deploying.
-Data comes from BALLDONTLIE's ALL-STAR tier (60 requests/min); `/season_averages` isn't on it (averages are computed from
-stored game logs), and neither is `/plays` (no play-by-play).
+NBA data comes from ESPN's keyless JSON endpoints (`DATA_PROVIDER=espn`, the default); BALLDONTLIE (`bdl`) still works
+but its ALL-STAR tier was dropped. Averages are computed from stored game logs; there's no play-by-play.
 
 ## Layout
 - `src/lib/types.ts`: the API contract between routes and UI. Change both sides together.
-- `src/lib/bdl/`: the only module that talks to BALLDONTLIE (keeps the provider swappable).
+- `src/lib/data/`: the provider-neutral types and `DataClient` interface; `createClient(db)` picks the provider by
+  `DATA_PROVIDER`. Scripts and the worker import from here, never a provider directly.
+  `src/lib/espn/` (active): `http.ts` (paced ~1 req/s, retries), `raw.ts`, `map.ts` (pure, tested against
+  `data/samples/espn/`), `ids.ts`, `client.ts`. `src/lib/bdl/`: BALLDONTLIE, dormant. Our ids stay BALLDONTLIE's;
+  ESPN's are `teams/players/games.espn_id` (migration 0024). Players and games only ESPN has are inserted by `ids.ts` with
+  ids from 2,000,000,000 (`players_new_id_seq`, `games_new_id_seq`); stat lines get `player_game_stats_id_seq`.
+  `scripts/espn/match-ids.ts` links existing rows (dry run unless `--apply`), `scripts/espn/compare.ts` diffs ESPN box
+  scores against stored lines. ESPN statuses: `status_state` scheduled/in_progress/final, injuries `Out`/`Day-To-Day`/
+  `Suspension` with the injury in `player_injuries.injury` (BALLDONTLIE rows parse it from `description`).
 - `src/lib/espn/news.ts`: player news from ESPN's keyless fantasy endpoints (Rotowire blurbs), matched by name and
   fetched live by `/api/players/[id]/news` with an in-memory cache. Not stored; the one exception to reading from our DB.
 - `src/lib/db.ts`: shared `pg` pool.
