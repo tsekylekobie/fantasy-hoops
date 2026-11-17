@@ -1,7 +1,9 @@
 # Fantasy Hoops
 
 A self-hosted fantasy basketball app for one 12-team, 9-category league (FG%, FT%, 3PM, PTS, REB, AST, STL, BLK, TO),
-built to replace Yahoo with configurable waivers, IL rules and game limits. README.md covers setup, the worker and deploying.
+run on Yahoo. The league is managed on Yahoo; League, My team, team pages and Matchup are read-only mirrors of what the
+DB holds (which the Yahoo sync fills): no lineup edits, adds/drops, claims, trades or settings changes here.
+README.md covers setup, the worker and deploying.
 Data comes from BALLDONTLIE's ALL-STAR tier (60 requests/min); `/season_averages` isn't on it (averages are computed from
 stored game logs), and neither is `/plays` (no play-by-play).
 
@@ -19,30 +21,20 @@ stored game logs), and neither is `/plays` (no play-by-play).
   `schema_migrations`. Never edit a migration that has been committed; add the next number instead.
   `scripts/dev/seed-league.ts` (`npm run db:seed:league`) seeds a 12-team league with mock managers.
 - `src/app/api/players/`: JSON endpoints. Users read from our DB, never the API directly.
-- `src/app/api/team/transactions/` + `src/lib/queries/transactions.ts`: add/drop. `src/lib/transactions/policy.ts`
-  is the one place that decides immediate add vs. waiver claim (and where dropped players go). FAAB alone doesn't make
-  free agents claims; `leagues.all_adds_by_claim` (commissioner setting, off by default, migration 0021) does.
-- `src/lib/queries/waivers.ts`: the daily waiver run (worker task `waivers`, at `leagues.waiver_time` in its time zone),
-  claims (`/api/team/claims`, pending only; My team's My claims shows only while one is pending) and the waiver order. Run by hand: `npm run waivers -- --at next|now|<ISO>` or
-  `POST /api/dev/waivers?at=...` (dev only). FAAB (`waiver_type = 'faab'`): `resolveClaims` there (pure, tested) orders
-  claims by bid, breaks ties on priority and charges `fantasy_teams.faab_balance`; bids are checked by `faabBidProblem`
-  in `policy.ts`. Each claim records the run that decided it (`transactions.waiver_run_id`); Recent transactions shows
-  one "Waiver report" per run, and groups claims without a run (imported, won and failed) by the minute they were
-  decided (`transactionFeed` in `src/lib/transactions/feed.ts`, pure, tested; `finishReport` there words why each
-  claim lost for both). A report's row lists only the claims won (failed ones show when it's expanded), and a run
-  where nothing went through isn't listed. The League page shows the 5 latest
-  (`getRecentTransactions` in `queries/league.ts`); `/league/transactions` pages through all of them (`?page=N`).
-- Trades: `src/lib/queries/trades.ts` (propose, accept, review, process; built from another team's page,
-  `src/components/trades/`). A team over the active limit after a trade drops players with it
-  (`transaction_players.to_team_id` NULL): the proposer picks when proposing, the partner when accepting.
-  The trade analyzer (`TradeAnalysis.tsx`, in the builder and under open trades) prices trades on the client with
-  `src/lib/trades/analysis.ts` (pure, tested) over `GET /api/trades/analysis` (`queries/tradeAnalysis.ts`).
-- `src/lib/queries/settings.ts` + `/api/league/settings` + `/league/settings`: the commissioner's league settings
-  (`leagues.commissioner_user_id` only saves; other signed-in managers get the same form read-only, `readOnly` on
-  `LeagueSettingsForm`, linked as "League rules" from the League page). Waivers run on `leagues.waiver_days_of_week` (ISO weekdays, migration 0009).
+- Transactions (display only): Recent transactions shows completed adds, drops, claims and trades, one "Waiver
+  report" per waiver run (`transactions.waiver_run_id`, historical runs from before the app stopped running waivers),
+  and groups claims without a run (imported, won and failed) by the minute they were decided (`transactionFeed` in
+  `src/lib/transactions/feed.ts`, pure, tested; `finishReport` there words why each claim lost). A report's row lists
+  only the claims won (failed ones show when it's expanded), and a run where nothing went through isn't listed. The
+  League page shows the 5 latest (`getRecentTransactions` in `queries/league.ts`); `/league/transactions` pages through
+  all of them (`?page=N`). `src/lib/queries/waivers.ts` is the League page's waiver order (`fantasy_teams.waiver_priority`,
+  FAAB balances); `queries/waiverStatus.ts` says who's on waivers (Players, Box scores, the player modal show FA / W).
+- `src/lib/queries/settings.ts` + `GET /api/league/settings` + `/league/settings`: "League rules", the league's settings
+  as stored, read-only for every signed-in manager (`LeagueSettingsForm`, every control disabled). `parseSettings`
+  validates a whole `LeagueSettings` (the Yahoo import uses it).
 - `src/lib/playoffs/bracket.ts`: playoff and toilet bowl rules (seeding, pairings, who advances, ties go to the better
-  seed). `src/lib/queries/playoffs.ts` `syncPlayoffs` is the one place that creates bracket matchups (worker task
-  `playoffs`; by hand `npm run playoffs -- --today <yyyy-mm-dd>` or `POST /api/dev/playoffs?today=...`, dev only).
+  seed). `src/lib/queries/playoffs.ts` builds the League page's Playoffs view from the bracket rows in `matchups`
+  (Yahoo's; nothing here creates them), or a projection from today's standings before any exist.
   Standings count finished regular-season weeks only (not the live week) (`src/lib/queries/standings.ts`). The League page's scoreboard pages through
   every week (`?week=N`, default this week; only the scoreboard changes, standings stay current).
 - `src/lib/queries/injuries.ts`: current injury per player (`getInjuries`) and parsing the provider's description into
@@ -60,13 +52,13 @@ stored game logs), and neither is `/plays` (no play-by-play).
   for one week or the regular season added up, ranked by all-play category win % (ties half; `RankingsRow.allPlayPct`,
   shown as the Score column ×100 and rounded, capped at 99: 0–99, 50 = even; category cells shaded by value, median gray); the stack rank sorts by any column (`?sort=&dir=`,
   `parseSort` in `RankingsView.tsx`; best first, # stays the power rank); Versus the league shows one team against each other team.
+  A week with `week_results` rows (Yahoo's totals, final or not) ranks on those lines (`withWeekResults`); other weeks
+  are computed from the lineups.
 - `src/lib/lineup/rules.ts`: `ilEligibility` is the one place that evaluates the IL rule (the player's current injury
-  status against `il_statuses` / `il_plus_statuses`); `rosterProblems` decides when a roster is illegal (blocks adds and claims;
-  with `leagues.claims_ignore_il_status`, migration 0019, the waiver run skips its IL check so a status change doesn't fail a pending claim).
-- `src/lib/lineup/gameLimits.ts`: game limits (commissioner setting, off by default): caps on starters' games per matchup
+  status against `il_statuses` / `il_plus_statuses`); `rosterProblems` (illegal rosters) is only the Yahoo import's check now.
+- `src/lib/lineup/gameLimits.ts`: game limits (a league setting, off by default): caps on starters' games per matchup
   week, total and per starting slot, counted in tip-off order (`countStarts`, pure, tested). Each week carries its own
-  limits (`league_weeks.game_limits`, migration 0015); saving settings copies them onto weeks not yet started, so a change
-  starts next week. Matchup scoring (`queries/matchups.ts`: `weekLines`, used by standings, rankings and playoffs) applies
+  limits (`league_weeks.game_limits`, migration 0015). Matchup scoring (`queries/matchups.ts`: `weekLines`, used by standings, rankings and playoffs) applies
   them; My team shows games used (`teamGameLimitUsage`).
 - `src/lib/queries/projections.ts`: the Matchup page's Projected view (`?view=projected`): the week so far plus each
   start still to tip off that will count (lineups as set, game limits applied) at the player's last-30-day average
@@ -74,8 +66,8 @@ stored game logs), and neither is `/plays` (no play-by-play).
   The Categories table's Win chance row (`components/matchup/categoryOdds.ts`, pure, tested): each category's chance of
   winning by week's end, the projected margin over a spread that grows with what's left to play (projected minus actual);
   shaded red to green by the chance. Hidden once the week is final.
-- Player value and rank (`src/lib/queries/value.ts`, everywhere a Value or # shows: Players, player modal, trade
-  analyzer, box scores) are Josh Lloyd's DURANT H2H: each category Yeo–Johnson transformed and standardized over the
+- Player value and rank (`src/lib/queries/value.ts`, everywhere a Value or # shows: Players, player modal,
+  box scores) are Josh Lloyd's DURANT H2H: each category Yeo–Johnson transformed and standardized over the
   156-player pool (`yeoJohnson.ts`, matches scikit-learn's PowerTransformer, tested), weighted by `DURANT_H2H_WEIGHTS`
   (PTS 1, REB 0.94, AST 0.75, the rest 0.6, TO excluded), without the user's punts, minus the worst category
   (Minus 1). `Valuation.z` and the cell tiers stay plain z-scores. Punts are checkboxes (`PuntWeights.tsx`, every
@@ -83,7 +75,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   weights read that way).
   The Players page's DURANT / 9CAT switch (`?method=9cat`, `RankMethod`; on `/api/players` and `/api/players/[id]`
   for the modal's ranks) brings back the old valuation: `valuePlayers(..., "9cat")`, the weighted average of all nine
-  z-scores, TO at its stored weight (0.3), no Minus 1. Box scores and the trade analyzer stay DURANT.
+  z-scores, TO at its stored weight (0.3), no Minus 1. Box scores stay DURANT.
 - Players page GP column: games played in the chosen range (sortable). Gms column: each row's games left / total in the league's current matchup week, the same count and
   colors as My team's chip (`getWeekGames` in `queries/weekGames.ts`, run for the page's rows only; not sortable).
 - Players page filters: a name search (`q`) ignores them all and looks across every player (`getPlayers`); the filters apply only when not searching. A search also lists players with no game in the range (active ones: a game this season or last, on a roster or on the injury report, e.g. hurt since opening night; not `players.team_id`, which retired players keep) after the ranked ones, with no rank, stats or value; without a search they never show. Injured hides players listed Out by default (`?injured=show` in the page URL turns that off; the API's
@@ -100,7 +92,7 @@ stored game logs), and neither is `/plays` (no play-by-play).
   finds a player's game on a past date uses `player_team_on(player, date)` (migration 0020), not `players.team_id`.
 - The "today" pages show (Box scores, Matchup, My team and team lineups: default day, "Today" labels) is the Pacific
   date (`GAME_DAY_TZ` / `gameDayToday` in `src/lib/gameDay.ts`), so a night stays today until West Coast games end.
-  Display only: lineup locks (`TeamLineupResponse.lockedBefore`), adds/drops, waivers and trades use the league's date.
+  Display only: lineup locks (`TeamLineupResponse.lockedBefore`) and waivers use the league's date.
 - `src/lib/queries/boxScores.ts` + `/box-scores`: every game's box score for a date (`?date=`). Each line's Value is one
   game scored against the season's pool (`gameScorer` in `value.ts`, your punt weights); `rankDay` (pure, tested) ranks
   every stat against all players who played that date, and the cells are shaded by that tier. Every game stays listed:
@@ -138,8 +130,9 @@ stored game logs), and neither is `/plays` (no play-by-play).
   others). Matchup and My team rows stay in slot order.
 - `docs/design/*.mockup.html`: the design mockups to match, copied from the design canvas (https://claude.ai/artifact/3ZpzKr2ULidGFpMvgVcvAm, private to the owner).
   `players-table` and `player-modal` are the Players page;
-  `league-settings` is the commissioner's /league/settings; `my-team`, `matchup`, `league`, `rankings`, `claim-player`, `trade-builder`, `trade-analyzer`,
-  `edit-team`, `nav-map` and `my-team-phone` follow the built pages. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
+  `league-settings` is /league/settings (built read-only, no save bar); `my-team`, `matchup`, `league`, `rankings`, `nav-map` and
+  `my-team-phone` follow the built pages, minus their edit controls; `claim-player`, `trade-builder`, `trade-analyzer` and
+  `edit-team` are for features removed when the league moved back to Yahoo. Not built yet: `sign-in-flow`, `sign-in`, `welcome`, `not-in-league`
   and `league-members` (a league email list), the League page's Schedule/Transactions tabs, and My team's summary cards.
 - `.railway/railway.ts`: Railway Infrastructure as Code for `web`, `worker` and `Postgres` (README, "Deploying");
   applied with `railway config apply`, not on deploy. Secrets are `preserve()`, set in the dashboard. Anything a
