@@ -149,6 +149,11 @@ test("box score stat lines: makes-attempts, minutes, plus-minus, DNPs as zeros",
   assert.equal(dnp.plusMinus, null);
   // Players without an id are left out.
   assert.equal(toStatLines(s, { gameId: 77, players: new Map() }).length, 0);
+  // A row ESPN sends without an athlete id (seen on a DNP, 401810126) is skipped.
+  const noId = structuredClone(s);
+  noId.boxscore.players![0].statistics[0].athletes.push({ athlete: { shortName: "Olbrich" }, didNotPlay: true, stats: [] });
+  assert.equal(boxAthletes(noId).length, athletes.length);
+  assert.equal(toStatLines(noId, { gameId: 77, players }).length, lines.length);
 });
 
 test("injuries: athlete id from the links, injury from the details, status as ESPN has it", () => {

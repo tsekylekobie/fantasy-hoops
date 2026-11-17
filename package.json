@@ -21,7 +21,9 @@
     "waivers": "tsx scripts/waivers.ts",
     "playoffs": "tsx scripts/playoffs.ts",
     "yahoo:import": "tsx scripts/yahoo/import.ts",
-    "fetch:samples": "node scripts/fetch-samples.mjs"
+    "fetch:samples": "node scripts/fetch-samples.mjs",
+    "espn:match-ids": "tsx scripts/espn/match-ids.ts",
+    "espn:compare": "tsx scripts/espn/compare.ts"
   },
   "dependencies": {
     "dotenv": "17.2.2",

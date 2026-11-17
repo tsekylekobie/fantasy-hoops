@@ -263,9 +263,12 @@ export function madeAttempted(s: string | undefined): [number, number] {
 }
 
 /** The athletes in a box score, for resolving their ids before toStatLines. */
+/** ESPN's athlete id; null when a row has none (seen on DNP rows: only a short name). */
+const athleteId = (a: EspnBoxAthlete): number | null => (/^\d+$/.test(String(a.athlete.id ?? "")) ? Number(a.athlete.id) : null);
+
 export function boxAthletes(s: EspnSummaryResponse): EspnAthlete[] {
   return (s.boxscore.players ?? []).flatMap((t) =>
-    (t.statistics[0]?.athletes ?? []).map((a) => ({
+    (t.statistics[0]?.athletes ?? []).filter((a) => athleteId(a) !== null).map((a) => ({
       espnId: Number(a.athlete.id),
       ...splitName(a.athlete.displayName ?? ""),
       position: blankToNull(a.athlete.position?.abbreviation),
@@ -294,9 +297,9 @@ export function toStatLines(
     const teamId = ourTeamId(t.team);
     const at = (row: EspnBoxAthlete, label: string) => row.stats[block.labels.indexOf(label)];
     for (const row of block.athletes) {
-      const espnId = Number(row.athlete.id);
-      const playerId = ids.players.get(espnId);
-      if (playerId === undefined) continue;
+      const espnId = athleteId(row);
+      const playerId = espnId === null ? undefined : ids.players.get(espnId);
+      if (espnId === null || playerId === undefined) continue;
       const n = (label: string) => int(at(row, label)) ?? 0;
       const [fgm, fga] = madeAttempted(at(row, "FG"));
       const [fg3m, fg3a] = madeAttempted(at(row, "3PT"));

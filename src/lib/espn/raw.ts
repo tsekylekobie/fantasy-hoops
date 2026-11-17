@@ -97,7 +97,8 @@ export interface EspnScheduleResponse {
 }
 
 export interface EspnBoxAthlete {
-  athlete: { id: string; displayName?: string; shortName?: string; jersey?: string; position?: EspnPosition };
+  /** id can be missing (a DNP row with only shortName). */
+  athlete: { id?: string; displayName?: string; shortName?: string; jersey?: string; position?: EspnPosition };
   starter?: boolean;
   didNotPlay?: boolean;
   /** Same order as the block's labels; empty for a DNP. */
