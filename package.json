@@ -21,6 +21,7 @@
     "waivers": "tsx scripts/waivers.ts",
     "playoffs": "tsx scripts/playoffs.ts",
     "yahoo:import": "tsx scripts/yahoo/import.ts",
+    "yahoo:sync": "tsx scripts/yahoo/sync.ts",
     "fetch:samples": "node scripts/fetch-samples.mjs"
   },
   "dependencies": {
