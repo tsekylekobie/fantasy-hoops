@@ -9,7 +9,8 @@ argument-hint: <yahoo-league-id>
 League id: `$ARGUMENTS`. If that's blank, ask for it (it's in the league's Yahoo URL, `/nba/<league-id>`). Below,
 `<id>` is that id and `<folder>` is `yahoo-export/<id>-csv`.
 
-The app doesn't use Yahoo's API; this is how a league comes over (README, "Importing a league from Yahoo"). File formats are there and
+The CSVs are the fallback to the Yahoo API sync (README, "Mirroring the league from Yahoo (API)"): this is how a league comes
+over without it (README, "Importing a league from Yahoo CSVs"). File formats are there and
 in `src/lib/yahoo/csv.ts`.
 
 ## Ground rules

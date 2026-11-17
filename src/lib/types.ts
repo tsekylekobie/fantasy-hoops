@@ -1068,3 +1068,32 @@ export interface BoxScoresResponse {
   /** A game on this date is in progress: the page polls (components/live). */
   live: boolean;
 }
+
+// --- Yahoo connection (GET /api/yahoo/status, POST /api/yahoo/refresh) ---
+
+/** The league's Yahoo mirror, for YahooRefresh and /league/yahoo. Signed-in league members only. */
+export interface YahooStatusResponse {
+  /** YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET and YAHOO_TOKEN_KEY are set. */
+  configured: boolean;
+  connected: boolean;
+  /** Yahoo's league key ("466.l.12345"); null until one is chosen. */
+  leagueKey: string | null;
+  connectedBy: string | null;
+  connectedAt: string | null;
+  /** Last successful sync of any kind (ISO). */
+  lastRefreshAt: string | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
+  /** Yahoo throttled us: no calls before this (ISO). */
+  throttledUntil: string | null;
+  /** The viewer may connect, reconnect, pick the league or disconnect (the commissioner). */
+  canManage: boolean;
+}
+
+/** POST /api/yahoo/refresh: what the refresh did, and the status after it. */
+export interface YahooRefreshResponse {
+  ok: boolean;
+  /** Why not, in words (throttled, failed, refreshed less than a minute ago). */
+  message: string | null;
+  status: YahooStatusResponse;
+}

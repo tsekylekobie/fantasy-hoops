@@ -20,6 +20,10 @@ export default defineRailway(() => {
     VAPID_PUBLIC_KEY: preserve(),
     VAPID_PRIVATE_KEY: preserve(),
     VAPID_SUBJECT: preserve(),
+    // Yahoo Fantasy API (the league mirror): web connects, the worker syncs.
+    YAHOO_CLIENT_ID: preserve(),
+    YAHOO_CLIENT_SECRET: preserve(),
+    YAHOO_TOKEN_KEY: preserve(),
   };
 
   // Migrates before each deploy; a failed migration stops the deploy.

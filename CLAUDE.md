@@ -98,15 +98,29 @@ stored game logs), and neither is `/plays` (no play-by-play).
   every stat against all players who played that date, and the cells are shaded by that tier. Every game stays listed:
   clicking one in the scoreboard scrolls to it, and once the scoreboard scrolls off a compact copy pins to the top
   (`--sticky-head-top` drops the tables' pinned headers below it).
-- Yahoo import (README, "Importing a league from Yahoo"): no Yahoo API (sign-in or Fantasy); `scripts/yahoo/import.ts`
-  replaces the season's league from a folder of CSVs (dry run unless `--apply`) read by `src/lib/yahoo/csv.ts`
-  (pure, tested; README has the formats; the `yahoo-csv-refresh` skill builds them from Yahoo's pages). The snapshot
-  shape and player matching are in `src/lib/yahoo/parse.ts` (pure, tested). Imported finished weeks keep Yahoo's
-  totals in `week_results` (migration 0017), which `weekLines` and the Matchup page use instead of computing the week.
-  `league_members` maps manager emails to teams; sign-in links them (`src/lib/auth/members.ts`).
-  Yahoo's completed transactions (`transactions.csv`) become ordinary `transactions` rows (no `waiver_run_id`), so
+- Yahoo is the league's source of truth (README, "Mirroring the league from Yahoo (API)"): the league plays on Yahoo
+  and the worker's `yahoo` task mirrors it read-only through the Yahoo Fantasy API (`src/lib/yahoo/sync.ts`: rosters
+  + transactions every `YAHOO_REFRESH_MINUTES` (5), this week's scoreboard hourly, settings/standings/every week daily
+  and when a week ends; `dueScope` pure, tested). The commissioner connects once at `/league/yahoo` (OAuth code flow,
+  `oauth.ts`; `/api/yahoo/connect|callback`; a data connection, not a sign-in); `yahoo_connection` (migration 0025)
+  keeps the refresh token encrypted (`crypto.ts`, `YAHOO_TOKEN_KEY`), last refresh and last error. `api.ts` calls
+  Yahoo (401 refreshes the token, backs off on 999/429 "Request denied"). `GET /api/yahoo/status`, `POST
+  /api/yahoo/refresh` (any league member, once a minute per league) and `components/yahoo/YahooRefresh.tsx`
+  ("Updated 4 min ago · Refresh", no props). `fromApi.ts` (pure, tested on `fixtures/`, written from Yahoo's docs;
+  README lists every assumption) builds the `ImportSnapshot` (`parse.ts`); `apply.ts` writes it in place, keyed by
+  `fantasy_teams.yahoo_team_key` (first time by name), `yahoo_players` (Yahoo player key -> ours, `matched_by =
+  'hand'` to fix one), `transactions.yahoo_key`; a second identical pass changes nothing. `week_results.final`:
+  finished weeks true (they replace the computed week in `weekLines` and the Matchup page), the current week's live
+  totals false (only power rankings read those). `npm run yahoo:sync` runs a pass by hand (`--fixtures` without a key).
+- Yahoo CSV import, the fallback (README, "Importing a league from Yahoo CSVs"): `scripts/yahoo/import.ts` updates the
+  season's league in place from a folder of CSVs (`--replace` deletes it first; dry run unless `--apply`) read by
+  `src/lib/yahoo/csv.ts` (pure, tested; README has the formats; the `yahoo-csv-refresh` skill builds them from Yahoo's
+  pages), through the same `apply.ts`. Player matching is in `parse.ts` (pure, tested).
+  `league_members` maps manager emails to teams (Yahoo's API doesn't share them, so only the CSVs set it); sign-in
+  links them (`src/lib/auth/members.ts`).
+  Yahoo's completed transactions become ordinary `transactions` rows (no `waiver_run_id`), so
   they show in history and count toward add limits; players dropped within the waiver period go back on waivers.
-  Its failed claims (`status` `failed`) become failed claims without a run, shown only in waiver reports.
+  The CSVs' failed claims (`status` `failed`) become failed claims without a run, shown only in waiver reports.
 - Privacy: league data (rosters, owners, waivers, matchups, standings, rankings, trades, transactions, team logos) is
   signed-in only. Signed out, the header shows League (a sign-in prompt), Players and Box scores; Players hides the
   league filters and Owner column, Box scores its Owner column, and the routes strip `owner`/`waiver`/`thisWeek`/

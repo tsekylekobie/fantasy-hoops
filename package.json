@@ -19,6 +19,7 @@
     "backfill": "tsx scripts/backfill-stats.ts",
     "worker": "tsx scripts/worker.ts",
     "yahoo:import": "tsx scripts/yahoo/import.ts",
+    "yahoo:sync": "tsx scripts/yahoo/sync.ts",
     "fetch:samples": "node scripts/fetch-samples.mjs"
   },
   "dependencies": {

@@ -1,0 +1,418 @@
+{
+ "fantasy_content": {
+  "xml:lang": "en-US",
+  "yahoo:uri": "/fantasy/v2/league",
+  "league": [
+   {
+    "league_key": "466.l.12345",
+    "league_id": "12345",
+    "name": "Hoops Fixture League",
+    "url": "https://basketball.fantasysports.yahoo.com/nba/12345",
+    "logo_url": false,
+    "draft_status": "postdraft",
+    "num_teams": 4,
+    "edit_key": "2026-11-17",
+    "weekly_deadline": "intraday",
+    "league_update_timestamp": "1763337600",
+    "scoring_type": "head",
+    "league_type": "private",
+    "renew": "454_999",
+    "renewed": "",
+    "felo_tier": "gold",
+    "iris_group_chat_id": "",
+    "short_invitation_url": "",
+    "allow_add_to_dl_extra_pos": 1,
+    "is_pro_league": "0",
+    "is_cash_league": "0",
+    "current_week": 5,
+    "start_week": "1",
+    "start_date": "2026-10-20",
+    "end_week": "20",
+    "end_date": "2027-03-28",
+    "is_finished": 0,
+    "is_plus_league": "0",
+    "game_code": "nba",
+    "season": "2026"
+   },
+   {
+    "standings": [
+     {
+      "teams": {
+       "0": {
+        "team": [
+         [
+          {
+           "team_key": "466.l.12345.t.1"
+          },
+          {
+           "team_id": "1"
+          },
+          {
+           "name": "Splash Zone"
+          },
+          [],
+          {
+           "url": "https://basketball.fantasysports.yahoo.com/nba/12345/1"
+          },
+          {
+           "team_logos": [
+            {
+             "team_logo": {
+              "size": "large",
+              "url": "https://s.yimg.com/x.png"
+             }
+            }
+           ]
+          },
+          [],
+          {
+           "waiver_priority": 3
+          },
+          {
+           "faab_balance": "87"
+          },
+          {
+           "number_of_moves": "5"
+          },
+          {
+           "number_of_trades": 0
+          },
+          {
+           "roster_adds": {
+            "coverage_type": "week",
+            "coverage_value": "5",
+            "value": "1"
+           }
+          },
+          [],
+          {
+           "league_scoring_type": "head"
+          },
+          [],
+          {
+           "has_draft_grade": 0
+          },
+          [],
+          {
+           "managers": [
+            {
+             "manager": {
+              "manager_id": "1",
+              "nickname": "Kobe",
+              "guid": "GUID1",
+              "felo_score": "700",
+              "felo_tier": "gold",
+              "is_commissioner": "1",
+              "is_current_login": "1",
+              "email": "kobe@example.com"
+             }
+            }
+           ]
+          }
+         ],
+         {
+          "team_points": {
+           "coverage_type": "season",
+           "season": "2026",
+           "total": "0"
+          }
+         },
+         {
+          "team_standings": {
+           "rank": 1,
+           "playoff_seed": "1",
+           "outcome_totals": {
+            "wins": "24",
+            "losses": "10",
+            "ties": 2,
+            "percentage": ".667"
+           },
+           "games_back": "-"
+          }
+         }
+        ]
+       },
+       "1": {
+        "team": [
+         [
+          {
+           "team_key": "466.l.12345.t.2"
+          },
+          {
+           "team_id": "2"
+          },
+          {
+           "name": "Glass Cleaners"
+          },
+          [],
+          {
+           "url": "https://basketball.fantasysports.yahoo.com/nba/12345/2"
+          },
+          {
+           "team_logos": [
+            {
+             "team_logo": {
+              "size": "large",
+              "url": "https://s.yimg.com/x.png"
+             }
+            }
+           ]
+          },
+          [],
+          {
+           "waiver_priority": 1
+          },
+          {
+           "faab_balance": "100"
+          },
+          {
+           "number_of_moves": "5"
+          },
+          {
+           "number_of_trades": 0
+          },
+          {
+           "roster_adds": {
+            "coverage_type": "week",
+            "coverage_value": "5",
+            "value": "1"
+           }
+          },
+          [],
+          {
+           "league_scoring_type": "head"
+          },
+          [],
+          {
+           "has_draft_grade": 0
+          },
+          [],
+          {
+           "managers": [
+            {
+             "manager": {
+              "manager_id": "2",
+              "nickname": "Mo",
+              "guid": "GUID2",
+              "felo_score": "700",
+              "felo_tier": "gold"
+             }
+            }
+           ]
+          }
+         ],
+         {
+          "team_points": {
+           "coverage_type": "season",
+           "season": "2026",
+           "total": "0"
+          }
+         },
+         {
+          "team_standings": {
+           "rank": 3,
+           "playoff_seed": "3",
+           "outcome_totals": {
+            "wins": "17",
+            "losses": "18",
+            "ties": 1,
+            "percentage": ".472"
+           },
+           "games_back": "-"
+          }
+         }
+        ]
+       },
+       "2": {
+        "team": [
+         [
+          {
+           "team_key": "466.l.12345.t.3"
+          },
+          {
+           "team_id": "3"
+          },
+          {
+           "name": "Pick and Pop"
+          },
+          [],
+          {
+           "url": "https://basketball.fantasysports.yahoo.com/nba/12345/3"
+          },
+          {
+           "team_logos": [
+            {
+             "team_logo": {
+              "size": "large",
+              "url": "https://s.yimg.com/x.png"
+             }
+            }
+           ]
+          },
+          [],
+          {
+           "waiver_priority": 4
+          },
+          {
+           "faab_balance": "55"
+          },
+          {
+           "number_of_moves": "5"
+          },
+          {
+           "number_of_trades": 0
+          },
+          {
+           "roster_adds": {
+            "coverage_type": "week",
+            "coverage_value": "5",
+            "value": "1"
+           }
+          },
+          [],
+          {
+           "league_scoring_type": "head"
+          },
+          [],
+          {
+           "has_draft_grade": 0
+          },
+          [],
+          {
+           "managers": [
+            {
+             "manager": {
+              "manager_id": "3",
+              "nickname": "Rae",
+              "guid": "GUID3",
+              "felo_score": "700",
+              "felo_tier": "gold"
+             }
+            }
+           ]
+          }
+         ],
+         {
+          "team_points": {
+           "coverage_type": "season",
+           "season": "2026",
+           "total": "0"
+          }
+         },
+         {
+          "team_standings": {
+           "rank": 4,
+           "playoff_seed": "4",
+           "outcome_totals": {
+            "wins": "12",
+            "losses": "22",
+            "ties": 2,
+            "percentage": ".333"
+           },
+           "games_back": "-"
+          }
+         }
+        ]
+       },
+       "3": {
+        "team": [
+         [
+          {
+           "team_key": "466.l.12345.t.4"
+          },
+          {
+           "team_id": "4"
+          },
+          {
+           "name": "Fast Break Fund"
+          },
+          [],
+          {
+           "url": "https://basketball.fantasysports.yahoo.com/nba/12345/4"
+          },
+          {
+           "team_logos": [
+            {
+             "team_logo": {
+              "size": "large",
+              "url": "https://s.yimg.com/x.png"
+             }
+            }
+           ]
+          },
+          [],
+          {
+           "waiver_priority": 2
+          },
+          {
+           "faab_balance": "92"
+          },
+          {
+           "number_of_moves": "5"
+          },
+          {
+           "number_of_trades": 0
+          },
+          {
+           "roster_adds": {
+            "coverage_type": "week",
+            "coverage_value": "5",
+            "value": "1"
+           }
+          },
+          [],
+          {
+           "league_scoring_type": "head"
+          },
+          [],
+          {
+           "has_draft_grade": 0
+          },
+          [],
+          {
+           "managers": [
+            {
+             "manager": {
+              "manager_id": "4",
+              "nickname": "Lee",
+              "guid": "GUID4",
+              "felo_score": "700",
+              "felo_tier": "gold"
+             }
+            }
+           ]
+          }
+         ],
+         {
+          "team_points": {
+           "coverage_type": "season",
+           "season": "2026",
+           "total": "0"
+          }
+         },
+         {
+          "team_standings": {
+           "rank": 2,
+           "playoff_seed": "2",
+           "outcome_totals": {
+            "wins": "19",
+            "losses": "16",
+            "ties": 1,
+            "percentage": ".528"
+           },
+           "games_back": "-"
+          }
+         }
+        ]
+       },
+       "count": 4
+      }
+     }
+    ]
+   }
+  ],
+  "time": "41.2ms",
+  "copyright": "Data provided by Yahoo! and STATS, LLC",
+  "refresh_rate": "60"
+ }
+}

@@ -1,10 +1,11 @@
-// The Yahoo import's shared pieces (scripts/yahoo/import.ts): the snapshot
-// shape the CSVs are read into (csv.ts), Yahoo positions and stat ids, matching
-// Yahoo players to ours, and CSV reading/writing. Pure, so it can be unit tested.
+// The Yahoo import's shared pieces (apply.ts): the snapshot shape that Yahoo's
+// API responses (fromApi.ts) and the CSVs (csv.ts) are read into, Yahoo
+// positions and stat ids, matching Yahoo players to ours, and CSV
+// reading/writing. Pure, so it can be unit tested.
 import type { CategoryLine, LineupSlot, TradeReview, WaiverOrder } from "../types";
 
 export interface YahooPlayer {
-  /** A stable key for the player within one snapshot (csv.ts builds it from his name and team). */
+  /** A stable key for the player: Yahoo's player key ("466.p.6014") from the API; csv.ts builds one from his name and team. */
   key: string;
   first: string;
   last: string;
@@ -53,7 +54,18 @@ export interface YahooMatchup {
   /** "preevent" | "midevent" | "postevent" */
   status: string;
   isPlayoffs: boolean;
+  /** A consolation (toilet bowl or placement) game in a playoff week; from the API only. */
+  isConsolation?: boolean;
   teams: { key: string; line: CategoryLine }[];
+}
+
+/** A team's place in Yahoo's standings (API only). */
+export interface YahooStanding {
+  key: string;
+  rank: number | null;
+  wins: number;
+  losses: number;
+  ties: number;
 }
 
 export interface YahooLeague {
@@ -93,6 +105,7 @@ export interface YahooMove {
 
 /** A completed Yahoo transaction, or a failed waiver claim (transactions.csv); team keys as in `teams`. */
 export interface YahooTransaction {
+  /** Yahoo's transaction key from the API ("466.l.12345.tr.87"); transactions.csv's id from the CSVs. */
   id: string;
   /** Local time, "yyyy-mm-dd HH:MM", in `ImportSnapshot.transactionsTimeZone` (or the league's). */
   at: string;
@@ -119,6 +132,8 @@ export interface ImportSnapshot {
   transactions: YahooTransaction[];
   /** The IANA time zone transactions.csv's times are in; null = the league's. */
   transactionsTimeZone: string | null;
+  /** Yahoo's standings, when fetched (API only). */
+  standings?: YahooStanding[];
 }
 
 // --- Matching Yahoo players to ours (BALLDONTLIE) ---

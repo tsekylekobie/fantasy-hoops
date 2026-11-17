@@ -1,0 +1,36 @@
+/* "Updated 4 min ago · Refresh": the Yahoo mirror's freshness, for any page that shows league data. */
+
+.bar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.refresh {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.refresh:hover:not(:disabled) {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
+
+.refresh:disabled {
+  color: var(--ink-subtle);
+  cursor: default;
+}
+
+.problem {
+  color: var(--danger-ink);
+}

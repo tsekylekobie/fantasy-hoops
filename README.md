@@ -108,6 +108,7 @@ It keeps the database current on its own, logging one line per pass:
 | `corrections` | once a day after 9 AM | the last 3 days of games and stat lines again, for stat corrections |
 | `rosters` | every 12 h | teams, players and the season schedule (about 90 requests, 2 minutes) |
 | `lineups` | every 15 min and just after midnight | database only: saves each team's lineup for every day through today |
+| `yahoo` | every `YAHOO_REFRESH_MINUTES` (5) | the Yahoo league's rosters and transactions; hourly this week's scoreboard, daily settings, standings and finished weeks (see "Mirroring the league from Yahoo"); nothing until Yahoo is connected |
 
 Ctrl-C stops it after the current pass, and restarting is safe: each task's last run is saved in
 `sync_state` (`worker:<task>`), so a restart doesn't redo the slow passes. `npm run worker -- --once`
@@ -146,9 +147,99 @@ Where it works: desktop Chrome, Edge, Firefox and Safari (the browser must be ru
 and Firefox. On iPhone and iPad (iOS 16.4+), only from the Home Screen: Share → **Add to Home Screen**, open it from
 there, then turn on **Injury alerts**; in a Safari tab the menu explains this. Push needs https (or localhost).
 
-## Importing a league from Yahoo
+## Mirroring the league from Yahoo (API)
 
-Moves a Yahoo league over mid-season: the import replaces this season's league with the Yahoo league
+The league keeps playing on Yahoo; this app mirrors it read-only through the Yahoo Fantasy Sports API: teams,
+rosters and lineups, transactions, the schedule, each week's results (live this week), standings and settings.
+Code: `src/lib/yahoo/` (`sync.ts` runs a pass, `api.ts` calls Yahoo, `fromApi.ts` reads its JSON, `apply.ts`
+writes it in place, `connection.ts` keeps the tokens). Sign-in stays Google; Yahoo is only a data connection.
+
+**1. Create the Yahoo app** at <https://developer.yahoo.com/apps/create/>: application type **Web Application**,
+redirect URI `https://<your domain>/api/yahoo/callback` (Yahoo only takes `https` URIs, so use the deployed
+domain; locally, see "Without a key" below), API permissions **Fantasy Sports → Read**. Yahoo approves it, then
+shows the Client ID (Consumer Key) and Client Secret (Consumer Secret).
+
+**2. Set the env vars** on `web` and `worker` (`.env` locally):
+
+| Variable | |
+|---|---|
+| `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET` | from the Yahoo app |
+| `YAHOO_TOKEN_KEY` | encrypts the stored tokens (AES-256-GCM); make one with `openssl rand -base64 32`. Changing it means reconnecting |
+| `YAHOO_REFRESH_MINUTES` | optional, default 5: how often the worker refreshes rosters |
+
+**3. Connect.** The commissioner opens **/league/yahoo** (signed in), presses **Connect Yahoo**, signs in to Yahoo
+with their account in the league and allows access. The app keeps the refresh token (encrypted) and gets a new
+access token each hour on its own. If the account has one NBA league this season it's picked; otherwise the page
+lists them to choose from. Before any league exists here, any signed-in user can connect (to bring the league in);
+after that, only the commissioner (`leagues.commissioner_user_id`). Managers still link to their teams through the
+email list (`league_members`, from the CSV import's `teams.csv`): Yahoo doesn't share other managers' emails.
+
+**Cadence.** The worker's `yahoo` task (see the table above) runs a pass every `YAHOO_REFRESH_MINUTES`:
+
+| Pass | When | Yahoo calls (12 teams) |
+|---|---|---|
+| rosters | every pass | today's roster for each team, the latest 25 transactions (13) |
+| scoreboard | hourly | also the teams (waiver order, FAAB), this week's scoreboard (live totals, `week_results.final = false`) and each team's lineup for the rest of the week (up to ~85) |
+| full | daily, and when a week ends | also settings, weeks, standings, every week's scoreboard not yet final here, all transactions |
+
+Any manager can press **Refresh** (`YahooRefresh`, "Updated 4 min ago · Refresh"; `POST /api/yahoo/refresh`) for a
+rosters pass plus this week's scoreboard, at most once a minute for the whole league. When Yahoo throttles
+("Request denied", 999 or 429), the sync stops calling for 15 minutes (an hour if it happens again soon after).
+The last refresh and last error show on /league/yahoo (`GET /api/yahoo/status`). By hand:
+
+```sh
+npm run yahoo:sync                   # whatever pass is due
+npm run yahoo:sync -- --full         # or --scoreboard / --rosters; --dry-run rolls back and prints the report
+npm run yahoo:sync -- --replace      # delete this season's league and rebuild it from Yahoo
+```
+
+**In place.** A pass updates rows where they are: teams by `fantasy_teams.yahoo_team_key` (the first time, by name,
+so a league imported from CSVs keeps its team ids, managers and sign-ins), rosters and the fetched days' lineups
+made to match Yahoo's, transactions added once (`transactions.yahoo_key`; ones the CSV import saved are recognized
+and kept), finished weeks' results final. Running a pass twice changes nothing the second time. Yahoo players are
+matched to ours by name and team and remembered in `yahoo_players`; one that doesn't match is left out with a
+warning (in the worker log and the report). Match him by hand:
+`UPDATE yahoo_players SET player_id = <our id>, matched_by = 'hand' WHERE yahoo_player_key = '<466.p.1234>';`
+
+**Without a key** (local dev, or before Yahoo approves the app): `npm run yahoo:sync -- --fixtures --full` mirrors
+a made-up 4-team league from `src/lib/yahoo/fixtures/` (written from Yahoo's documented JSON) with a fake
+connection. Its players match only if your database has them (Curry, Jokić, ...).
+
+### Yahoo API: what we assume
+
+The fixtures and the reader (`fromApi.ts`) follow Yahoo's documented `?format=json` responses; check these once
+the app has a key (`npm run yahoo:sync -- --full --dry-run` prints what it read):
+
+- Resources are arrays of parts (`league: [{metadata}, {settings: [...]}]`); team and player metadata are arrays
+  of one-key objects (with empty `[]` in between); collections are `{"0": {...}, "count": n}` objects or arrays.
+- `league/{key}/settings`: `roster_positions[].roster_position.{position, count}` (`Util`, `BN`, `IL`, `IL+`);
+  `stat_categories.stats[].stat.{stat_id, enabled, is_only_display_stat}`, scored ids 5, 8, 10, 12, 15–19;
+  `uses_faab`/`waiver_type` ("FR" = FAAB), `waiver_time` (days), `trade_ratify_type` (`commish`/`vote`/`none`),
+  `trade_reject_time` (days), `trade_end_date`, `max_weekly_adds`, `max_adds`, `uses_playoff`,
+  `playoff_start_week`, `num_playoff_teams`; metadata `current_week`, `start_week`, `end_week`, `start_date`, `season`.
+- `game/{game_key}/game_weeks`: `game_week.{week, start, end}`; the league's week numbers are the game's.
+- `league/{key}/teams`: `team_key`, `name`, `waiver_priority`, `faab_balance` (a string), `managers[].manager`.
+- `league/{key}/standings`: `standings[0].teams`, each `team_standings.{rank, outcome_totals.{wins, losses, ties}}`.
+- `league/{key}/scoreboard;week=N`: matchups under `scoreboard["0"].matchups` (or `scoreboard.matchups`), each
+  with `week`, `week_start`, `week_end`, `status` (`preevent`/`midevent`/`postevent`), `is_playoffs`,
+  `is_consolation`, and teams under `matchup["0"].teams`; `team_stats.stats[].stat.{stat_id, value}` with makes and
+  attempts in display-only stats 9004003 (FGM/FGA, `"250/531"`) and 9007006 (FTM/FTA); `"-"` or `""` before games.
+- `team/{team_key}/roster;date=yyyy-mm-dd`: players under `roster["0"].players`; `player_key`, `name.{full, first,
+  last}`, `editorial_team_abbr`, `eligible_positions[].position`, and the day's slot in `selected_position[].position`.
+- `league/{key}/transactions;start=N;count=25`, newest first: `transaction_key`, `type` (`add`, `drop`, `add/drop`,
+  `trade`), `status` (`successful` only is mirrored), `timestamp` (Unix seconds), `faab_bid`,
+  `trader_team_key`/`tradee_team_key`; each player's `transaction_data` (an object or a one-item array) with
+  `source_type` (`freeagents`, `waivers`, `team`), `source_team_key`, `destination_type`, `destination_team_key`.
+  A move from `waivers` is a waiver claim. `start` pages through older ones.
+- `users;use_login=1/games;game_codes=nba/leagues`: the account's leagues, `league_key` and `season`.
+- OAuth: `request_auth` with `scope=fspt-r`; `get_token` takes HTTP Basic client credentials and answers
+  `access_token`, `refresh_token`, `expires_in` (3600), `xoauth_yahoo_guid`; refreshes repeat the `redirect_uri`.
+- Throttling: HTTP 999 with "Request denied" (or 429). Yahoo publishes no limit.
+- Roster dates are the league's local dates (America/New_York unless the league's time zone says otherwise).
+
+## Importing a league from Yahoo CSVs (fallback)
+
+Without the API (or to move a league over mid-season before connecting it), the import brings in the Yahoo league
 as it stood on the day its CSVs were copied from the league's Yahoo pages. Finished weeks keep Yahoo's
 results exactly; the current week and everything after are scored here, starting from each team's Yahoo
 lineups so far. Managers sign in with Google using the email you list for their team, and land on it.
@@ -173,15 +264,16 @@ To build or refresh the folder from Yahoo's pages, run the `/yahoo-csv-refresh <
 
 ```sh
 npm run yahoo:import -- yahoo-export/12345-csv                    # dry run: report only
-npm run yahoo:import -- yahoo-export/12345-csv --apply --replace  # replace the season's league with it
+npm run yahoo:import -- yahoo-export/12345-csv --apply            # update this season's league in place
+npm run yahoo:import -- yahoo-export/12345-csv --apply --replace  # delete the season's league, import over it
 ```
 
 The dry run lists what it would do and any problems: errors in the files, Yahoo players it couldn't match to
 ours (add their ids to `player-overrides.csv`, which it fills with the unmatched ones), starters whose Yahoo
 position doesn't fit ours (they keep Yahoo's lineup through this week, then go to the bench), illegal rosters, teams with no email. Point
 `DATABASE_URL` at production to import there. You can import as often as you like (a practice run
-now, the real one on moving day); each run starts over from the files, but users and sign-ins
-are kept. Copy and import on the same day: the import refuses rosters from an earlier day.
+now, the real one on moving day): without `--replace` it updates the league in place (teams found by name the
+first time, then kept), with it each run starts over from the files; users and sign-ins are kept either way. Copy and import on the same day: the import refuses rosters from an earlier day.
 Transactions become the league's history, count toward each team's add limits, and put players dropped within
 the waiver period back on waivers. Failed claims only show in the League page's waiver reports, next to the claim
 that won the player. Not imported: pending trades and waiver claims (managers resubmit them),
@@ -211,9 +303,11 @@ redeploy the code.
    The plan should create `web`, `worker` and `Postgres` (or, for an existing project, change only what you expect).
 3. Secrets aren't in the file (they're `preserve()`): set them in the dashboard under each service's Variables:
    `BALLDONTLIE_API_KEY` and the three `VAPID_*` keys (see "Injury alerts") on `web` and `worker`, and
-   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`.
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on `web`, and `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET` and
+   `YAHOO_TOKEN_KEY` on both (see "Mirroring the league from Yahoo").
 4. `web` → **Settings → Networking → Generate Domain** (or add a custom domain), and add
-   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client. The app uses Railway's
+   `https://<domain>/api/auth/google/callback` as a redirect URI on the Google OAuth client (and
+   `https://<domain>/api/yahoo/callback` on the Yahoo app). The app uses Railway's
    domain (`RAILWAY_PUBLIC_DOMAIN`) as its origin; set `APP_URL` only to use a different one.
 5. Load data from your machine through an SSH tunnel to Postgres (it has no public address). In one terminal:
    ```sh
