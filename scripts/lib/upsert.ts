@@ -92,7 +92,10 @@ export async function upsertPlayers(db: Db, players: Player[]): Promise<number> 
     `INSERT INTO players (id, first_name, last_name, position, team_id, jersey_number, espn_id, raw, updated_at)
      ${PLAYER_SELECT}
      ON CONFLICT (id) DO UPDATE SET
-       first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name,
+       -- Names stay as first stored (BALLDONTLIE's spelling, which Yahoo matching relies on);
+       -- ESPN (espn_id set) only names the players it adds (src/lib/espn/ids.ts).
+       first_name = CASE WHEN EXCLUDED.espn_id IS NULL THEN EXCLUDED.first_name ELSE players.first_name END,
+       last_name = CASE WHEN EXCLUDED.espn_id IS NULL THEN EXCLUDED.last_name ELSE players.last_name END,
        position = EXCLUDED.position, team_id = EXCLUDED.team_id,
        jersey_number = EXCLUDED.jersey_number, espn_id = coalesce(EXCLUDED.espn_id, players.espn_id),
        raw = EXCLUDED.raw, updated_at = now()`,
