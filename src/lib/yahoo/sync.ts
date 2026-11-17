@@ -19,7 +19,7 @@ import { createYahooClient, YahooThrottled, type YahooClient } from "./api";
 import { applySnapshot, type ApplyReport } from "./apply";
 import { getAccessToken, getConnection, setLeagueKey, type YahooCache, type YahooConnection } from "./connection";
 import { leagueMeta, snapshotFromApi, transactionCount, userLeaguesFromApi, weeksFromApi, type ApiResponses } from "./fromApi";
-import type { FetchFn } from "./oauth";
+import { yahooConfigured, type FetchFn } from "./oauth";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -90,8 +90,12 @@ export async function fetchUserLeagues(db: Pool, opts: SyncOptions = {}): Promis
 }
 
 export async function syncYahoo(db: Pool, opts: SyncOptions = {}): Promise<SyncResult> {
-  const conn = await getConnection(db);
   const base = { scope: null, requests: 0, report: null };
+  // Before the Yahoo app's keys are set there's nothing to do (and no way to read a stored token): not a failure.
+  if (!opts.fetch && !yahooConfigured()) {
+    return { ...base, status: "not_connected", summary: "Yahoo isn't set up (YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_TOKEN_KEY)", nextInMs: REFRESH_MS };
+  }
+  const conn = await getConnection(db);
   if (!conn) return { ...base, status: "not_connected", summary: "not connected", nextInMs: REFRESH_MS };
   const now = Date.now();
   if (conn.throttledUntil && conn.throttledUntil.getTime() > now) {
