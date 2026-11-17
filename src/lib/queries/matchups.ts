@@ -9,7 +9,7 @@
 // (league_weeks.game_limits, lineup/gameLimits.ts) starts past a limit don't
 // count either. FG%/FT% = summed makes / summed attempts of the games that
 // count; TO is lower-is-better. Scores are computed on read (no scoring job yet),
-// except weeks imported from Yahoo (week_results), which keep Yahoo's totals.
+// except finished weeks from Yahoo (week_results with final), which keep Yahoo's totals.
 // Projections (the page's Projected view) follow queries/projections.ts.
 import type { Pool } from "pg";
 import { GAME_DAY_TZ } from "../gameDay";
@@ -279,12 +279,16 @@ async function weekLimits(db: Pool, leagueId: number, startsOn: string): Promise
   return toGameLimits(w?.game_limits ?? null);
 }
 
-/** A week's totals as Yahoo scored it (week_results), keyed by team id; null for a week scored here. */
+/**
+ * A finished week's totals as Yahoo scored it (week_results with final), keyed
+ * by team id; null for a week scored here. The current week's live Yahoo totals
+ * (final = false) don't replace the computed week.
+ */
 async function importedLines(db: Pool, leagueId: number, startsOn: string): Promise<Map<number, CategoryLine> | null> {
   const { rows } = await db.query<{ team_id: number; line: CategoryLine }>(
     `SELECT r.fantasy_team_id::int AS team_id, r.line
        FROM week_results r JOIN league_weeks w ON w.league_id = r.league_id AND w.week = r.week
-      WHERE r.league_id = $1 AND w.starts_on = $2::date`,
+      WHERE r.league_id = $1 AND w.starts_on = $2::date AND r.final`,
     [leagueId, startsOn],
   );
   return rows.length > 0 ? new Map(rows.map((r) => [r.team_id, r.line])) : null;
